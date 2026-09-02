@@ -8,6 +8,18 @@ class User:
         self.id = username
         self.username = username
 
+    @property
+    def is_active(self):
+        return True
+
+    @property
+    def is_authenticated(self):
+        return True
+
+    @property
+    def is_anonymous(self):
+        return False
+
     @staticmethod
     def get_all_users():
         os.makedirs(DATA_DIR, exist_ok=True)
