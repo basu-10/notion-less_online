@@ -266,7 +266,10 @@ async function mountEditor(blocks) {
     try { initialBlocks = JSON.parse(blocks); } catch { initialBlocks = [{type:"paragraph"}]; }
   }
   if (!initialBlocks || !initialBlocks.length) initialBlocks = [{type:"paragraph"}];
-  state.editor = BlockNoteEditor.create({ initialContent: initialBlocks });
+  state.editor = BlockNoteEditor.create({
+    initialContent: initialBlocks,
+    blockHandle: true,
+  });
   state.editor.mount($("#editor"));
   state.editor.onChange(() => {
     if (state.currentPageId) markDirty();
@@ -473,7 +476,128 @@ function wireEditorInteractions() {
   const root = $("#editor");
   root.addEventListener("keydown", onEditorKeydown, true);
   root.addEventListener("keyup", onEditorKeyup, true);
-  root.addEventListener("click", () => closeSlashMenu());
+  root.addEventListener("click", (e) => {
+    closeSlashMenu();
+    const blockOuter = e.target.closest(".bn-block-outer");
+    if (blockOuter && e.target === blockOuter || e.target.closest(".bn-block-handle")) {
+      const blockId = blockOuter?.dataset?.id;
+      if (blockId) showBlockMenu(blockId, e.clientX, e.clientY);
+    }
+  });
+
+  document.addEventListener("mouseup", (e) => {
+    setTimeout(() => {
+      const sel = window.getSelection();
+      if (sel && !sel.isCollapsed && sel.toString().trim()) {
+        showFormatToolbar(e.clientX, e.clientY);
+      }
+    }, 10);
+  });
+
+  document.addEventListener("mousedown", (e) => {
+    const blockMenu = $("#blockMenu");
+    const formatToolbar = $("#formatToolbar");
+    if (!blockMenu.contains(e.target) && !e.target.closest(".bn-block-outer")) {
+      blockMenu.classList.remove("open");
+    }
+    if (!formatToolbar.contains(e.target)) {
+      formatToolbar.classList.remove("open");
+    }
+  });
+}
+
+const BLOCK_TYPES = [
+  { label: "Text", icon: "T", type: "paragraph" },
+  { label: "Heading 1", icon: "H1", type: "heading", props: { level: 1 } },
+  { label: "Heading 2", icon: "H2", type: "heading", props: { level: 2 } },
+  { label: "Heading 3", icon: "H3", type: "heading", props: { level: 3 } },
+  { label: "Bullet List", icon: "•", type: "bulletListItem" },
+  { label: "Numbered List", icon: "1.", type: "numberedListItem" },
+  { label: "To-do", icon: "☐", type: "checkListItem" },
+  { label: "Quote", icon: '"', type: "quote" },
+  { label: "Code", icon: "</>", type: "codeBlock" },
+];
+
+function showBlockMenu(blockId, x, y) {
+  const menu = $("#blockMenu");
+  menu.innerHTML = "";
+
+  BLOCK_TYPES.forEach(bt => {
+    const item = document.createElement("button");
+    item.className = "block-menu-item";
+    item.innerHTML = `<span class="block-menu-icon">${bt.icon}</span>${bt.label}`;
+    item.addEventListener("click", () => {
+      try {
+        state.editor.updateBlock(blockId, { type: bt.type, props: bt.props || {} });
+      } catch (e) { console.warn(e); }
+      menu.classList.remove("open");
+    });
+    menu.appendChild(item);
+  });
+
+  menu.appendChild(createBlockMenuDivider());
+
+  const deleteBtn = document.createElement("button");
+  deleteBtn.className = "block-menu-item danger";
+  deleteBtn.innerHTML = "Delete block";
+  deleteBtn.addEventListener("click", () => {
+    try {
+      state.editor.removeBlock(blockId);
+    } catch (e) { console.warn(e); }
+    menu.classList.remove("open");
+  });
+  menu.appendChild(deleteBtn);
+
+  const rect = menu.getBoundingClientRect();
+  const left = Math.min(x, window.innerWidth - 200);
+  const top = Math.min(y, window.innerHeight - 350);
+  menu.style.left = left + "px";
+  menu.style.top = top + "px";
+  menu.classList.add("open");
+}
+
+function createBlockMenuDivider() {
+  const div = document.createElement("div");
+  div.className = "block-menu-divider";
+  return div;
+}
+
+const FORMAT_BUTTONS = [
+  { label: "B", title: "Bold", action: () => state.editor.toggleBold?.() },
+  { label: "I", title: "Italic", action: () => state.editor.toggleItalic?.() },
+  { label: "U", title: "Underline", action: () => state.editor.toggleUnderline?.() },
+  { label: "S", title: "Strikethrough", action: () => state.editor.toggleStrike?.() },
+  { label: "H", title: "Highlight", action: () => state.editor.toggleHighlight?.() },
+  { label: "<>", title: "Code", action: () => state.editor.toggleCode?.() },
+];
+
+function showFormatToolbar(x, y) {
+  const toolbar = $("#formatToolbar");
+  toolbar.innerHTML = "";
+
+  FORMAT_BUTTONS.forEach((btn, i) => {
+    const button = document.createElement("button");
+    button.className = "format-btn";
+    button.textContent = btn.label;
+    button.title = btn.title;
+    button.addEventListener("click", (e) => {
+      e.preventDefault();
+      btn.action();
+    });
+    toolbar.appendChild(button);
+
+    if (i === 3) {
+      const divider = document.createElement("div");
+      divider.className = "format-divider";
+      toolbar.appendChild(divider);
+    }
+  });
+
+  const left = Math.min(x, window.innerWidth - 220);
+  const top = y - 50;
+  toolbar.style.left = left + "px";
+  toolbar.style.top = top + "px";
+  toolbar.classList.add("open");
 }
 
 function onEditorKeydown(e) {
