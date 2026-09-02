@@ -1,0 +1,6 @@
+.vscode
+*.log
+.kilo
+_headers
+.playwright-mcp
+*.png
