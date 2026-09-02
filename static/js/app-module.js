@@ -486,10 +486,11 @@ function wireEditorInteractions() {
   });
 
   document.addEventListener("mouseup", (e) => {
+    if (e.button !== 0) return;
     setTimeout(() => {
       const sel = window.getSelection();
       if (sel && !sel.isCollapsed && sel.toString().trim()) {
-        showFormatToolbar(e.clientX, e.clientY);
+        showFormatToolbar();
       }
     }, 10);
   });
@@ -497,7 +498,7 @@ function wireEditorInteractions() {
   document.addEventListener("mousedown", (e) => {
     const blockMenu = $("#blockMenu");
     const formatToolbar = $("#formatToolbar");
-    if (!blockMenu.contains(e.target) && !e.target.closest(".bn-block-outer")) {
+    if (!blockMenu.contains(e.target)) {
       blockMenu.classList.remove("open");
     }
     if (!formatToolbar.contains(e.target)) {
@@ -548,7 +549,6 @@ function showBlockMenu(blockId, x, y) {
   });
   menu.appendChild(deleteBtn);
 
-  const rect = menu.getBoundingClientRect();
   const left = Math.min(x, window.innerWidth - 200);
   const top = Math.min(y, window.innerHeight - 350);
   menu.style.left = left + "px";
@@ -563,15 +563,13 @@ function createBlockMenuDivider() {
 }
 
 const FORMAT_BUTTONS = [
-  { label: "B", title: "Bold", action: () => state.editor.toggleBold?.() },
-  { label: "I", title: "Italic", action: () => state.editor.toggleItalic?.() },
-  { label: "U", title: "Underline", action: () => state.editor.toggleUnderline?.() },
-  { label: "S", title: "Strikethrough", action: () => state.editor.toggleStrike?.() },
-  { label: "H", title: "Highlight", action: () => state.editor.toggleHighlight?.() },
-  { label: "<>", title: "Code", action: () => state.editor.toggleCode?.() },
+  { label: "B", title: "Bold", shortcut: "Ctrl+B", action: () => document.execCommand("bold") },
+  { label: "I", title: "Italic", shortcut: "Ctrl+I", action: () => document.execCommand("italic") },
+  { label: "U", title: "Underline", shortcut: "Ctrl+U", action: () => document.execCommand("underline") },
+  { label: "S", title: "Strikethrough", shortcut: "Ctrl+Shift+S", action: () => document.execCommand("strikeThrough") },
 ];
 
-function showFormatToolbar(x, y) {
+function showFormatToolbar() {
   const toolbar = $("#formatToolbar");
   toolbar.innerHTML = "";
 
@@ -579,9 +577,11 @@ function showFormatToolbar(x, y) {
     const button = document.createElement("button");
     button.className = "format-btn";
     button.textContent = btn.label;
-    button.title = btn.title;
-    button.addEventListener("click", (e) => {
+    button.title = `${btn.title} (${btn.shortcut})`;
+    button.addEventListener("mousedown", (e) => {
       e.preventDefault();
+    });
+    button.addEventListener("click", () => {
       btn.action();
     });
     toolbar.appendChild(button);
@@ -593,8 +593,15 @@ function showFormatToolbar(x, y) {
     }
   });
 
-  const left = Math.min(x, window.innerWidth - 220);
-  const top = y - 50;
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return;
+
+  const range = sel.getRangeAt(0);
+  const rect = range.getBoundingClientRect();
+
+  const left = Math.max(8, Math.min(rect.left + (rect.width / 2) - 100, window.innerWidth - 220));
+  const top = rect.top - 45 + window.scrollY;
+
   toolbar.style.left = left + "px";
   toolbar.style.top = top + "px";
   toolbar.classList.add("open");
@@ -649,6 +656,21 @@ function onEditorKeydown(e) {
       if (state.editor.canUnnestBlock()) state.editor.unnestBlock();
     } else {
       if (state.editor.canNestBlock()) state.editor.nestBlock();
+    }
+  }
+
+  if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+    const sel = window.getSelection();
+    if (sel && !sel.isCollapsed) return;
+    const atEnd = block && text.length > 0 &&
+      (sel?.anchorOffset === text.length || sel?.anchorNode?.textContent?.length === sel?.anchorOffset);
+    if (atEnd) {
+      setTimeout(() => {
+        const newBlock = state.editor.insertBlock({ type: "paragraph", content: "" });
+        if (newBlock) {
+          state.editor.setTextCursorPosition(newBlock.id, "start");
+        }
+      }, 0);
     }
   }
 }
