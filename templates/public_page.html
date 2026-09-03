@@ -190,6 +190,38 @@
     .error-nav a:hover {
       text-decoration: underline;
     }
+    .page-subpages {
+      margin-top: 28px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+    .page-subpages h3 {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 14px;
+      font-weight: 600;
+    }
+    .subpage-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .subpage-item {
+      margin-bottom: 6px;
+    }
+    .subpage-item a {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px; border-radius: 8px;
+      text-decoration: none; color: var(--text);
+      font-size: 0.9rem; font-weight: 500;
+      transition: background .15s ease, color .15s ease;
+    }
+    .subpage-item a:hover { background: var(--hover); color: var(--text); }
+    .subpage-icon { font-size: 14px; opacity: 0.6; }
+    .subpage-empty { color: var(--muted); font-size: 0.85rem; }
+    .nested-indent { padding-left: 18px; }
     .login-prompt {
       text-align: center;
       padding: 24px 32px;
@@ -256,74 +288,79 @@
         const avatar = displayName.charAt(0).toUpperCase();
         const date = page.updated_at ? new Date(page.updated_at * 1000).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : '';
 
-        let content = '';
+        let content = '<div id="publicEditor"></div>';
+        let editor = null;
+        let editorEl = null;
+        let contentRendered = false;
         try {
-          const blocks = JSON.parse(page.content || '[]');
-          if (blocks.length) {
-            const editor = BlockNoteEditor.create({ initialContent: blocks });
+          const rawContent = page.content || '[]';
+          const blocks = (typeof rawContent === 'string') ? JSON.parse(rawContent) : (Array.isArray(rawContent) ? rawContent : []);
+          if (blocks && Array.isArray(blocks) && blocks.length > 0) {
+            editor = BlockNoteEditor.create({ initialContent: blocks });
             content = '<div id="publicEditor"></div>';
-            document.getElementById('pageContent').innerHTML = `
-              <article class="page-card">
-                <header class="page-header">
-                  <div class="page-author">
-                    <div class="page-author-avatar">${avatar}</div>
-                    <div class="page-author-info">
-                      <a href="/wall/${username}">${escapeHtml(displayName)}</a>
-                      ${date ? `<div class="date">${date}</div>` : ''}
-                    </div>
-                  </div>
-                  <h1 class="page-title">${escapeHtml(page.title || 'Untitled')}</h1>
-                </header>
-                <div class="page-content">${content}</div>
-                <div class="page-actions">
-                  <button class="copy-btn" id="copyBtn">
-                    📋 Copy to my profile
-                  </button>
-                  <span class="copy-success" id="copySuccess" style="display:none;">Copied!</span>
-                </div>
-                <div class="login-prompt" id="loginPrompt" style="display:none;">
-                  <p>Log in to copy this page to your profile</p>
-                  <a href="/auth/login">Log in</a>
-                </div>
-              </article>
-            `;
-            editor.mount(document.getElementById('publicEditor'));
-            document.getElementById('publicEditor').querySelector('.bn-editor').style.minHeight = '200px';
-
-            document.getElementById('copyBtn').addEventListener('click', () => copyPage());
+            contentRendered = true;
           } else {
-            throw new Error('No content');
+            // Even if blocks appear empty, render editor with default empty paragraph so page never looks broken
+            editor = BlockNoteEditor.create({ initialContent: [{ type: 'paragraph', content: '' }] });
+            content = '<div id="publicEditor"></div>';
+            contentRendered = true;
           }
         } catch (e) {
-          document.getElementById('pageContent').innerHTML = `
-            <article class="page-card">
-              <header class="page-header">
-                <div class="page-author">
-                  <div class="page-author-avatar">${avatar}</div>
-                  <div class="page-author-info">
-                    <a href="/wall/${username}">${escapeHtml(displayName)}</a>
-                    ${date ? `<div class="date">${date}</div>` : ''}
-                  </div>
-                </div>
-                <h1 class="page-title">${escapeHtml(page.title || 'Untitled')}</h1>
-              </header>
-              <div class="page-content">
-                <p style="color:var(--muted);">This page appears to be empty.</p>
-              </div>
-              <div class="page-actions">
-                <button class="copy-btn" id="copyBtn">
-                  📋 Copy to my profile
-                </button>
-                <span class="copy-success" id="copySuccess" style="display:none;">Copied!</span>
-              </div>
-              <div class="login-prompt" id="loginPrompt" style="display:none;">
-                <p>Log in to copy this page to your profile</p>
-                <a href="/auth/login">Log in</a>
-              </div>
-            </article>
-          `;
-          document.getElementById('copyBtn').addEventListener('click', () => copyPage());
+          // Fallback for malformed content: show empty editor rather than error message
+          editor = BlockNoteEditor.create({ initialContent: [{ type: 'paragraph', content: '' }] });
+          content = '<div id="publicEditor"></div>';
+          contentRendered = true;
         }
+
+        const subpagesHtml = (page.subpages && page.subpages.length > 0) ? `
+          <div class="page-subpages">
+            <h3>Subpages</h3>
+            <ul class="subpage-list">
+              ${page.subpages.map(sp => `
+                <li class="subpage-item">
+                  <a href="/p/${username}/${sp.id}">
+                    <span class="subpage-icon">📄</span>
+                    <span>${escapeHtml(sp.title || 'Untitled')}</span>
+                  </a>
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+        ` : '';
+
+        document.getElementById('pageContent').innerHTML = `
+          <article class="page-card">
+            <header class="page-header">
+              <div class="page-author">
+                <div class="page-author-avatar">${avatar}</div>
+                <div class="page-author-info">
+                  <a href="/wall/${username}">${escapeHtml(displayName)}</a>
+                  ${date ? `<div class="date">${date}</div>` : ''}
+                </div>
+              </div>
+              <h1 class="page-title">${escapeHtml(page.title || 'Untitled')}</h1>
+            </header>
+            <div class="page-content">${content}</div>
+            ${subpagesHtml}
+            <div class="page-actions">
+              <button class="copy-btn" id="copyBtn">
+                📋 Copy to my profile
+              </button>
+              <span class="copy-success" id="copySuccess" style="display:none;">Copied!</span>
+            </div>
+            <div class="login-prompt" id="loginPrompt" style="display:none;">
+              <p>Log in to copy this page to your profile</p>
+              <a href="/auth/login">Log in</a>
+            </div>
+          </article>
+        `;
+
+        if (editor && document.getElementById('publicEditor')) {
+          editor.mount(document.getElementById('publicEditor'));
+          const editorContainer = document.getElementById('publicEditor').querySelector('.bn-editor');
+          if (editorContainer) editorContainer.style.minHeight = '200px';
+        }
+        document.getElementById('copyBtn').addEventListener('click', () => copyPage());
 
         checkLoginAndSetupCopy();
       } catch (err) {

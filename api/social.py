@@ -32,9 +32,20 @@ def get_user_wall(username):
         page_dict = dict(row)
         page_dict['is_public'] = bool(page_dict['is_public'])
         pages.append(page_dict)
+    # Build nested tree from flat list for nesting preservation
+    def build_tree(parent_id):
+        result = []
+        for p in pages:
+            if p.get('parent_id') == parent_id:
+                node = dict(p)
+                node['children'] = build_tree(p['id'])
+                result.append(node)
+        return result
+    nested_pages = build_tree('root')
     return jsonify({
         'profile': profile,
-        'pages': pages
+        'pages': pages,
+        'nested_pages': nested_pages
     })
 
 @social_bp.route('/users/<username>/pages/<page_id>', methods=['GET'])
@@ -46,12 +57,23 @@ def get_public_page(username, page_id):
         'SELECT id, title, content, parent_id, is_public, created_at, updated_at FROM pages WHERE id = ? AND is_public = 1',
         (page_id,)
     ).fetchone()
+    # Fetch all public subpages (nested) so nesting is preserved for visitors
+    sub_rows = conn.execute(
+        'SELECT id, title, parent_id, content, is_public, created_at, updated_at FROM pages WHERE parent_id = ? AND is_public = 1',
+        (page_id,)
+    ).fetchall()
     conn.close()
     if not row:
         return jsonify({'error': 'Page not found or not public'}), 404
     page = dict(row)
     page['is_public'] = bool(page['is_public'])
     page['author'] = username
+    # Include nested subpages to preserve nesting in shared pages
+    page['subpages'] = []
+    for sub in sub_rows:
+        sub_dict = dict(sub)
+        sub_dict['is_public'] = bool(sub_dict['is_public'])
+        page['subpages'].append(sub_dict)
     return jsonify(page)
 
 @social_bp.route('/pages/<page_id>/toggle-public', methods=['POST'])

@@ -280,6 +280,15 @@ function renderTree() {
       emoji.className = "page-emoji";
       emoji.textContent = page.emoji || "";
 
+      const publicIndicator = document.createElement("span");
+      publicIndicator.className = "page-public-indicator";
+      publicIndicator.textContent = page.isPublic ? "🌐" : "";
+      publicIndicator.title = page.isPublic ? "Public (includes subpages)" : "Private";
+      publicIndicator.style.fontSize = "10px";
+      publicIndicator.style.color = "var(--accent)";
+      publicIndicator.style.flexShrink = "0";
+      publicIndicator.style.opacity = "0.9";
+
       const link = document.createElement("div");
       link.className = "page-link";
       link.textContent = page.title || "Untitled";
@@ -342,8 +351,9 @@ function renderTree() {
         e.stopPropagation();
         openContextMenu(e.clientX, e.clientY, page.id);
       });
-      const parts = [indent, checkbox, twisty, link, more];
+      const parts = [indent, checkbox, twisty, link, publicIndicator, more];
       if (page.emoji) parts.splice(3, 0, emoji);
+      // If page is public, keep indicator visible; otherwise it stays empty string
       row.append(...parts);
       root.appendChild(row);
 
@@ -1377,8 +1387,32 @@ async function toggleCurrentPagePublic() {
     if (!res.ok) throw new Error('Failed');
     const data = await res.json();
     page.isPublic = data.is_public;
+    // Cascade to subpages in UI state so flow is clear
+    function updateSubpages(parentId, isPublic) {
+      const children = childrenOf(parentId);
+      for (const child of children) {
+        child.isPublic = isPublic;
+        updateSubpages(child.id, isPublic);
+      }
+    }
+    if (data.is_public) {
+      updateSubpages(page.id, true);
+      setSaveState('Made public — subpages included');
+    } else {
+      // When making private, only this page; subpages stay as they were or become private based on DB
+      // Re-fetch from server to sync exact DB state for children
+      const syncRes = await fetch(`/api/pages`);
+      if (syncRes.ok) {
+        const syncPages = await syncRes.json();
+        for (const sp of syncPages) {
+          const existing = state.pages.get(sp.id);
+          if (existing) existing.isPublic = Boolean(sp.is_public);
+        }
+      }
+      setSaveState('Made private');
+    }
     updatePublicToggleUI();
-    setSaveState(data.is_public ? 'Made public' : 'Made private');
+    renderTree();
   } catch (err) {
     console.error('Toggle public failed:', err);
     setSaveState('Failed to toggle public');
@@ -1396,10 +1430,12 @@ function updatePublicToggleUI() {
     icon.textContent = '🌐';
     label.textContent = 'Public';
     btn.classList.add('public');
+    btn.title = 'Page is public — subpages are public too';
   } else {
     icon.textContent = '🔒';
     label.textContent = 'Private';
     btn.classList.remove('public');
+    btn.title = 'Make page public (includes subpages)';
   }
 }
 
