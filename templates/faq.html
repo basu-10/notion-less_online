@@ -1,0 +1,722 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="FAQ — NotionLess Cloud. Get started and learn more about features.">
+  <meta name="theme-color" content="#d85b45">
+  <title>FAQ — NotionLess Cloud</title>
+
+  <link rel="preconnect" href="https://esm.sh">
+  <link rel="stylesheet" href="https://esm.sh/@blocknote/core@0.51.3/style.css">
+  <link rel="stylesheet" href="https://esm.sh/@blocknote/core@0.51.3/fonts/inter.css">
+
+  <link rel="stylesheet" href="/static/css/theme.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #fafaf8;
+      --surface: #ffffff;
+      --border: #e8e5df;
+      --text: #1a1a18;
+      --muted: #8a8780;
+      --hover: #f0efed;
+      --accent: #d85b45;
+      --accent-light: #e87a6a;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow: auto;
+    }
+
+    ::selection {
+      background: var(--accent);
+      color: white;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .brand-mark {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      font-weight: 700;
+      font-size: 12px;
+      color: var(--accent);
+    }
+
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: rgba(250, 250, 248, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    header .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+    }
+
+    .header-nav {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+
+    .header-nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.2s ease;
+    }
+
+    .header-nav a:hover {
+      color: var(--text);
+    }
+
+    .header-nav a.active {
+      color: var(--accent);
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      margin-bottom: 48px;
+      transition: color 0.2s ease;
+    }
+
+    .back-link:hover {
+      color: var(--accent);
+    }
+
+    .back-link svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .page-wrapper {
+      padding-top: 64px;
+      padding-bottom: 120px;
+    }
+
+    .page-header {
+      margin-bottom: 64px;
+      padding-top: 48px;
+    }
+
+    .page-header h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin-bottom: 16px;
+    }
+
+    .page-header p {
+      font-size: 1.15rem;
+      color: var(--muted);
+      max-width: 600px;
+      line-height: 1.7;
+    }
+
+    .section {
+      margin-bottom: 64px;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 24px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-title svg {
+      width: 16px;
+      height: 16px;
+      color: var(--accent);
+    }
+
+    .faq-category {
+      margin-bottom: 48px;
+    }
+
+    .faq-category:last-child {
+      margin-bottom: 0;
+    }
+
+    .category-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .category-title svg {
+      width: 20px;
+      height: 20px;
+      color: var(--accent);
+    }
+
+    .faq-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .faq-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: all 0.2s ease;
+    }
+
+    .faq-item:hover {
+      border-color: var(--accent);
+    }
+
+    .faq-question {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 20px 24px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text);
+      text-align: left;
+      transition: background 0.2s ease;
+    }
+
+    .faq-question:hover {
+      background: var(--hover);
+    }
+
+    .faq-question svg {
+      width: 18px;
+      height: 18px;
+      color: var(--muted);
+      flex-shrink: 0;
+      transition: transform 0.3s ease;
+    }
+
+    .faq-item.open .faq-question svg {
+      transform: rotate(180deg);
+    }
+
+    .faq-answer {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+
+    .faq-item.open .faq-answer {
+      max-height: 500px;
+    }
+
+    .faq-answer-content {
+      padding: 0 24px 20px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.7;
+    }
+
+    .faq-answer-content p {
+      margin-bottom: 12px;
+    }
+
+    .faq-answer-content p:last-child {
+      margin-bottom: 0;
+    }
+
+    .faq-answer-content code {
+      background: var(--hover);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: ui-monospace, monospace;
+      font-size: 0.85em;
+    }
+
+    .kbd {
+      display: inline-block;
+      padding: 2px 6px;
+      background: var(--hover);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: ui-monospace, monospace;
+      font-size: 0.8em;
+      color: var(--text);
+    }
+
+    .tip-box {
+      background: rgba(216, 91, 69, 0.08);
+      border: 1px solid rgba(216, 91, 69, 0.2);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-top: 12px;
+      font-size: 0.85rem;
+      color: var(--text);
+    }
+
+    .tip-box strong {
+      color: var(--accent);
+    }
+
+    footer {
+      padding: 48px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    footer .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 24px;
+    }
+
+    footer p {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 24px;
+    }
+
+    .footer-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.2s ease;
+    }
+
+    .footer-links a:hover {
+      color: var(--accent);
+    }
+
+    @media (max-width: 768px) {
+      .header-nav {
+        display: none;
+      }
+
+      .page-header h1 {
+        font-size: 2rem;
+      }
+
+      .faq-question {
+        padding: 16px 20px;
+        font-size: 0.9rem;
+      }
+
+      .faq-answer-content {
+        padding: 0 20px 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <a href="/" class="brand">
+        <div class="brand-mark">NL</div>
+        <span>NotionLess</span>
+      </a>
+      <nav class="header-nav">
+        <a href="/">Home</a>
+        <a href="/faq" class="active">FAQ</a>
+        <a href="/app">Open App</a>
+      </nav>
+      <a href="/app" class="btn btn-primary">Get Started</a>
+    </div>
+  </header>
+
+  <div class="page-wrapper">
+    <div class="container">
+      <a href="/" class="back-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+        Back to home
+      </a>
+
+      <div class="page-header">
+        <h1>Frequently Asked Questions</h1>
+        <p>Everything you need to know to get started and make the most of NotionLess.</p>
+      </div>
+
+      <div class="section">
+        <div class="faq-category">
+          <h2 class="category-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Getting Started
+          </h2>
+          <div class="faq-list">
+            <div class="faq-item">
+              <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                How do I create an account?
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="faq-answer">
+                <div class="faq-answer-content">
+                  <p>Click the <strong>Get Started</strong> button on the homepage or navigate to <code>/app</code>. On the login page, click <strong>Create an account</strong>. You'll need to provide a username and password. Your data will be stored in a separate SQLite file at <code>userdata/&lt;username&gt;.db</code>.</p>
+                </div>
+              </div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                Is my data safe?
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="faq-answer">
+                <div class="faq-answer-content">
+                  <p>Yes. Your data is stored locally on your device in IndexedDB (browser storage). No data is sent to any server. Even on the hosted version, each user has an isolated SQLite database file.</p>
+                  <div class="tip-box"><strong>Tip:</strong> Regularly export your data as JSON backup to avoid data loss.</div>
+                </div>
+              </div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                Do I need internet to use it?
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="faq-answer">
+                <div class="faq-answer-content">
+                  <p>Not at all. Once the app is loaded in your browser, it works completely offline. All your notes are stored locally in your browser's IndexedDB.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="faq-category">
+          <h2 class="category-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            Basic Editing
+          </h2>
+          <div class="faq-list">
+            <div class="faq-item">
+              <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                How do I create a new page?
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="faq-answer">
+                <div class="faq-answer-content">
+                  <p>Click the <strong>+</strong> button next to the page tree section in the sidebar. A new untitled page will be created and opened for immediate editing.</p>
+                </div>
+              </div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                How do I use slash commands?
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="faq-answer">
+                <div class="faq-answer-content">
+                  <p>Type <code>/</code> on any empty line to open the slash command menu. You can type to filter commands. Common commands include:</p>
+                  <p><code>/text</code> — Plain text paragraph</p>
+                  <p><code>/h1</code>, <code>/h2</code>, <code>/h3</code> — Headings</p>
+                  <p><code>/bullet</code> — Bullet list</p>
+                  <p><code>/numbered</code> — Numbered list</p>
+                  <p><code>/todo</code> — Checklist items</p>
+                  <p><code>/quote</code> — Block quote</p>
+                  <p><code>/code</code> — Code block</p>
+                  <div class="tip-box"><strong>Tip:</strong> Press <kbd>Enter</kbd> to confirm or <kbd>Esc</kbd> to cancel.</div>
+                </div>
+              </div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                How do I format text?
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="faq-answer">
+                <div class="faq-answer-content">
+                  <p>Select the text you want to format and use keyboard shortcuts:</p>
+                  <p><kbd>Ctrl</kbd>+<kbd>B</kbd> — Bold</p>
+                  <p><kbd>Ctrl</kbd>+<kbd>I</kbd> — Italic</p>
+                  <p><kbd>Ctrl</kbd>+<kbd>U</kbd> — Underline</p>
+                  <p><kbd>Ctrl</kbd>+<kbd>E</kbd> — Inline code</p>
+                  <p><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>5</kbd> — Strikethrough</p>
+                </div>
+              </div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                How do I move blocks around?
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="faq-answer">
+                <div class="faq-answer-content">
+                  <p>Hover over any block to reveal the <strong>drag handle</strong> (⋮⋮) on the left side. Click and drag to reorder blocks within a page. This works for all block types including headings, lists, and paragraphs.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="faq-category">
+          <h2 class="category-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            Organizing Pages
+          </h2>
+          <div class="faq-list">
+            <div class="faq-item">
+              <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                How do I create sub-pages?
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="faq-answer">
+                <div class="faq-answer-content">
+                  <p>Hover over a page in the sidebar and click the <strong>+</strong> icon that appears. This creates a new child page nested under the current page. You can also drag pages to reparent them.</p>
+                </div>
+              </div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                How do I rename a page?
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="faq-answer">
+                <div class="faq-answer-content">
+                  <p>Double-click the page title in the sidebar to edit it inline. Press <kbd>Enter</kbd> to save or <kbd>Esc</kbd> to cancel.</p>
+                </div>
+              </div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                How do I delete a page?
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="faq-answer">
+                <div class="faq-answer-content">
+                  <p>Right-click (or long-press on mobile) on the page in the sidebar to open the context menu. Select <strong>Delete</strong>. Note: Deleted pages cannot be recovered.</p>
+                </div>
+              </div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                Can I collapse the page tree?
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="faq-answer">
+                <div class="faq-answer-content">
+                  <p>Yes. Click the chevron (▼) next to any parent page to collapse or expand its children. This helps keep your page tree organized and reduces clutter.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="faq-category">
+          <h2 class="category-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            Customization
+          </h2>
+          <div class="faq-list">
+            <div class="faq-item">
+              <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                How do I change the theme?
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="faq-answer">
+                <div class="faq-answer-content">
+                  <p>Click the <strong>theme toggle</strong> in the sidebar footer or topbar. You can choose between:</p>
+                  <p><strong>Light</strong> — Clean light mode</p>
+                  <p><strong>Dark</strong> — Dark mode for low-light environments</p>
+                  <p><strong>Auto</strong> — Follows your system's preference (default)</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="faq-category">
+          <h2 class="category-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Data Management
+          </h2>
+          <div class="faq-list">
+            <div class="faq-item">
+              <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                How do I export my data?
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="faq-answer">
+                <div class="faq-answer-content">
+                  <p>Click your <strong>username</strong> in the sidebar footer to open the profile menu. Select <strong>Export Data</strong>. This downloads a JSON file containing all your pages and settings. Keep this file safe as a backup.</p>
+                </div>
+              </div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                How do I import data?
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="faq-answer">
+                <div class="faq-answer-content">
+                  <p>Click your <strong>username</strong> in the sidebar footer and select <strong>Import Data</strong>. Choose a previously exported JSON file. The import will merge pages into your existing workspace.</p>
+                  <div class="tip-box"><strong>Note:</strong> Importing does not delete existing pages. New pages from the backup are added.</div>
+                </div>
+              </div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                Can I switch between accounts?
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="faq-answer">
+                <div class="faq-answer-content">
+                  <p>Yes. Click your <strong>username</strong> in the sidebar footer and select <strong>Logout</strong>. Then log in with a different account. Each account has its own isolated SQLite database file and page tree.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="faq-category">
+          <h2 class="category-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            Advanced Features
+          </h2>
+          <div class="faq-list">
+            <div class="faq-item">
+              <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                What block types are available?
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="faq-answer">
+                <div class="faq-answer-content">
+                  <p>NotionLess supports multiple block types via slash commands:</p>
+                  <p><strong>Text:</strong> Paragraph, H1/H2/H3 headings, block quote</p>
+                  <p><strong>Lists:</strong> Bullet, numbered, to-do checkboxes</p>
+                  <p><strong>Media:</strong> Images (drag & drop or paste from clipboard)</p>
+                  <p><strong>Code:</strong> Code blocks with monospace font</p>
+                  <p><strong>Other:</strong> Dividers, tables</p>
+                </div>
+              </div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                How do I add images?
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="faq-answer">
+                <div class="faq-answer-content">
+                  <p>You can add images in two ways:</p>
+                  <p><strong>Drag and drop:</strong> Drag an image file directly onto the editor</p>
+                  <p><strong>Paste:</strong> Copy an image to your clipboard and paste it with <kbd>Ctrl</kbd>+<kbd>V</kbd></p>
+                  <p>Images are embedded as base64 data directly in the page content.</p>
+                </div>
+              </div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                What keyboard shortcuts are available?
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="faq-answer">
+                <div class="faq-answer-content">
+                  <p><strong>Text formatting:</strong></p>
+                  <p><kbd>Ctrl</kbd>+<kbd>B</kbd> — Bold</p>
+                  <p><kbd>Ctrl</kbd>+<kbd>I</kbd> — Italic</p>
+                  <p><kbd>Ctrl</kbd>+<kbd>U</kbd> — Underline</p>
+                  <p><kbd>Ctrl</kbd>+<kbd>E</kbd> — Inline code</p>
+                  <p><strong>Navigation:</strong></p>
+                  <p><kbd>Ctrl</kbd>+<kbd>P</kbd> — Quick search (coming soon)</p>
+                  <p><kbd>Esc</kbd> — Close menus/dialogs</p>
+                </div>
+              </div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                Is there a mobile app?
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="faq-answer">
+                <div class="faq-answer-content">
+                  <p>Not at the moment. The web app works on mobile browsers, but it's optimized for desktop use. The responsive layout adapts to smaller screens, though some interactions (like right-click menus) work better with a keyboard and mouse.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="container">
+      <p>Built with care in India by <a href="https://github.com/AsheshBasu" target="_blank" rel="noopener">Aesh Basu</a></p>
+      <div class="footer-links">
+        <a href="/">Home</a>
+        <a href="/faq">FAQ</a>
+        <a href="/app">App</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

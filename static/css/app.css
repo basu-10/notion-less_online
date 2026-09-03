@@ -641,28 +641,9 @@
 .action-btn:hover { background: var(--hover); }
 .hint { color: var(--muted); font-size: 12px; margin: 4px 0 0; }
 
-/* ---------- Dark theme ---------- */
-html[data-theme="dark"], html[data-theme="dark"] body {
-  --bg: #18181b; --sidebar: #222228; --panel: #1c1c21; --border: #2a2a2f;
-  --text: #e8e8ef; --muted: #a7a7a3; --hover: #2a2a30; --active: #32323a;
-  --shadow: 0 12px 40px rgba(0,0,0,.25);
-}
+/* ---------- Dark theme component overrides ---------- */
 html[data-theme="dark"] .brand-mark { background: #26262c; border-color: #333; }
-html[data-theme="dark"] .new-page { color: #ddd; }
-html[data-theme="dark"] .sidebar-section { color: #9e9e99; }
-html[data-theme="dark"] .page-title { color: var(--text); }
 html[data-theme="dark"] .page-title::placeholder { color: #555; }
-html[data-theme="dark"] .crumb-current { color: var(--text); }
-html[data-theme="dark"] .twisty:hover { background: var(--hover); color: var(--text); }
-html[data-theme="dark"] .page-more:hover { background: var(--hover); }
-html[data-theme="dark"] .slash-item:hover, html[data-theme="dark"] .slash-item.selected { background: var(--hover); }
-html[data-theme="dark"] .user-menu-item:hover { background: var(--hover); }
-html[data-theme="dark"] .user-menu-danger { color: #e57373; }
-html[data-theme="dark"] .user-avatar { background: var(--accent); }
-html[data-theme="dark"] .sidebar-menu-btn:hover { background: var(--hover); }
-html[data-theme="dark"] .slash-icon { background: var(--bg); color: var(--text); border-color: var(--border); }
-html[data-theme="dark"] .slash-label { color: var(--text); }
-html[data-theme="dark"] .context-item:hover { background: var(--hover); }
 
 /* ---------- Save button visibility ---------- */
 #saveBtn { display: none; }

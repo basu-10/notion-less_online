@@ -26,13 +26,15 @@ def create_app():
 
     @app.route('/')
     def index():
-        if current_user.is_authenticated:
-            return redirect(url_for('workspace'))
         return render_template('index.html')
 
     @app.route('/about')
     def about():
         return render_template('about.html')
+
+    @app.route('/faq')
+    def faq():
+        return render_template('faq.html')
 
     @app.route('/app')
     def workspace():

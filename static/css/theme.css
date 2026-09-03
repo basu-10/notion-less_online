@@ -13,6 +13,37 @@
   --radius: 10px;
 }
 
+:root[data-theme="auto"] {
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="auto"],
+  :root[data-theme="dark"] {
+    --bg: #18181b;
+    --sidebar: #222228;
+    --panel: #1c1c21;
+    --border: #2a2a2f;
+    --text: #e8e8ef;
+    --muted: #a7a7a3;
+    --hover: #2a2a30;
+    --active: #32323a;
+    --shadow: 0 12px 40px rgba(0,0,0,.25);
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #18181b;
+  --sidebar: #222228;
+  --panel: #1c1c21;
+  --border: #2a2a2f;
+  --text: #e8e8ef;
+  --muted: #a7a7a3;
+  --hover: #2a2a30;
+  --active: #32323a;
+  --shadow: 0 12px 40px rgba(0,0,0,.25);
+}
+
 * { box-sizing: border-box; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 html, body { width:100%; height:100%; margin:0; }

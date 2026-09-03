@@ -37,12 +37,8 @@ const $ = (sel) => document.querySelector(sel);
 function applyTheme(mode) {
   const html = document.documentElement;
   html.removeAttribute("data-theme");
-  if (mode === "light") html.setAttribute("data-theme", "light");
-  else if (mode === "dark") html.setAttribute("data-theme", "dark");
-  else {
-    const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-    if (prefersDark) html.setAttribute("data-theme", "dark");
-    else html.setAttribute("data-theme", "light");
+  if (mode === "light" || mode === "dark") {
+    html.setAttribute("data-theme", mode);
   }
   try { localStorage.setItem("notion-theme", mode); } catch {}
   document.querySelectorAll(".theme-btn").forEach(b => b.classList.toggle("active", b.dataset.theme === mode));
