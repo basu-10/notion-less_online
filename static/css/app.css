@@ -145,9 +145,10 @@
     .tree-checkbox {
       width:18px; height:18px; border-radius:4px; border:1.5px solid var(--border);
       display:grid; place-items:center; cursor:pointer; flex:0 0 18px; font-size:11px; color:#fff;
-      background:transparent;
+      background:transparent; opacity:0; transition:opacity .15s;
     }
-    .tree-checkbox.checked { background:var(--accent); border-color:var(--accent); }
+    .tree-row:hover > .tree-checkbox { opacity:1; }
+    .tree-checkbox.checked { background:var(--accent); border-color:var(--accent); opacity:1; }
     .selection-bar {
       display:none; align-items:center; gap:8px; padding:8px 12px;
       background:var(--active); border-top:1px solid var(--border); font-size:12px; color:var(--text);
