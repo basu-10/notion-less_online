@@ -9,126 +9,83 @@
   <script src="/static/js/theme.js" defer></script>
   <style>
     body { background: var(--bg); }
-    .auth-container { background: var(--bg); }
+    .auth-container { background: transparent; }
     .auth-card { background: var(--panel); border-color: var(--border); }
     .auth-card h2 { color: var(--text); }
     .auth-card input { background: var(--bg); border-color: var(--border); color: var(--text); }
-    .auth-card input:focus { border-color: var(--accent); }
+    .auth-card input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
     .auth-card p { color: var(--muted); }
-    .theme-toggle {
-      position: fixed;
-      top: 16px;
-      right: 16px;
-      display: flex;
-      gap: 4px;
-      padding: 6px 10px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: var(--panel);
-      cursor: pointer;
-      font-size: 0.85rem;
-      color: var(--text);
-      z-index: 100;
-    }
-    .theme-toggle:hover { background: var(--hover); }
-    .theme-toggle-menu {
-      position: absolute;
-      top: 100%;
-      right: 0;
-      margin-top: 4px;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-      padding: 4px;
-      display: none;
-      min-width: 120px;
-    }
-    .theme-toggle-menu.open { display: block; }
-    .theme-toggle-menu button {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      width: 100%;
-      padding: 8px 10px;
-      border: none;
-      background: none;
-      cursor: pointer;
-      font-size: 0.85rem;
-      color: var(--text);
-      border-radius: 6px;
-      text-align: left;
-    }
-    .theme-toggle-menu button:hover { background: var(--hover); }
-    .theme-toggle-menu button.active { background: var(--accent); color: white; }
-    .theme-toggle-wrapper { position: relative; }
   </style>
 </head>
 <body>
-  <div class="theme-toggle-wrapper">
-    <button class="theme-toggle" id="themeToggleBtn" aria-label="Toggle theme">
-      <svg id="themeIconLight" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-      <svg id="themeIconDark" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-      <svg id="themeIconAuto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+  <div class="theme-toggle-wrapper" aria-label="Theme toggle">
+    <button class="theme-toggle" id="themeToggleBtn" aria-label="Toggle theme" aria-expanded="false" aria-haspopup="true">
+      <svg id="themeIconLight" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      <svg id="themeIconDark" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg id="themeIconAuto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
       <span id="themeLabel">Light</span>
     </button>
-    <div class="theme-toggle-menu" id="themeMenu">
-      <button class="theme-btn active" data-theme="light">Light</button>
-      <button class="theme-btn" data-theme="dark">Dark</button>
-      <button class="theme-btn" data-theme="auto">Follow system</button>
+    <div class="theme-toggle-menu" id="themeMenu" role="menu" aria-label="Theme options" aria-hidden="true">
+      <button class="theme-btn active" data-theme="light" role="menuitemradio" aria-checked="true" aria-label="Light theme">Light</button>
+      <button class="theme-btn" data-theme="dark" role="menuitemradio" aria-checked="false" aria-label="Dark theme">Dark</button>
+      <button class="theme-btn" data-theme="auto" role="menuitemradio" aria-checked="false" aria-label="Auto theme">Follow system</button>
     </div>
   </div>
+
   <div class="auth-container">
-    <div class="auth-card">
+    <article class="auth-card" aria-label="Login form">
       <h1>NotionLess Cloud</h1>
-      <h2>Login</h2>
+      <h2>Welcome back</h2>
       {% with messages = get_flashed_messages() %}
         {% if messages %}
-          <div class="error">{{ messages[0] }}</div>
+          <div class="error" role="alert" aria-live="assertive">{{ messages[0] }}</div>
         {% endif %}
       {% endwith %}
-      <form method="POST">
-        <input type="text" name="username" placeholder="Username" required autocomplete="username">
-        <input type="password" name="password" placeholder="Password" required autocomplete="current-password">
-        <button type="submit">Login</button>
+      <form method="POST" aria-label="Login form">
+        <input type="text" name="username" placeholder="Username" required autocomplete="username" aria-label="Username" aria-required="true">
+        <input type="password" name="password" placeholder="Password" required autocomplete="current-password" aria-label="Password" aria-required="true">
+        <button type="submit" aria-label="Sign in">Sign in</button>
       </form>
-      <p>No account? <a href="/auth/register">Register</a></p>
-    </div>
+      <p>No account? <a href="/auth/register">Create one</a></p>
+    </article>
   </div>
+
   <script>
     const themeBtn = document.getElementById('themeToggleBtn');
     const themeMenu = document.getElementById('themeMenu');
     const themeLabel = document.getElementById('themeLabel');
-    const themeIconLight = document.getElementById('themeIconLight');
-    const themeIconDark = document.getElementById('themeIconDark');
-    const themeIconAuto = document.getElementById('themeIconAuto');
+    const themeIcons = { light: document.getElementById('themeIconLight'), dark: document.getElementById('themeIconDark'), auto: document.getElementById('themeIconAuto') };
 
-    function updateThemeIcon(mode) {
-      themeIconLight.style.display = mode === 'light' ? 'block' : 'none';
-      themeIconDark.style.display = mode === 'dark' ? 'block' : 'none';
-      themeIconAuto.style.display = mode === 'auto' ? 'block' : 'none';
+    function updateThemeUI(mode) {
+      Object.values(themeIcons).forEach(i => i.style.display = 'none');
+      if (themeIcons[mode]) themeIcons[mode].style.display = 'block';
       themeLabel.textContent = mode === 'light' ? 'Light' : mode === 'dark' ? 'Dark' : 'Auto';
     }
 
     themeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
+      const open = themeMenu.classList.contains('open');
       themeMenu.classList.toggle('open');
+      themeBtn.setAttribute('aria-expanded', String(!open));
     });
 
     document.addEventListener('click', () => {
       themeMenu.classList.remove('open');
+      themeBtn.setAttribute('aria-expanded', 'false');
     });
 
     document.querySelectorAll('.theme-toggle-menu .theme-btn').forEach(b => {
       b.addEventListener('click', () => {
         const mode = b.dataset.theme;
         applyTheme(mode);
-        updateThemeIcon(mode);
+        document.querySelectorAll('.theme-btn').forEach(x => x.classList.toggle('active', x.dataset.theme === mode));
+        updateThemeUI(mode);
         themeMenu.classList.remove('open');
+        themeBtn.setAttribute('aria-expanded', 'false');
       });
     });
 
-    updateThemeIcon(getTheme());
+    updateThemeUI(getTheme());
   </script>
 </body>
 </html>
