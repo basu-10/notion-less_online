@@ -24,6 +24,255 @@
     })();
   </script>
   <style>
+    /* Editorial features section — no cards, no grids */
+    .workflows {
+      padding: 140px 0;
+      background: linear-gradient(180deg, var(--bg) 0%, var(--surface) 60%, var(--bg) 100%);
+      border-top: 1px solid var(--border);
+    }
+
+    .workflows-header {
+      max-width: 700px;
+      margin-bottom: 100px;
+    }
+    .workflows-header .label {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 20px;
+    }
+    .workflows-header h2 {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 700;
+      letter-spacing: -0.035em;
+      line-height: 1.05;
+      margin-bottom: 28px;
+    }
+    .workflows-header p {
+      font-size: 1.15rem;
+      line-height: 1.7;
+      color: var(--muted);
+      max-width: 540px;
+    }
+
+    /* Editorial row layout */
+    .workflow-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: start;
+      margin-bottom: 120px;
+    }
+    .workflow-row:nth-child(even) .workflow-text {
+      order: 2;
+    }
+    .workflow-row:nth-child(even) .workflow-visual {
+      order: 1;
+    }
+
+    .workflow-text {
+      position: relative;
+      padding-top: 8px;
+    }
+    .workflow-text .label-inline {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 16px;
+    }
+    .workflow-text .label-inline .dot {
+      width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0;
+    }
+    .workflow-text h3 {
+      font-size: 1.7rem;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      line-height: 1.15;
+      margin-bottom: 24px;
+    }
+    .workflow-text .line {
+      width: 40px; height: 2px; background: var(--accent); border-radius: 1px; margin-bottom: 28px;
+    }
+    .workflow-text p {
+      font-size: 1.05rem;
+      line-height: 1.75;
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+    }
+    .workflow-text p strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+    .workflow-text .feature-ref {
+      display: inline;
+      font-family: ui-monospace, monospace;
+      font-size: 0.9em;
+      background: var(--hover);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 5px;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+    .workflow-text .micro-list {
+      list-style: none;
+      padding: 0;
+      margin: 16px 0 0;
+    }
+    .workflow-text .micro-list li {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      font-size: 0.92rem;
+      line-height: 1.55;
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+    }
+    .workflow-text .micro-list .key {
+      font-family: ui-monospace, monospace;
+      font-size: 0.78rem;
+      background: var(--hover);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      color: var(--accent);
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    .workflow-visual {
+      position: relative;
+    }
+    .visual-block {
+      background: linear-gradient(135deg, var(--surface) 0%, var(--bg) 100%);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px;
+      box-shadow: var(--shadow-md);
+      position: relative;
+      overflow: hidden;
+    }
+    .visual-block::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--accent) 0%, var(--accent-light) 60%, transparent 100%);
+      opacity: 0.8;
+    }
+    .visual-block h4 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+
+    /* Fake editor mock inside visual */
+    .editor-mock {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: var(--shadow-inner);
+    }
+    .editor-mock .mock-line {
+      height: 8px;
+      border-radius: 4px;
+      background: var(--hover);
+      margin-bottom: 10px;
+    }
+    .editor-mock .mock-line.short { width: 60%; }
+    .editor-mock .mock-line.medium { width: 85%; }
+    .editor-mock .mock-line.long { width: 95%; }
+    .editor-mock .mock-line.heading { height: 14px; width: 45%; background: var(--border); border-radius: 3px; }
+    .editor-mock .mock-line.code { height: 28px; width: 70%; background: linear-gradient(90deg, #f3ece6 0%, #ebe6df 100%); border-radius: 6px; margin-top: 14px; }
+    .editor-mock .mock-hint {
+      font-family: ui-monospace, monospace;
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--border);
+    }
+
+    /* Keyboard shortcut strip */
+    .shortcut-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .shortcut-strip .kbd {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-family: ui-monospace, monospace;
+      font-size: 0.75rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 3px 8px;
+      color: var(--text);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Final editorial quote block */
+    .workflows-closer {
+      max-width: 780px;
+      margin-top: 140px;
+      padding: 60px 0 0;
+      border-top: 1px solid var(--border);
+      position: relative;
+    }
+    .workflows-closer::after {
+      content: '';
+      position: absolute; top: -1px; left: 0; width: 120px; height: 1px; background: var(--accent);
+    }
+    .workflows-closer h3 {
+      font-size: clamp(1.4rem, 4vw, 2rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.2;
+      margin-bottom: 16px;
+      max-width: 600px;
+    }
+    .workflows-closer p {
+      font-size: 1.05rem;
+      line-height: 1.75;
+      color: var(--muted);
+      max-width: 520px;
+    }
+    .workflows-closer .closer-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 28px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid var(--accent);
+      padding-bottom: 2px;
+      transition: color 0.2s ease;
+    }
+    .workflows-closer .closer-link:hover { color: var(--accent-deep); }
+
+    @media (max-width: 900px) {
+      .workflow-row { grid-template-columns: 1fr; gap: 40px; }
+      .workflow-row:nth-child(even) .workflow-text,
+      .workflow-row:nth-child(even) .workflow-visual { order: initial; }
+      .workflows-header h2 { font-size: 2rem; }
+    }
+  </style>
+  <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
@@ -639,55 +888,115 @@
     </div>
   </section>
 
-  <section class="features">
+  <section class="workflows">
     <div class="container">
-      <div class="section-header">
-        <h2>Everything you need, nothing you don't</h2>
-        <p>Built for focused writing with the flexibility to organize your thoughts.</p>
+      <div class="workflows-header">
+        <span class="label">How it works</span>
+        <h2>The way you actually work.</h2>
+        <p>NotionLess isn't another note app. It's a thinking workspace built for people who maintain guides, document systems, and share quickly. Every interaction is optimized for speed — from the ghost hint on new lines to the shortcut HUD that appears the moment you need it.</p>
       </div>
-      <div class="features-grid">
-        <div class="feature-card">
-          <div class="feature-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="12" y2="17"/></svg>
-          </div>
-          <h3>Block-Based Editing</h3>
-          <p>Rich block types via slash commands. Nest, reorder, and style content with keyboard-first navigation.</p>
+
+      <article class="workflow-row">
+        <div class="workflow-text">
+          <span class="label-inline"><span class="dot"></span> Building knowledge</span>
+          <h3>Hierarchical pages. Nested guides. Zero clutter.</h3>
+          <div class="line"></div>
+          <p>Every new user gets a <strong>Welcome</strong> page pre-loaded with what NotionLess supports and how to use it. From there, pages nest naturally: a top-level guide, sub-pages for chapters, deeper levels for references. Drag, drop, expand, collapse. Your structure stays readable no matter how large it grows.</p>
+          <ul class="micro-list">
+            <li><span class="key">/</span> Open the block command menu anywhere</li>
+            <li><span class="key">Tab</span> / <span class="key">Shift+Tab</span> Nest or unnest blocks</li>
+            <li><span class="key">Alt+Insert</span> Create a subpage instantly</li>
+            <li><span class="key">Alt++ / -</span> Expand or collapse the entire tree</li>
+          </ul>
         </div>
-        <div class="feature-card">
-          <div class="feature-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        <div class="workflow-visual">
+          <div class="visual-block">
+            <h4>Page Tree</h4>
+            <div class="editor-mock">
+              <div class="mock-line heading"></div>
+              <div class="mock-line medium"></div>
+              <div class="mock-line long"></div>
+              <div style="padding-left:16px; margin-top:8px;">
+                <div class="mock-line short"></div>
+                <div class="mock-line medium"></div>
+              </div>
+              <div class="mock-line code"></div>
+              <p class="mock-hint">Type / for blocks · Tab / Shift+Tab to nest</p>
+            </div>
           </div>
-          <h3>Hierarchical Pages</h3>
-          <p>Organize with a collapsible tree. Drag pages into folders, expand sections, keep context.</p>
         </div>
-        <div class="feature-card">
-          <div class="feature-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </article>
+
+      <article class="workflow-row">
+        <div class="workflow-text">
+          <span class="label-inline"><span class="dot"></span> Speed first</span>
+          <h3>Keyboard before mouse. HUD before guesswork.</h3>
+          <div class="line"></div>
+          <p>Hold <span class="feature-ref">Alt</span> or <span class="feature-ref">Ctrl</span> and the shortcut HUD appears with everything available. No menus to memorize. <strong>Auto-save</strong> runs at 2 seconds, so nothing is lost. The sidebar label updates in real time — Ready, Auto-saving..., Saved at 14:32. Click it and you get the full notification history, timestamped, scrollable, capped at 100.</p>
+          <ul class="micro-list">
+            <li><span class="key">Ctrl+S</span> Manual save when you want certainty</li>
+            <li><span class="key">Ctrl+K</span> Quick-switcher overlay</li>
+            <li><span class="key">Alt+PgUp / PgDn</span> Browse pages in order</li>
+            <li><span class="key">Ctrl+Z / Shift+Z</span> Undo and redo</li>
+          </ul>
+        </div>
+        <div class="workflow-visual">
+          <div class="visual-block">
+            <h4>Shortcut HUD</h4>
+            <div class="editor-mock" style="padding:16px 20px;">
+              <div class="shortcut-strip">
+                <span class="kbd">Alt</span><span class="kbd">Insert</span><span style="font-size:0.75rem;color:var(--muted);margin-left:4px;">New subpage</span>
+                <span class="kbd">Alt</span><span class="kbd">+</span>
+                <span class="kbd">Ctrl</span><span class="kbd">K</span>
+                <span class="kbd">/</span>
+                <span class="kbd">Ctrl</span><span class="kbd">S</span>
+              </div>
+              <p style="font-family:ui-monospace,monospace;font-size:0.78rem;color:var(--muted);margin-top:16px;line-height:1.5;">Hold Alt or Ctrl to reveal available shortcuts. The HUD fades when you release.</p>
+            </div>
           </div>
-          <h3>Your Data, Yours</h3>
-          <p>Everything saves to the cloud. Your data is stored securely on the server, accessible from any device.</p>
         </div>
-        <div class="feature-card">
-          <div class="feature-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </article>
+
+      <article class="workflow-row">
+        <div class="workflow-text">
+          <span class="label-inline"><span class="dot"></span> Share quickly</span>
+          <h3>Public pages. Public walls. No account required for readers.</h3>
+          <div class="line"></div>
+          <p>Toggle a page public with <span class="feature-ref">🔒 / 🌐</span>. When public, all subpages become public too — a cascade that keeps guides coherent. Every user has a <strong>public wall</strong> at <span class="feature-ref">/wall/&lt;username&gt;</span> showing everything they've shared. Visitors can view and copy public pages to their own workspace. The original authors stay tracked in the page metadata.</p>
+          <ul class="micro-list">
+            <li><span class="key">🌐</span> Toggle visibility from the workspace</li>
+            <li><span class="key">Copy</span> Any public page to your profile</li>
+            <li><span class="key">/search</span> Find users and their public guides</li>
+          </ul>
+        </div>
+        <div class="workflow-visual">
+          <div class="visual-block">
+            <h4>Public Profile</h4>
+            <div class="editor-mock" style="padding:20px;">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-light));display:grid;place-items:center;color:white;font-weight:700;font-size:14px;">AB</div>
+                <div>
+                  <div style="font-weight:600;font-size:0.9rem;">Asesh Basu</div>
+                  <div style="font-size:0.8rem;color:var(--muted);">3 public guides · 28 pages</div>
+                </div>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                <span style="font-size:0.75rem;padding:4px 10px;background:var(--hover);border:1px solid var(--border);border-radius:20px;color:var(--text);">Startup Toolkit</span>
+                <span style="font-size:0.75rem;padding:4px 10px;background:var(--hover);border:1px solid var(--border);border-radius:20px;color:var(--text);">Design Systems</span>
+                <span style="font-size:0.75rem;padding:4px 10px;background:var(--hover);border:1px solid var(--border);border-radius:20px;color:var(--text);">Dev Notes</span>
+              </div>
+            </div>
           </div>
-          <h3>Always Available</h3>
-          <p>Access your notes from anywhere. Log in on any device and your workspace is always up to date.</p>
         </div>
-        <div class="feature-card">
-          <div class="feature-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          </div>
-          <h3>Light & Dark</h3>
-          <p>Follows your system preference automatically, or pick your preferred theme in settings.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          </div>
-          <h3>Export Anywhere</h3>
-          <p>Export your notes as JSON for backup, or import to migrate your data wherever you go.</p>
-        </div>
+      </article>
+
+      <div class="workflows-closer">
+        <h3>Built for people who document as they think. Not after.</h3>
+        <p>The workspace opens with a Welcome page that teaches by showing. Every new line offers a ghost hint to press <span class="feature-ref">/</span>. Notifications are persistent in IndexedDB — review the full history by clicking the sidebar label. Large pages stay fast because efficiency was coded into the core, not added as an afterthought.</p>
+        <a href="/app" class="closer-link">
+          Open your workspace
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
       </div>
     </div>
   </section>
