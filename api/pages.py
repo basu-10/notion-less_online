@@ -4,8 +4,7 @@ import os
 from flask import Blueprint, request, jsonify, send_from_directory
 from flask_login import current_user, login_required
 from services.db import get_user_db
-
-UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads')
+from config import UPLOADS_DIR
 
 pages_bp = Blueprint('pages', __name__)
 

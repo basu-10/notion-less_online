@@ -5,7 +5,7 @@ Project: NotionLess Cloud — Flask-based BlockNote Workspace with multi-account
 ## What this is
 
 - Flask backend with Flask-Login + bcrypt auth
-- One SQLite file per user at `userdata/<username>.db`
+- One SQLite file per user at `../notion-less-data/userdata/<username>.db`
 - Frontend: vanilla JS + BlockNote v0.51.3 via esm.sh CDN
 - No build step. Serve with `python app.py`.
 
@@ -90,9 +90,9 @@ mkvirtualenv --python=python3.11 venv
 pip install -r requirements.txt
 ```
 
-### 3. Create userdata directory
+### 3. Create data directory
 ```bash
-mkdir -p ~/notion-less_online/userdata
+mkdir -p ~/notion-less-data/userdata
 ```
 
 ### 4. Set environment variable

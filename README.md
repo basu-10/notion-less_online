@@ -16,7 +16,7 @@ NotionLess Cloud is a Flask-based note-taking app with a Notion-like block edito
 ## Tech stack
 
 - **Backend:** Flask + Flask-Login + bcrypt
-- **Storage:** One SQLite file per user (`userdata/<username>.db`)
+- **Storage:** One SQLite file per user (`../notion-less-data/userdata/<username>.db`)
 - **Frontend:** Vanilla JS + [BlockNote core v0.51.3](https://www.blocknotejs.org/) (CDN)
 - **Styling:** Vanilla CSS with monochrome neuromorphic theme
 
