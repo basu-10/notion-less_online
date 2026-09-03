@@ -5,5 +5,3 @@ _headers
 .playwright-mcp
 *.png
 *.pyc
-userdata/
-uploads/
