@@ -25,8 +25,11 @@ const state = {
   expanded: new Set([ROOT]),
   contextPageId: null,
   slashIndex: 0,
-  slashFilter: ""
+  slashFilter: "",
+  isOpeningPage: false
 };
+
+let editorWired = false;
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -79,6 +82,7 @@ function markDirty() {
 }
 
 async function saveCurrent() {
+  if (state.isOpeningPage) return;
   const page = state.pages.get(state.currentPageId);
   if (!page || !state.editor) return;
   page.blocks = structuredClone(state.editor.document);
@@ -156,10 +160,12 @@ async function importProfile(file) {
         content: p.content || p.blocks ? JSON.stringify(p.blocks || p.content) : "[]",
         parent_id: p.parentId || ROOT
       };
-      state.pages.set(p.id, p);
+      state.pages.set(page.id, page);
       try {
         await window.api.createPage(page);
-      } catch {}
+      } catch (err) {
+        console.error("Failed to create page during import:", err, page);
+      }
     }
     state.dirty = false; $("#saveBtn").classList.remove("visible");
     setSaveState("Profile imported");
@@ -261,6 +267,7 @@ async function mountEditor(blocks) {
     state.editor = null;
   }
   $("#editor").innerHTML = "";
+  editorWired = false;
   let initialBlocks = blocks;
   if (typeof blocks === "string") {
     try { initialBlocks = JSON.parse(blocks); } catch { initialBlocks = [{type:"paragraph"}]; }
@@ -278,9 +285,11 @@ async function mountEditor(blocks) {
 }
 
 async function openPage(id) {
+  state.isOpeningPage = true;
+  clearTimeout(state.saveTimer);
   if (state.dirty) await saveCurrent();
   const page = state.pages.get(id);
-  if (!page) return;
+  if (!page) { state.isOpeningPage = false; return; }
   state.currentPageId = id;
   $("#pageTitle").value = page.title || "Untitled";
   await mountEditor(page.blocks);
@@ -289,6 +298,7 @@ async function openPage(id) {
   renderBreadcrumbs();
   $("#workspace").scrollTop = 0;
   setSaveState("Loaded");
+  state.isOpeningPage = false;
 }
 
 async function createPage(parentId=ROOT) {
@@ -340,7 +350,7 @@ async function deletePage(id) {
       });
     } catch {}
   }
-  await openPage(state.currentPageId || childrenOf(ROOT)[0].id);
+  await openPage(state.currentPageId || (childrenOf(ROOT)[0]?.id ?? null));
   renderTree();
 }
 
@@ -419,7 +429,8 @@ function renderSlashMenu() {
   cmds.forEach((cmd, i) => {
     const item = document.createElement("button");
     item.className = "slash-item" + (i === state.slashIndex ? " selected" : "");
-    item.innerHTML = `<span class="slash-icon">${cmd.icon}</span><span class="slash-copy"><div class="slash-label"></div><div class="slash-desc"></div></span>`;
+    item.innerHTML = `<span class="slash-icon"></span><span class="slash-copy"><div class="slash-label"></div><div class="slash-desc"></div></span>`;
+    item.querySelector(".slash-icon").textContent = cmd.icon;
     item.querySelector(".slash-label").textContent = cmd.label;
     item.querySelector(".slash-desc").textContent = cmd.desc;
     item.addEventListener("mousedown", (e) => {
@@ -473,6 +484,8 @@ async function chooseSlash(command) {
 }
 
 function wireEditorInteractions() {
+  if (editorWired) return;
+  editorWired = true;
   const root = $("#editor");
   root.addEventListener("keydown", onEditorKeydown, true);
   root.addEventListener("keyup", onEditorKeyup, true);

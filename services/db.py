@@ -15,7 +15,7 @@ def init_user_db(conn):
             id TEXT PRIMARY KEY,
             title TEXT,
             content TEXT,
-            parent_id TEXT,
+            parent_id TEXT DEFAULT 'root',
             created_at REAL,
             updated_at REAL
         )

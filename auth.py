@@ -1,6 +1,10 @@
+import re
 from flask import Blueprint, request, render_template, redirect, url_for, flash, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
 from models.user import User
+
+USERNAME_PATTERN = re.compile(r'^[a-zA-Z0-9_-]{3,32}$')
+PASSWORD_MIN_LENGTH = 8
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -15,12 +19,15 @@ def register():
     if not username or not password:
         flash('Username and password required')
         return redirect(url_for('auth.register'))
-    if len(username) < 3 or len(password) < 6:
-        flash('Username must be 3+ chars, password 6+ chars')
+    if not USERNAME_PATTERN.match(username):
+        flash('Username must be 3-32 alphanumeric characters (a-z, A-Z, 0-9, _, -)')
+        return redirect(url_for('auth.register'))
+    if len(password) < PASSWORD_MIN_LENGTH:
+        flash(f'Password must be at least {PASSWORD_MIN_LENGTH} characters')
         return redirect(url_for('auth.register'))
     user = User.create(username, password)
     if not user:
-        flash('Username taken')
+        flash('Username taken or invalid')
         return redirect(url_for('auth.register'))
     login_user(user)
     return redirect(url_for('workspace'))

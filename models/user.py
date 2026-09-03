@@ -1,7 +1,10 @@
 import os
+import re
 from config import DATA_DIR
 from services.db import get_user_db, init_user_db
 from services.auth import hash_password, check_password
+
+USERNAME_PATTERN = re.compile(r'^[a-zA-Z0-9_-]{3,32}$')
 
 class User:
     def __init__(self, username):
@@ -34,6 +37,8 @@ class User:
 
     @staticmethod
     def create(username, password):
+        if not USERNAME_PATTERN.match(username):
+            return None
         db_path = os.path.join(DATA_DIR, f'{username}.db')
         if os.path.exists(db_path):
             return None

@@ -23,7 +23,7 @@ def create_page():
         'id': data.get('id') or str(uuid.uuid4()),
         'title': data.get('title', ''),
         'content': data.get('content', ''),
-        'parent_id': data.get('parent_id'),
+        'parent_id': data.get('parent_id') or 'root',
         'created_at': now,
         'updated_at': now
     }
