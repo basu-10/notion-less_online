@@ -92,6 +92,26 @@
       font-size:10px;
       letter-spacing:.09em;
       font-weight:700;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .section-action {
+      width:20px;
+      height:20px;
+      border-radius:4px;
+      border:none;
+      background:transparent;
+      color:var(--muted);
+      cursor:pointer;
+      display:grid;
+      place-items:center;
+      font-size:10px;
+      transition:all .15s ease;
+    }
+    .section-action:hover {
+      background:var(--hover);
+      color:var(--text);
     }
     #pageTree {
       flex:1;

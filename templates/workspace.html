@@ -19,15 +19,15 @@
   <div class="app">
     <aside class="sidebar">
       <div class="brandbar">
-        <div class="brand"><div class="brand-mark">NL</div><span>NotionLess Cloud</span></div>
-        <div class="toolbar">
-          <button class="icon-btn" id="collapseAll" title="Toggle all">−</button>
+        <a href="/" class="brand"><div class="brand-mark">NL</div><span>NotionLess</span></a>
+      </div>
+      <div class="sidebar-section">
+        <span>Your Pages</span>
+        <div class="section-actions">
+          <button class="section-action" id="newPageBtn" title="New page">＋</button>
+          <button class="section-action" id="collapseAll" title="Collapse all">▾</button>
         </div>
       </div>
-      <div class="sidebar-tools">
-        <button class="new-page" id="newPageBtn"><span>＋</span><span>New page</span></button>
-      </div>
-      <div class="sidebar-section">Your Pages</div>
       <div id="pageTree"></div>
       <div class="sidebar-footer">
         <a href="/auth/logout" class="logout-link">Logout</a>

@@ -1,295 +1,614 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>About — NotionLess</title>
-<link rel="stylesheet" href="css/theme.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="About NotionLess Cloud — A local-first block editor by Asesh Basu.">
+  <meta name="theme-color" content="#d85b45">
+  <title>About — NotionLess Cloud</title>
+
+  <link rel="preconnect" href="https://esm.sh">
   <link rel="stylesheet" href="https://esm.sh/@blocknote/core@0.51.3/style.css">
   <link rel="stylesheet" href="https://esm.sh/@blocknote/core@0.51.3/fonts/inter.css">
-  <script>
-    (function () {
-      var key = "notion-theme";
-      var mode;
-      try { mode = localStorage.getItem(key) || "auto"; }
-      catch (e) { mode = "auto"; }
-      var html = document.documentElement;
-      html.removeAttribute("data-theme");
-      if (mode === "light") html.setAttribute("data-theme", "light");
-      else if (mode === "dark") html.setAttribute("data-theme", "dark");
-      else {
-        var dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-        html.setAttribute("data-theme", dark ? "dark" : "light");
-      }
-    })();
-  </script>
+
+  <link rel="stylesheet" href="/static/css/theme.css">
   <style>
-  @import url('css/app.css');
-  body { overflow:auto; background:var(--bg); }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  .about {
-    max-width:680px;
-    margin:0 auto;
-    padding:80px 24px;
-  }
+    :root {
+      --bg: #fafaf8;
+      --surface: #ffffff;
+      --border: #e8e5df;
+      --text: #1a1a18;
+      --muted: #8a8780;
+      --hover: #f0efed;
+      --accent: #d85b45;
+      --accent-light: #e87a6a;
+    }
 
-  .back-link {
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    font-size:.85rem;
-    color:var(--muted);
-    text-decoration:none;
-    margin-bottom:40px;
-  }
-  .back-link:hover { color:var(--accent); }
-  .back-link svg { width:13px; height:13px; }
+    html {
+      scroll-behavior: smooth;
+    }
 
-  h1 {
-    font-size:2rem;
-    font-weight:700;
-    letter-spacing:-.02em;
-    margin:0 0 16px;
-    color:var(--text);
-  }
-  .subtitle {
-    font-size:1rem;
-    color:var(--muted);
-    line-height:1.55;
-    margin:0 0 48px;
-    max-width:520px;
-  }
+    body {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
 
-  h2 {
-    font-size:.75rem;
-    font-weight:700;
-    text-transform:uppercase;
-    letter-spacing:.08em;
-    color:var(--muted);
-    margin:0 0 14px;
-    padding-bottom:10px;
-    border-bottom:1px solid var(--border);
-  }
+    ::selection {
+      background: var(--accent);
+      color: white;
+    }
 
-  .stack {
-    margin-bottom:48px;
-  }
-  .stack ul {
-    list-style:none;
-    padding:0;
-    margin:0;
-  }
-  .stack li {
-    display:flex;
-    align-items:baseline;
-    gap:12px;
-    padding:10px 0;
-    border-bottom:1px solid var(--border);
-    font-size:.9rem;
-  }
-  .stack li:last-child { border-bottom:none; }
-  .stack .name {
-    font-weight:600;
-    color:var(--text);
-    min-width:160px;
-  }
-  .stack .desc {
-    color:var(--muted);
-  }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
 
-  .structure {
-    margin-bottom:48px;
-  }
-  .structure ul {
-    list-style:none;
-    padding:0;
-    margin:0;
-  }
-  .structure li {
-    display:flex;
-    align-items:baseline;
-    gap:12px;
-    padding:10px 0;
-    border-bottom:1px solid var(--border);
-    font-size:.9rem;
-  }
-  .structure li:last-child { border-bottom:none; }
-  .structure code {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size:.85em;
-    background:var(--hover);
-    padding:2px 7px;
-    border-radius:5px;
-    color:var(--text);
-    white-space:nowrap;
-  }
-  .structure .desc {
-    color:var(--muted);
-  }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text);
+      text-decoration: none;
+    }
 
-  .hosting {
-    margin-bottom:48px;
-  }
-  .hosting ul {
-    list-style:none;
-    padding:0;
-    margin:0;
-  }
-  .hosting li {
-    display:flex;
-    align-items:baseline;
-    gap:12px;
-    padding:10px 0;
-    border-bottom:1px solid var(--border);
-    font-size:.9rem;
-  }
-  .hosting li:last-child { border-bottom:none; }
-  .hosting code {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size:.85em;
-    background:var(--hover);
-    padding:2px 7px;
-    border-radius:5px;
-    color:var(--text);
-    white-space:nowrap;
-  }
-  .hosting .desc {
-    color:var(--muted);
-  }
+    .brand-mark {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      font-weight: 700;
+      font-size: 12px;
+      color: var(--accent);
+    }
 
-  .theme-section {
-    margin-bottom:48px;
-  }
-  .theme-section p {
-    font-size:.9rem;
-    line-height:1.6;
-    color:var(--text);
-    margin:0;
-  }
-  .theme-section code {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size:.85em;
-    background:var(--hover);
-    padding:2px 7px;
-    border-radius:5px;
-    color:var(--accent);
-  }
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: rgba(250, 250, 248, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
 
-  .tags {
-    display:flex;
-    flex-wrap:wrap;
-    gap:8px;
-    margin-bottom:48px;
-  }
-  .tag {
-    padding:4px 10px;
-    border-radius:999px;
-    background:var(--hover);
-    border:1px solid var(--border);
-    font-size:.75rem;
-    color:var(--muted);
-    font-weight:600;
-    letter-spacing:.02em;
-  }
+    header .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+    }
 
-  .nav-links {
-    display:flex;
-    gap:12px;
-    flex-wrap:wrap;
-  }
-  .nav-links a {
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    padding:10px 16px;
-    border:1px solid var(--border);
-    border-radius:8px;
-    background:var(--panel);
-    box-shadow:var(--shadow);
-    text-decoration:none;
-    color:var(--text);
-    font-size:.85rem;
-    font-weight:600;
-    transition:transform .1s ease, box-shadow .1s ease;
-  }
-  .nav-links a:hover {
-    transform:translateY(-1px);
-    box-shadow:0 12px 36px rgba(0,0,0,.07);
-  }
-  .nav-links a.primary {
-    background:var(--accent);
-    color:#fff;
-    border-color:var(--accent);
-  }
-  .nav-links a svg { width:13px; height:13px; }
-</style>
+    .header-nav {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+
+    .header-nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.2s ease;
+    }
+
+    .header-nav a:hover {
+      color: var(--text);
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      margin-bottom: 48px;
+      transition: color 0.2s ease;
+    }
+
+    .back-link:hover {
+      color: var(--accent);
+    }
+
+    .back-link svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .page-wrapper {
+      padding-top: 64px;
+      padding-bottom: 120px;
+    }
+
+    .page-header {
+      margin-bottom: 64px;
+      padding-top: 48px;
+    }
+
+    .page-header h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin-bottom: 16px;
+    }
+
+    .page-header p {
+      font-size: 1.15rem;
+      color: var(--muted);
+      max-width: 600px;
+      line-height: 1.7;
+    }
+
+    .section {
+      margin-bottom: 64px;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 24px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-title svg {
+      width: 16px;
+      height: 16px;
+      color: var(--accent);
+    }
+
+    .developer-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 40px;
+      display: flex;
+      gap: 40px;
+      align-items: flex-start;
+    }
+
+    .developer-avatar {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent-light));
+      display: grid;
+      place-items: center;
+      font-size: 36px;
+      font-weight: 700;
+      color: white;
+      flex-shrink: 0;
+      box-shadow: 0 8px 32px rgba(216, 91, 69, 0.25);
+    }
+
+    .developer-info h3 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .developer-info .role {
+      color: var(--accent);
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    .developer-info p {
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.7;
+      margin-bottom: 20px;
+    }
+
+    .developer-links {
+      display: flex;
+      gap: 12px;
+    }
+
+    .developer-links a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      background: var(--hover);
+      border: 1px solid var(--border);
+      color: var(--text);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .developer-links a:hover {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .developer-links svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .tech-stack {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+    }
+
+    .tech-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .tech-item:hover {
+      border-color: var(--accent);
+    }
+
+    .tech-icon {
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      border-radius: 10px;
+      background: var(--hover);
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .tech-item h4 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .tech-item p {
+      color: var(--muted);
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    .features-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 0.95rem;
+    }
+
+    .feature-item svg {
+      width: 18px;
+      height: 18px;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .philosophy-text {
+      font-size: 1.1rem;
+      line-height: 1.8;
+      color: var(--text);
+    }
+
+    .philosophy-text p {
+      margin-bottom: 20px;
+    }
+
+    .philosophy-text p:last-child {
+      margin-bottom: 0;
+    }
+
+    .philosophy-text strong {
+      color: var(--accent);
+    }
+
+    .cta-box {
+      background: linear-gradient(135deg, var(--accent), var(--accent-light));
+      border-radius: 16px;
+      padding: 48px;
+      text-align: center;
+      color: white;
+    }
+
+    .cta-box h3 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .cta-box p {
+      opacity: 0.9;
+      margin-bottom: 24px;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .cta-box .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 8px;
+      background: white;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 700;
+      transition: all 0.2s ease;
+    }
+
+    .cta-box .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    }
+
+    footer {
+      padding: 48px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    footer .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 24px;
+    }
+
+    footer p {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 768px) {
+      .header-nav {
+        display: none;
+      }
+
+      .developer-card {
+        flex-direction: column;
+        text-align: center;
+        align-items: center;
+      }
+
+      .developer-links {
+        justify-content: center;
+      }
+
+      .page-header h1 {
+        font-size: 2rem;
+      }
+
+      .cta-box {
+        padding: 32px 24px;
+      }
+    }
+  </style>
 </head>
 <body>
-<main class="about" role="main" aria-label="About">
-  <a class="back-link" href="index.html">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
-    Back
-  </a>
+  <header>
+    <div class="container">
+      <a href="/" class="brand">
+        <div class="brand-mark">NL</div>
+        <span>NotionLess</span>
+      </a>
+      <nav class="header-nav">
+        <a href="/">Home</a>
+        <a href="/app">Open App</a>
+      </nav>
+      <a href="/app" class="btn btn-primary">Get Started</a>
+    </div>
+  </header>
 
-  <h1>About this workspace</h1>
-  <p class="subtitle">A local-first block editor built with BlockNote, served as static files. No backend, no build step, no account required.</p>
+  <div class="page-wrapper">
+    <div class="container">
+      <a href="/" class="back-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+        Back to home
+      </a>
 
-  <div class="stack">
-    <h2>Technology</h2>
-    <ul>
-      <li><span class="name">BlockNote core</span><span class="desc">Block-based editor (v0.51.3) via esm.sh CDN</span></li>
-      <li><span class="name">IndexedDB</span><span class="desc">Browser-native persistence. Pages, titles, and blocks stored locally.</span></li>
-      <li><span class="name">Vanilla JS</span><span class="desc">No framework overhead. ES modules, loaded from CDN.</span></li>
-      <li><span class="name">CSS variables</span><span class="desc">Theming via <code>theme.css</code>. Light and dark modes follow system preference.</span></li>
-    </ul>
+      <div class="page-header">
+        <h1>About the project</h1>
+        <p>NotionLess Cloud is a local-first block editor built with simplicity and privacy at its core. No accounts, no cloud sync, no distractions.</p>
+      </div>
+
+      <section class="section">
+        <div class="section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          The Developer
+        </div>
+        <div class="developer-card">
+          <div class="developer-avatar">AB</div>
+          <div class="developer-info">
+            <h3>Aesh Basu</h3>
+            <p class="role">Full-stack Developer</p>
+            <p>A self-taught developer from India passionate about building tools that respect user privacy. When not coding, you'll find me exploring new technologies or contributing to open-source projects.</p>
+            <div class="developer-links">
+              <a href="https://github.com/AsheshBasu" target="_blank" rel="noopener">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                GitHub
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          Technology
+        </div>
+        <div class="tech-stack">
+          <div class="tech-item">
+            <div class="tech-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </div>
+            <div>
+              <h4>BlockNote v0.51.3</h4>
+              <p>Block-based editor via esm.sh CDN with rich text editing capabilities.</p>
+            </div>
+          </div>
+          <div class="tech-item">
+            <div class="tech-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+            </div>
+            <div>
+              <h4>IndexedDB</h4>
+              <p>Browser-native persistence for offline-first data storage.</p>
+            </div>
+          </div>
+          <div class="tech-item">
+            <div class="tech-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            </div>
+            <div>
+              <h4>Flask Backend</h4>
+              <p>Python Flask with Flask-Login for user authentication and multi-account support.</p>
+            </div>
+          </div>
+          <div class="tech-item">
+            <div class="tech-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+            </div>
+            <div>
+              <h4>SQLite</h4>
+              <p>One SQLite file per user at userdata/&lt;username&gt;.db for isolated data.</p>
+            </div>
+          </div>
+          <div class="tech-item">
+            <div class="tech-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            </div>
+            <div>
+              <h4>Vanilla JavaScript</h4>
+              <p>No framework overhead. ES modules loaded from CDN.</p>
+            </div>
+          </div>
+          <div class="tech-item">
+            <div class="tech-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            </div>
+            <div>
+              <h4>CSS Variables</h4>
+              <p>Theming via theme.css with light/dark mode following system preference.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Key Features
+        </div>
+        <div class="features-list">
+          <div class="feature-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Block-based editing with slash commands
+          </div>
+          <div class="feature-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Hierarchical page tree with drag-and-drop
+          </div>
+          <div class="feature-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Light, dark, and auto theme modes
+          </div>
+          <div class="feature-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Export and import profile data as JSON
+          </div>
+          <div class="feature-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Multi-account support with secure auth
+          </div>
+          <div class="feature-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Works completely offline
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          Philosophy
+        </div>
+        <div class="philosophy-text">
+          <p>NotionLess started with a simple observation: <strong>most note-taking apps ask you to trade convenience for privacy</strong>. The cloud promises sync and accessibility, but it also means your thoughts are stored on someone else's servers.</p>
+          <p>This project explores a different path. What if we built a fully-functional editor that simply <strong>respects your data</strong>? No accounts required, no sync to worry about, no servers storing your notes. Just you and your thoughts.</p>
+          <p>The local-first approach isn't a limitation — it's a <strong>philosophical stance</strong>. Your notes should be yours, stored where you control them. The browser's IndexedDB provides reliable storage that works offline and syncs nowhere.</p>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="cta-box">
+          <h3>Ready to try it?</h3>
+          <p>No signup required. Open the app and start writing in seconds.</p>
+          <a href="/app" class="btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            Open NotionLess
+          </a>
+        </div>
+      </section>
+    </div>
   </div>
 
-  <div class="structure">
-    <h2>Project structure</h2>
-    <ul>
-      <li><code>app.html</code><span class="desc">Main workspace — sidebar, tree, editor, settings panel</span></li>
-      <li><code>index.html</code><span class="desc">Landing page</span></li>
-      <li><code>about.html</code><span class="desc">This page</span></li>
-      <li><code>css/theme.css</code><span class="desc">Design tokens — accent color, shadows, radius, typography scale</span></li>
-      <li><code>css/app.css</code><span class="desc">Layout — sidebar, topbar, editor column, menus, dark mode</span></li>
-      <li><code>js/app-module.js</code><span class="desc">BlockNote initialization, IndexedDB CRUD, tree rendering, menus</span></li>
-      <li><code>components/</code><span class="desc">Reusable HTML partials — brandbar, tree, topbar, menus</span></li>
-    </ul>
-  </div>
-
-  <div class="hosting">
-    <h2>Hosting</h2>
-    <ul>
-      <li><code>python -m http.server</code><span class="desc">Local development server</span></li>
-      <li><code>Cloudflare Pages</code><span class="desc">Deploy the entire folder as a static site. No build command needed.</span></li>
-      <li><code>npx serve</code><span class="desc">Simple static server via Node.js</span></li>
-    </ul>
-  </div>
-
-  <div class="theme-section">
-    <h2>Design</h2>
-    <p>Soft neuromorphic monochrome: a single accent hue (<code>#d85b45</code>), paired soft shadows, gentle gradients, one neutral base tone. All tokens live in <code>css/theme.css</code>.</p>
-  </div>
-
-  <div class="tags">
-    <span class="tag">Static</span>
-    <span class="tag">No backend</span>
-    <span class="tag">Local-first</span>
-    <span class="tag">BlockNote</span>
-    <span class="tag">IndexedDB</span>
-    <span class="tag">Vanilla JS</span>
-  </div>
-
-  <div class="nav-links">
-    <a href="app.html" class="primary">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-      Open workspace
-    </a>
-    <a href="index.html">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-      Landing page
-    </a>
-  </div>
-</main>
+  <footer>
+    <div class="container">
+      <p>Built with care in India by <a href="https://github.com/AsheshBasu" target="_blank" rel="noopener">Aesh Basu</a></p>
+      <div class="footer-links">
+        <a href="/">Home</a>
+        <a href="/app">App</a>
+      </div>
+    </div>
+  </footer>
 </body>
 </html>

@@ -28,7 +28,11 @@ def create_app():
     def index():
         if current_user.is_authenticated:
             return redirect(url_for('workspace'))
-        return redirect(url_for('auth.login'))
+        return render_template('index.html')
+
+    @app.route('/about')
+    def about():
+        return render_template('about.html')
 
     @app.route('/app')
     def workspace():
