@@ -26,7 +26,8 @@ const state = {
   contextPageId: null,
   slashIndex: 0,
   slashFilter: "",
-  isOpeningPage: false
+  isOpeningPage: false,
+  selected: new Set()
 };
 
 let editorWired = false;
@@ -315,6 +316,33 @@ function renderTree() {
     if (!draggedId) return;
     movePage(draggedId, ROOT);
   });
+
+  root.addEventListener("contextmenu", (e) => {
+    if (e.target.closest(".tree-row")) return;
+    e.preventDefault();
+    openSidebarMenu(e.clientX, e.clientY);
+  });
+}
+
+function openSidebarMenu(x, y) {
+  closeContextMenu();
+  const menu = $("#contextMenu");
+  menu.innerHTML = "";
+  const actions = [
+    ["New page", () => createPage(ROOT)],
+    ["Expand all", () => { state.expanded = new Set([...state.pages.keys()]); renderTree(); }],
+    ["Collapse all", () => { state.expanded = new Set([ROOT]); renderTree(); }],
+  ];
+  actions.forEach(([label, fn]) => {
+    const b = document.createElement("button");
+    b.className = "context-item";
+    b.textContent = label;
+    b.addEventListener("click", () => { closeContextMenu(); fn(); });
+    menu.appendChild(b);
+  });
+  menu.style.left = Math.min(x, window.innerWidth - 195) + "px";
+  menu.style.top = Math.min(y, window.innerHeight - 130) + "px";
+  menu.classList.add("open");
 }
 
 function isDescendant(childId, parentId) {
@@ -462,12 +490,13 @@ function openContextMenu(x, y, pageId) {
   menu.innerHTML = "";
   const actions = [
     ["New sub-page", () => createPage(pageId)],
+    ["Duplicate", () => duplicatePage(pageId)],
     ["Rename", () => { openPage(pageId).then(() => { const input = $("#pageTitle"); input.focus(); input.select(); }); }],
     ["Delete page", () => { if (confirm("Delete this page and all nested pages?")) deletePage(pageId); }],
   ];
   actions.forEach(([label, fn], idx) => {
     const b = document.createElement("button");
-    b.className = "context-item" + (idx === 2 ? " context-danger" : "");
+    b.className = "context-item" + (idx === 3 ? " context-danger" : "");
     b.textContent = label;
     b.addEventListener("click", () => { closeContextMenu(); fn(); });
     menu.appendChild(b);
@@ -475,6 +504,50 @@ function openContextMenu(x, y, pageId) {
   menu.style.left = Math.min(x, window.innerWidth - 195) + "px";
   menu.style.top = Math.min(y, window.innerHeight - 130) + "px";
   menu.classList.add("open");
+}
+
+async function duplicatePage(pageId) {
+  const page = state.pages.get(pageId);
+  if (!page) return;
+  const collectDescendants = (pid) => {
+    const children = childrenOf(pid);
+    const result = [];
+    for (const child of children) {
+      result.push(child);
+      result.push(...collectDescendants(child.id));
+    }
+    return result;
+  };
+  const allPages = [page, ...collectDescendants(pageId)];
+  const idMap = new Map();
+  for (const p of allPages) {
+    const newId = uid("page");
+    idMap.set(p.id, newId);
+  }
+  for (const p of allPages) {
+    const newId = idMap.get(p.id);
+    const newParentId = p.parentId === pageId ? page.parentId : idMap.get(p.parentId);
+    const newPage = makePage({
+      id: newId,
+      title: p.title + " (copy)",
+      parentId: newParentId,
+      emoji: p.emoji,
+      blocks: JSON.parse(JSON.stringify(p.blocks)),
+    });
+    state.pages.set(newId, newPage);
+    state.expanded.add(newParentId);
+    try {
+      await window.api.createPage({
+        id: newId,
+        title: newPage.title,
+        content: JSON.stringify(newPage.blocks),
+        parent_id: newPage.parentId,
+      });
+    } catch (err) {
+      console.error("Failed to create page during duplicate:", err);
+    }
+  }
+  renderTree();
 }
 function closeContextMenu() { $("#contextMenu").classList.remove("open"); }
 

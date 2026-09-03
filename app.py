@@ -30,7 +30,7 @@ def create_app():
             return redirect(url_for('workspace'))
         return redirect(url_for('auth.login'))
 
-    @app.route('/workspace')
+    @app.route('/app')
     def workspace():
         if not current_user.is_authenticated:
             return redirect(url_for('auth.login'))
