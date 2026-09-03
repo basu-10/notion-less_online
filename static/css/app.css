@@ -100,7 +100,7 @@
     }
     .tree-row.active { background:var(--active); color:var(--text); }
     .tree-row:hover:not(.active) { background:var(--hover); }
-    .tree-indent { width:18px; flex:0 0 18px; }
+    .tree-indent { flex:0 0 var(--indent, 0px); }
     .twisty {
       width:22px;
       height:22px;

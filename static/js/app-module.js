@@ -195,7 +195,7 @@ function renderTree() {
 
       const indent = document.createElement("div");
       indent.className = "tree-indent";
-      indent.style.width = (depth * 18) + "px";
+      indent.style.flexBasis = (depth * 18) + "px";
 
       const twisty = document.createElement("button");
       twisty.className = "twisty" + (children.length ? "" : " placeholder");
@@ -218,6 +218,11 @@ function renderTree() {
       link.textContent = page.title || "Untitled";
       link.title = page.title || "Untitled";
       link.addEventListener("click", () => openPage(page.id));
+
+      row.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        openContextMenu(e.clientX, e.clientY, page.id);
+      });
 
       const more = document.createElement("button");
       more.className = "page-more";
