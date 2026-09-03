@@ -1256,4 +1256,53 @@ try {
   if (mql && mql.addEventListener) mql.addEventListener("change", () => { if (getTheme() === "auto") applyTheme("auto"); });
 } catch {}
 
+(function initSidebarResize() {
+  const handle = $("#sidebarResizeHandle");
+  const SIDEBAR_MIN = 180;
+  const SIDEBAR_MAX = 600;
+  let dragging = false;
+  let startX = 0;
+  let startWidth = 0;
+
+  try {
+    const saved = localStorage.getItem("notion-sidebar-width");
+    if (saved) {
+      const w = parseInt(saved, 10);
+      if (w >= SIDEBAR_MIN && w <= SIDEBAR_MAX) {
+        document.documentElement.style.setProperty("--sidebar-width", w + "px");
+      }
+    }
+  } catch {}
+
+  handle.addEventListener("mousedown", (e) => {
+    if (e.button !== 0) return;
+    dragging = true;
+    startX = e.clientX;
+    const sidebar = document.querySelector(".sidebar");
+    startWidth = sidebar.getBoundingClientRect().width;
+    handle.classList.add("dragging");
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  });
+
+  document.addEventListener("mousemove", (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - startX;
+    const newWidth = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, startWidth + dx));
+    document.documentElement.style.setProperty("--sidebar-width", newWidth + "px");
+  });
+
+  document.addEventListener("mouseup", () => {
+    if (!dragging) return;
+    dragging = false;
+    handle.classList.remove("dragging");
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+    try {
+      const sidebar = document.querySelector(".sidebar");
+      localStorage.setItem("notion-sidebar-width", sidebar.getBoundingClientRect().width);
+    } catch {}
+  });
+})();
+
 initialize();
