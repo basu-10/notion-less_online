@@ -631,6 +631,7 @@ async function mountEditor(blocks) {
   state.editor.mount($("#editor"));
   state.editor.onChange(() => {
     if (state.currentPageId) markDirty();
+    renderAutoToc();
   });
   wireEditorInteractions();
 }
@@ -660,6 +661,7 @@ async function openPage(id) {
   try { await window.notifications.saveState("lastPageId", id); } catch {}
   $("#pageTitle").value = page.title || "Untitled";
   await mountEditor(page.blocks);
+  setTimeout(() => renderAutoToc(), 80);
   state.expanded.add(page.id);
   renderTree();
   renderBreadcrumbs();
@@ -1438,6 +1440,7 @@ async function initialize() {
   if (first) await openPage(first.id);
   setSaveState("Ready");
   initPublicToggle();
+  initAutoToc();
 }
 
 function initPublicToggle() {
@@ -1866,7 +1869,103 @@ try {
   if (!hud) return;
   let hideTimer = null;
 
-  document.addEventListener("keydown", (e) => {
+function renderAutoToc() {
+  const container = $("#autoToc");
+  if (!container) return;
+  const blocks = state.editor?.document || [];
+  const headings = blocks.filter(b => b.type === "heading" && b.props && typeof b.props.level === "number");
+  if (!headings.length) {
+    container.innerHTML = "";
+    return;
+  }
+  container.innerHTML = "";
+  headings.forEach((h, i) => {
+    const bar = document.createElement("div");
+    const level = h.props.level || 2;
+    bar.className = "toc-bar is-h" + level;
+    bar.title = (currentBlockText(h) || "Heading").trim();
+    bar.dataset.index = i;
+    container.appendChild(bar);
+  });
+
+  // Build expanded list on hover (injected on first interaction or immediately)
+  if (!container.querySelector(".toc-list")) {
+    const list = document.createElement("div");
+    list.className = "toc-list";
+    list.innerHTML = '<div class="toc-header">Contents</div>';
+    headings.forEach((h, i) => {
+      const btn = document.createElement("button");
+      const level = h.props.level || 2;
+      const text = (currentBlockText(h) || "Heading").trim();
+      btn.className = "toc-item is-h" + level;
+      btn.textContent = text;
+      btn.title = text;
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        scrollToHeading(i, headings);
+      });
+      list.appendChild(btn);
+    });
+    container.appendChild(list);
+  } else {
+    // Refresh list text in case headings changed
+    const list = container.querySelector(".toc-list");
+    const items = list.querySelectorAll(".toc-item");
+    headings.forEach((h, i) => {
+      if (items[i]) {
+        const level = h.props.level || 2;
+        items[i].className = "toc-item is-h" + level;
+        const text = (currentBlockText(h) || "Heading").trim();
+        items[i].textContent = text;
+        items[i].title = text;
+      }
+    });
+    // Remove extra items if headings reduced
+    while (items.length > headings.length) {
+      items[items.length - 1].remove();
+    }
+    // Add new items if headings increased
+    for (let i = items.length; i < headings.length; i++) {
+      const h = headings[i];
+      const btn = document.createElement("button");
+      const level = h.props.level || 2;
+      const text = (currentBlockText(h) || "Heading").trim();
+      btn.className = "toc-item is-h" + level;
+      btn.textContent = text;
+      btn.title = text;
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        scrollToHeading(i, headings);
+      });
+      list.appendChild(btn);
+    }
+  }
+}
+
+function scrollToHeading(index, headings) {
+  if (!state.editor) return;
+  const h = headings[index];
+  if (!h || !h.id) return;
+  try {
+    state.editor.setTextCursorPosition(h.id, "start");
+  } catch {}
+  const el = document.querySelector('[data-id="' + h.id + '"]');
+  if (el) {
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+}
+
+function initAutoToc() {
+  // Re-render when editor content changes
+  const observer = new MutationObserver(() => {
+    // Small debounce
+    clearTimeout(window._tocTimer);
+    window._tocTimer = setTimeout(() => renderAutoToc(), 120);
+  });
+  observer.observe(document.getElementById("editor") || document.body, { childList: true, subtree: true });
+}
+
+document.addEventListener("keydown", (e) => {
     if (e.key === "Alt" || e.key === "Control") {
       if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
       hud.classList.add("visible");

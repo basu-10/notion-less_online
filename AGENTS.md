@@ -91,6 +91,7 @@ Open <http://localhost:5000>
 
 ### Workspace
 - Emoji picker with search, recent, and pinned tabs available in the editor
+- Auto-TOC: right-side vertical bars from headings; hover expands animated list; click scrolls to heading. Built around existing heading block logic (type `heading`, props `level`).
 
 ## Keyboard shortcuts
 
