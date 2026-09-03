@@ -52,6 +52,20 @@ body {
   color: var(--text);
   background: var(--bg);
   overflow:hidden;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
 }
 button, input { font: inherit; }
 button { border:0; background:none; }
+
+/* Touch device detection for better mobile UX */
+@media (hover: none) and (pointer: coarse) {
+  .icon-btn:hover {
+    background: transparent;
+    box-shadow: none;
+    transform: none;
+  }
+  .icon-btn:active {
+    background: var(--hover);
+  }
+}

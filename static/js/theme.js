@@ -1,8 +1,12 @@
 function applyTheme(mode) {
   const html = document.documentElement;
-  html.removeAttribute("data-theme");
-  if (mode === "light" || mode === "dark") {
-    html.setAttribute("data-theme", mode);
+  if (mode === "auto") {
+    html.setAttribute("data-theme", "auto");
+  } else {
+    html.removeAttribute("data-theme");
+    if (mode === "light" || mode === "dark") {
+      html.setAttribute("data-theme", mode);
+    }
   }
   try { localStorage.setItem("notion-theme", mode); } catch {}
   document.querySelectorAll(".theme-btn").forEach(b => {

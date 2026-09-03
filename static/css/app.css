@@ -612,31 +612,51 @@
       .page-title { font-size:33px; }
     }
 
-.mobile-menu-btn { display:none; }
+    .mobile-menu-btn { display:none; }
     /* Mobile responsive */
     @media (max-width: 768px) {
-      .mobile-menu-btn { display:grid; }
-      .app { grid-template-columns: 1fr; position:relative; }
+      .mobile-menu-btn {
+        display: grid;
+        place-items: center;
+        width: 36px;
+        height: 36px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--bg);
+        color: var(--text);
+        cursor: pointer;
+        font-size: 16px;
+      }
+      .app { grid-template-columns: 1fr; position:relative; overflow:hidden; }
       .sidebar-resize-handle { display: none; }
       .sidebar {
-        position:fixed; top:0; left:0; z-index:110; width: min(85vw, 280px); height:100vh;
+        position:fixed; top:0; left:0; z-index:110; width: min(85vw, 300px); height:100vh;
         transform: translateX(-110%); transition: transform .25s ease;
         border-right:1px solid var(--border); box-shadow: 8px 0 30px rgba(0,0,0,.08);
       }
       .sidebar.open { transform: translateX(0); }
       .main { min-width:0; }
-      .document { width:calc(100% - 24px); padding:56px 12px 80px; }
-      .page-title { font-size:28px; }
-      .topbar { padding:0 14px; gap:10px; }
-      .breadcrumbs span { max-width:120px; }
+      .topbar { padding: 0 12px; gap: 8px; min-height: 54px; }
+      .topbar .breadcrumbs { display: none; }
+      .document { width: 100%; padding: 56px 16px 80px; box-shadow: none; border-radius: 0; }
+      .page-title { font-size: 28px; }
+      .top-actions { gap: 6px; }
+      .icon-btn, .top-action { min-width: 36px; min-height: 36px; }
     }
-  
-.mobile-backdrop {
-  display:none; position:fixed; inset:0; z-index:105; background:rgba(0,0,0,.25);
-}
-@media (max-width: 768px) {
-  .mobile-backdrop.open { display:block; }
-}
+
+    .mobile-backdrop {
+      display:none; position:fixed; inset:0; z-index:105; background:rgba(0,0,0,.25);
+    }
+    @media (max-width: 768px) {
+      .mobile-backdrop.open { display:block; }
+    }
+
+    /* Ensure BlockNote editor is full width on mobile */
+    @media (max-width: 768px) {
+      #editor { min-height: 60vh; }
+      .bn-editor .bn-block-content { font-size: 15px; }
+      .workspace { overflow-y: auto; }
+    }
   
 /* ---------- Settings panel ---------- */
     .settings-panel {
