@@ -70,6 +70,10 @@ function makePage({ id=uid(), title="Untitled", parentId=ROOT, emoji="📄", blo
   return { id, title, parentId, emoji, blocks, collapsed, updatedAt: Date.now() };
 }
 
+async function persistNotification(text) {
+  try { await window.notifications.addNotification(text, "info"); } catch (e) { console.warn("Notification add failed:", e); }
+}
+
 async function setSaveState(text) {
   $("#saveState").textContent = text;
   await persistNotification(text);
