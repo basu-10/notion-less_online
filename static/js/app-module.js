@@ -70,7 +70,56 @@ function makePage({ id=uid(), title="Untitled", parentId=ROOT, emoji="📄", blo
   return { id, title, parentId, emoji, blocks, collapsed, updatedAt: Date.now() };
 }
 
-function setSaveState(text) { $("#saveState").textContent = text; }
+async function setSaveState(text) {
+  $("#saveState").textContent = text;
+  await persistNotification(text);
+}
+
+async function toggleNotificationPanel() {
+  const panel = $("#notificationPanel");
+  const isOpen = panel.classList.contains("open");
+  if (isOpen) {
+    panel.classList.remove("open");
+  } else {
+    panel.classList.add("open");
+    await renderNotificationList();
+  }
+}
+
+async function renderNotificationList() {
+  const list = $("#notificationList");
+  try {
+    const notifications = await window.notifications.getNotifications(50);
+    if (!notifications.length) {
+      list.innerHTML = '<div class="notification-empty">No notifications</div>';
+      return;
+    }
+    list.innerHTML = notifications.map(n => {
+      const date = new Date(n.timestamp);
+      const time = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      const dateStr = date.toLocaleDateString();
+      return `<div class="notification-item">
+        <span class="notification-text">${escapeHtml(n.text)}</span>
+        <span class="notification-time">${dateStr} ${time}</span>
+      </div>`;
+    }).join("");
+  } catch (e) {
+    list.innerHTML = '<div class="notification-empty">Failed to load</div>';
+  }
+}
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+async function clearAllNotifications() {
+  try {
+    await window.notifications.clearNotifications();
+    await renderNotificationList();
+  } catch (e) { console.warn("Failed to clear notifications:", e); }
+}
 
 function markDirty() {
   state.dirty = true;
@@ -1174,10 +1223,14 @@ $("#closeSettings").addEventListener("click", () => $("#settingsPanel").classLis
 document.addEventListener("mousedown", (e) => {
   const panel = $("#settingsPanel");
   const sidebarMenu = $("#sidebarUserMenu");
+  const notifPanel = $("#notificationPanel");
   if (panel.classList.contains("open") && !panel.contains(e.target)) panel.classList.remove("open");
   if (sidebarMenu.classList.contains("open") && !sidebarMenu.contains(e.target) && !$("#sidebarMenuBtn").contains(e.target)) {
     sidebarMenu.classList.remove("open");
     $("#sidebarMenuBtn").setAttribute("aria-expanded", "false");
+  }
+  if (notifPanel.classList.contains("open") && !notifPanel.contains(e.target) && !$("#notificationTrigger").contains(e.target)) {
+    notifPanel.classList.remove("open");
   }
 });
 
@@ -1185,6 +1238,8 @@ $("#exportProfile").addEventListener("click", exportProfile);
 $("#exportNote").addEventListener("click", exportNote);
 $("#importProfile").addEventListener("click", () => $("#importFile").click());
 $("#importFile").addEventListener("change", (e) => { if (e.target.files && e.target.files[0]) importProfile(e.target.files[0]); e.target.value = ""; });
+$("#notificationTrigger").addEventListener("click", toggleNotificationPanel);
+$("#clearNotifications").addEventListener("click", clearAllNotifications);
 
 function toggleSidebar(force) {
   const sb = document.querySelector(".sidebar");

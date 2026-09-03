@@ -51,7 +51,16 @@
           </a>
         </div>
         <div class="sidebar-save-state">
-          <span id="saveState">Ready</span>
+          <button class="notification-trigger" id="notificationTrigger" aria-label="View notifications">
+            <span id="saveState">Ready</span>
+          </button>
+          <div id="notificationPanel" class="notification-panel" role="dialog" aria-label="Notifications">
+            <div class="notification-header">
+              <span>Notifications</span>
+              <button class="icon-btn" id="clearNotifications" title="Clear all">✕</button>
+            </div>
+            <div class="notification-list" id="notificationList"></div>
+          </div>
         </div>
       </div>
     </aside>
@@ -108,6 +117,7 @@
   </aside>
 
   <script src="/static/js/api-client.js"></script>
+  <script src="/static/js/notifications.js"></script>
   <script type="module" src="/static/js/app-module.js"></script>
 </body>
 </html>
