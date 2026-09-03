@@ -13,6 +13,7 @@
       display:flex;
       flex-direction:column;
       overflow:hidden;
+      transition: width .2s ease, transform .25s ease;
     }
     .brandbar {
       height:54px;
@@ -51,8 +52,14 @@
       color:#66665f;
       display:grid;
       place-items:center;
+      transition: all .15s ease;
     }
-    .icon-btn:hover { background:var(--hover); color:var(--text); }
+    .icon-btn:hover {
+      background:var(--hover);
+      color:var(--text);
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+      transform: translateY(-1px);
+    }
 
     .sidebar-tools {
       padding:10px 10px 5px;
@@ -71,8 +78,13 @@
       cursor:pointer;
       color:#595953;
       font-size:13px;
+      box-shadow: 2px 2px 6px rgba(0,0,0,.04), -1px -1px 3px rgba(255,255,255,.9);
+      transition: box-shadow .15s ease;
     }
-    .new-page:hover { background:var(--hover); }
+    .new-page:hover {
+      background:var(--hover);
+      box-shadow: inset 0 1px 3px rgba(0,0,0,.06);
+    }
     .sidebar-section {
       padding:12px 13px 7px;
       color:var(--muted);
@@ -122,7 +134,11 @@
     .drop-root-zone { display:none; height:48px; margin:4px 0; border-radius:8px; border:2px dashed transparent; align-items:center; justify-content:center; }
     .drop-root-zone.visible { display:flex; border-color:var(--accent); background:var(--hover); opacity:0.7; }
     .drop-root-zone span { font-size:12px; color:var(--muted); }
-    .tree-row.active { background:var(--active); color:var(--text); }
+    .tree-row.active {
+      background:var(--active);
+      color:var(--text);
+      box-shadow: inset 0 2px 4px rgba(0,0,0,.05), 0 1px 2px rgba(255,255,255,.8);
+    }
     .tree-row:hover:not(.active) { background:var(--hover); }
     .tree-indent { flex:0 0 var(--indent, 0px); }
     .twisty {
@@ -213,8 +229,18 @@
       font-size:12px;
     }
     .top-action:hover { background:var(--hover); }
-    .top-action.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
-    .top-action.primary:hover { opacity:0.9; }
+    .top-action.primary {
+      background:var(--accent);
+      color:#fff;
+      border-color:var(--accent);
+      box-shadow: 0 2px 8px rgba(216,91,69,.3);
+      transition: all .15s ease;
+    }
+    .top-action.primary:hover {
+      opacity:0.9;
+      box-shadow: 0 4px 14px rgba(216,91,69,.4);
+      transform: translateY(-1px);
+    }
 
     .workspace {
       flex:1;
@@ -225,6 +251,9 @@
       width:min(860px, calc(100% - 80px));
       margin:0 auto;
       padding:72px 0 120px;
+      background: var(--panel);
+      box-shadow: 0 2px 20px rgba(0,0,0,.04);
+      border-radius: 12px;
     }
     .page-title {
       width:100%;
@@ -254,24 +283,23 @@
       padding-left: 32px;
     }
     .bn-editor .bn-block-outer::before {
-      content: "•••";
+      content: "⠿";
       position: absolute;
       left: 4px;
       top: 50%;
       transform: translateY(-50%);
-      font-size: 10px;
-      color: #ccc;
-      cursor: pointer;
+      font-size: 14px;
+      color: var(--muted);
+      cursor: grab;
       opacity: 0;
       transition: opacity 0.15s ease;
       z-index: 10;
-      letter-spacing: -2px;
     }
     .bn-editor .bn-block-outer:hover::before {
       opacity: 1;
     }
     .bn-editor .bn-block-outer::before:hover {
-      color: #666;
+      color: var(--text);
     }
 
     /* A little more Notion-like air around blocks. */
@@ -290,8 +318,14 @@
       box-shadow:var(--shadow);
       padding:6px;
       display:none;
+      animation: menuFadeIn .12s ease;
     }
     #slashMenu.open { display:block; }
+
+    @keyframes menuFadeIn {
+      from { opacity: 0; transform: scale(.96) translateY(-4px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
     .slash-header { padding:7px 9px 6px; font-size:11px; color:#999990; }
     .slash-item {
       display:flex;
@@ -324,6 +358,7 @@
       box-shadow:var(--shadow);
       padding:5px;
       display:none;
+      animation: menuFadeIn .12s ease;
     }
     #contextMenu.open { display:block; }
     .context-item {
@@ -344,6 +379,7 @@
       box-shadow: var(--shadow);
       padding: 5px;
       display: none;
+      animation: menuFadeIn .12s ease;
     }
     .block-menu.open { display: block; }
     .block-menu-item {
@@ -385,6 +421,7 @@
       border-radius: 8px;
       box-shadow: var(--shadow);
       z-index: 1000;
+      animation: menuFadeIn .12s ease;
     }
     .format-toolbar.open { display: flex; }
     .format-btn {
@@ -411,6 +448,7 @@
       color:#adada6;
       font-size:12px;
       padding-left:3px;
+      transition: opacity .3s ease;
     }
 
     @media (max-width: 820px) {
@@ -445,13 +483,19 @@
 }
   
 /* ---------- Settings panel ---------- */
-.settings-panel {
-  position: fixed; top: 0; right: 0; width: 360px; max-width: 92vw; height: 100vh;
-  background: var(--panel); border-left: 1px solid var(--border);
-  box-shadow: -12px 0 40px rgba(0,0,0,.08); transform: translateX(110%); transition: transform .25s ease;
-  z-index: 100; padding: 20px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px;
-}
-.settings-panel.open { transform: translateX(0); }
+    .settings-panel {
+      position: fixed; top: 0; right: 0; width: 360px; max-width: 92vw; height: 100vh;
+      background: var(--panel); border-left: 1px solid var(--border);
+      box-shadow: -12px 0 40px rgba(0,0,0,.08); transform: translateX(110%); transition: transform .25s ease;
+      z-index: 100; padding: 20px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px;
+      animation: panelSlideIn .22s cubic-bezier(.4,0,.2,1);
+    }
+    .settings-panel.open { transform: translateX(0); }
+
+    @keyframes panelSlideIn {
+      from { transform: translateX(100%); }
+      to { transform: translateX(0); }
+    }
 .settings-header { display: flex; align-items: center; justify-content: space-between; }
 .settings-header h2 { margin: 0; font-size: 18px; font-weight: 700; }
 .settings-section h3 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }

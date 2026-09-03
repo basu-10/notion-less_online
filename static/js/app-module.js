@@ -798,6 +798,10 @@ function wireEditorInteractions() {
   const root = $("#editor");
   root.addEventListener("keydown", onEditorKeydown, true);
   root.addEventListener("keyup", onEditorKeyup, true);
+  root.addEventListener("input", () => {
+    const hint = document.querySelector(".hint");
+    if (hint) hint.style.opacity = "0";
+  }, { once: true });
   root.addEventListener("click", (e) => {
     closeSlashMenu();
     const blockOuter = e.target.closest(".bn-block-outer");
