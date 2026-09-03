@@ -31,7 +31,10 @@
       min-width:0;
       font-weight:700;
       font-size:14px;
+      color:inherit;
+      text-decoration:none;
     }
+    .brand:visited { color:inherit; }
     .brand-mark {
       width:23px;
       height:23px;
@@ -96,6 +99,7 @@
       align-items:center;
       justify-content:space-between;
     }
+    .section-actions { display:flex; gap:2px; }
     .section-action {
       width:20px;
       height:20px;
@@ -112,6 +116,10 @@
     .section-action:hover {
       background:var(--hover);
       color:var(--text);
+    }
+
+    .sidebar-tools {
+      display:none;
     }
     #pageTree {
       flex:1;
