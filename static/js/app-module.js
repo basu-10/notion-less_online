@@ -1434,4 +1434,162 @@ try {
   });
 })();
 
+const EMOJI_CATEGORIES = {
+  smileys: ["😀","😃","😄","😁","😆","😅","🤣","😂","🙂","😉","😊","😇","🥰","😍","🤩","😘","😗","😚","😋","😛","😜","🤪","😝","🤑","🤗","🤭","🤫","🤔","🤐","🤨","😐","😑","😶","😏","😒","🙄","😬","🤥","😌","😔","😪","🤤","😴","😷","🤒","🤕","🤢","🤮","🤧","🥵","🥶","🥴","😵","🤯","🤠","🥳","🥸","😎","🤓","🧐","😕","😟","🙁","😮","😯","😲","😳","🥺","😦","😧","😨","😰","😥","😢","😭","😱","😖","😣","😞","😓","😩","😫","🥱","😤","😡","😠","🤬","😈","👿","💀","☠️","💩","🤡","👹","👺","👻","👽","👾","🤖"],
+  people: ["👋","🤚","🖐️","✋","🖖","👌","🤌","🤏","✌️","🤞","🤟","🤘","🤙","👈","👉","👆","🖕","👇","☝️","👍","👎","✊","👊","🤛","🤜","👏","🙌","👐","🤲","🤝","🙏","✍️","💅","🤳","💪","🦾","🦿","🦵","🦶","👂","🦻","👃","🧠","🫀","🫁","🦷","🦴","👀","👁️","👅","👄","👶","🧒","👦","👧","🧑","👱","👨","🧔","👩","🧓","👴","👵","🙍","🙎","🙅","🙆","💁","🙋","🧏","🙇","🤦","🤷","👮","🕵️","💂","🥷","👷","🤴","👸","👳","👲","🧕","🤵","👰","🤰","🤱","👼","🎒","👑","📿","💄","💍","💎"],
+  animals: ["🐱","🐶","🐕","🐩","🐺","🦊","🦄","🐴","🐎","🦄","🦓","🦌","🦒","🦏","🦛","🐘","🦣","🦏","🐁","🐀","🐹","🐰","🐇","🐿️","🦔","🦇","🐻","🐼","🐨","🐯","🦁","🐮","🐷","🐽","🐸","🐵","🙈","🙉","🙊","🐒","🐔","🐧","🐦","🐤","🦆","🦅","🦉","🦇","🐺","🐗","🐴","🦄","🐝","🪱","🐛","🦋","🐌","🐞","🐜","🪰","🪲","🪳","🦟","🦗","🕷️","🕸️","🦂","🐢","🐍","🦎","🦖","🦕","🐙","🦑","🦐","🦞","🦀","🐡","🐠","🐟","🐬","🐳","🐋","🦈","🐊","🐅","🐆","🦓","🦍","🦧","🦣"],
+  food: ["🍔","🍕","🌭","🍟","🍿","🧂","🥓","🥚","🍳","🧇","🥞","🧈","🍞","🥐","🥨","🥯","🥖","🧀","🥗","🥙","🥪","🌮","🌯","🫔","🥫","🍝","🍜","🍲","🍛","🍣","🍱","🥟","🦪","🍤","🍙","🍚","🍘","🍥","🥠","🥮","🍢","🍡","🍧","🍨","🍦","🥧","🧁","🍰","🎂","🍮","🍭","🍬","🍫","🍿","🍩","🍪","🌰","🥜","🍯","🥛","🍼","☕","🫖","🍵","🧃","🥤","🧋","🍶","🍺","🍻","🥂","🍷","🥃","🍸","🍹","🧉","🍾","🧊"],
+  travel: ["✈️","🚀","🛸","🚁","🛶","⛵","🚤","🛥️","🛳️","🚢","🚂","🚃","🚄","🚅","🚆","🚇","🚈","🚉","🚊","🚝","🚞","🚋","🚌","🚍","🚎","🚐","🚑","🚒","🚓","🚔","🚕","🚖","🚗","🚘","🚙","🛻","🚚","🚛","🚜","🏎️","🏍️","🛵","🚲","🛴","🛹","🛼","🚏","🛤️","🛣️","🗺️","🗿","🗽","🗼","🏰","🏯","🏟️","🎡","🎢","🎠","⛲","⛱️","🏖️","🏝️","🏜️","🌋","⛰️","🏔️","🗻","🏕️","⛺","🛖","🏠","🏡","🏘️","🏚️","🏗️","🏭","🏢","🏬","🏣","🏤","🏥","🏦","🏨","🏪","🏫","🏩","💒","🏛️","⛪","🕌","🕍","🛕","🕋","⛩️"],
+  activities: ["⚽","🏀","🏈","⚾","🥎","🎾","🏐","🏉","🥏","🎱","🪀","🏓","🏸","🏒","🏑","🥍","🏏","🪃","🥅","⛳","🪁","🏹","🎣","🤿","🥊","🥋","🎽","🛹","🛼","🛷","⛸️","🥌","🎿","⛷️","🏂","🪂","🏋️","🤼","🤸","⛹️","🤺","🤾","🏌️","🏇","🧘","🏄","🏊","🤽","🚣","🧗","🚵","🚴","🏆","🥇","🥈","🥉","🏅","🎖️","🏵️","🎗️","🎫","🎟️","🎪","🤹","🎭","🩰","🎨","🎬","🎤","🎧","🎼","🎹","🥁","🪘","🎷","🎺","🪗","🎸","🪕","🎻","🎲","♟️","🎯","🎳","🎮","🕹️","🎰"],
+  objects: ["💡","🔦","🏮","🪔","📱","💻","🖥️","🖨️","⌨️","🖱️","🖲️","💽","💾","💿","📀","📼","📷","📸","📹","🎥","📽️","🎞️","📞","☎️","📟","📠","📺","📻","🧭","⏱️","⏲️","🕰️","⌛","⏳","⏰","⏱️","🕓","📡","🔋","🔌","💵","💴","💶","💷","💰","💳","💎","⚖️","🪜","🧰","🪛","🔧","🔨","⚒️","🛠️","⛏️","🪚","🔩","⚙️","🪤","🧱","⛓️","🧲","🔫","💣","🧨","🪓","🔪","🗡️","⚔️","🛡️","🚬","⚰️","🪦","⚱️","🏺","🔮","📿","🧿","💈","⚗️","🔭","🔬","🕳️","🩹","🩺","💊","💉","🩸","🧬","🦠","🧫","🧪"],
+  symbols: ["❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💔","❣️","💕","💞","💓","💗","💖","💘","💝","💟","☮️","✝️","☪️","🕉️","☸️","✡️","🔯","🕎","☯️","☦️","🛐","⛎","♈","♉","♊","♋","♌","♍","♎","♏","♐","♑","♒","♓","🆔","⚛️","🉑","☢️","☣️","📴","📳","🈶","🈚","🈸","🈺","🈷️","✴️","🆚","💮","🉐","㊙️","㊗️","🈴","🈵","🈹","🈲","🅰️","🅱️","🆎","🆑","🅾️","🆘","⛔","📛","🔞","🔃","🔄","🔙","🔛","🔝","✅","❎","🈯","💹","❇️","✳️","❎","✅","✔️","☑️","🔘","🔰","🈳","🈂️","♻️","🈷️","🔱"],
+  flags: ["🏁","🚩","🎌","🏴","🏳️","🏳️‍🌈","🏳️‍⚧️","🏴‍☠️","🇦🇨","🇦🇩","🇦🇪","🇦🇫","🇦🇬","🇦🇮","🇦🇱","🇦🇲","🇦🇴","🇦🇶","🇦🇷","🇦🇸","🇦🇹","🇦🇺","🇦🇼","🇦🇽","🇦🇿","🇧🇦","🇧🇧","🇧🇩","🇧🇪","🇧🇫","🇧🇬","🇧🇭","🇧🇮","🇧🇯","🇧🇱","🇧🇲","🇧🇳","🇧🇴","🇧🇶","🇧🇷","🇧🇸","🇧🇹","🇧🇻","🇧🇼","🇧🇾","🇧🇿","🇨🇦","🇨🇨","🇨🇩","🇨🇫","🇨🇬","🇨🇭","🇨🇮","🇨🇰","🇨🇱","🇨🇲","🇨🇳","🇨🇴","🇨🇵","🇨🇷","🇨🇺","🇨🇻","🇨🇼","🇨🇽","🇨🇾","🇨🇿"]
+};
+
+const EMOJI_SEARCH_INDEX = Object.entries(EMOJI_CATEGORIES).flatMap(([cat, emojis]) =>
+  emojis.map(e => ({ emoji: e, category: cat }))
+);
+
+function getEmojiStorage(key, fallback = []) {
+  try {
+    const raw = localStorage.getItem("notion-emoji-" + key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch { return fallback; }
+}
+
+function setEmojiStorage(key, value) {
+  try { localStorage.setItem("notion-emoji-" + key, JSON.stringify(value)); } catch {}
+}
+
+function addToRecent(emoji) {
+  let recent = getEmojiStorage("recent");
+  recent = recent.filter(e => e !== emoji);
+  recent.unshift(emoji);
+  if (recent.length > 32) recent = recent.slice(0, 32);
+  setEmojiStorage("recent", recent);
+}
+
+function togglePinned(emoji) {
+  let pinned = getEmojiStorage("pinned");
+  if (pinned.includes(emoji)) {
+    pinned = pinned.filter(e => e !== emoji);
+  } else {
+    if (pinned.length >= 32) pinned = pinned.slice(1);
+    pinned.push(emoji);
+  }
+  setEmojiStorage("pinned", pinned);
+  return pinned;
+}
+
+function renderEmojiGrid(tab, search = "") {
+  const grid = $("#emojiGrid");
+  let emojis = [];
+
+  if (search) {
+    const q = search.toLowerCase();
+    emojis = EMOJI_SEARCH_INDEX
+      .filter(e => e.emoji.includes(q) || e.category.includes(q))
+      .map(e => e.emoji);
+  } else if (tab === "recent") {
+    emojis = getEmojiStorage("recent");
+  } else if (tab === "pinned") {
+    emojis = getEmojiStorage("pinned");
+  } else if (EMOJI_CATEGORIES[tab]) {
+    emojis = EMOJI_CATEGORIES[tab];
+  }
+
+  if (!emojis.length) {
+    grid.innerHTML = `<div class="emoji-empty">${search ? "No emojis found" : "No " + tab + " emojis yet"}</div>`;
+    return;
+  }
+
+  const pinned = getEmojiStorage("pinned");
+  grid.innerHTML = emojis.map(e => {
+    const isPinned = pinned.includes(e);
+    return `<button class="emoji-item${isPinned ? " pinned" : ""}" data-emoji="${e}" title="${e}">${e}</button>`;
+  }).join("");
+}
+
+let currentEmojiTab = "recent";
+
+function openEmojiPicker() {
+  const picker = $("#emojiPicker");
+  picker.classList.add("open");
+  $("#emojiSearch").value = "";
+  renderEmojiGrid("recent");
+  currentEmojiTab = "recent";
+  document.querySelectorAll(".emoji-tab").forEach(t => t.classList.toggle("active", t.dataset.tab === "recent"));
+}
+
+function closeEmojiPicker() {
+  $("#emojiPicker").classList.remove("open");
+}
+
+async function copyEmoji(emoji) {
+  try {
+    await navigator.clipboard.writeText(emoji);
+    addToRecent(emoji);
+    setSaveState(`Copied ${emoji}`);
+  } catch {
+    const ta = document.createElement("textarea");
+    ta.value = emoji;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+    addToRecent(emoji);
+    setSaveState(`Copied ${emoji}`);
+  }
+}
+
+$("#footerEmojiBtn").addEventListener("click", () => {
+  sidebarUserMenu.classList.remove("open");
+  sidebarMenuBtn.setAttribute("aria-expanded", "false");
+  openEmojiPicker();
+});
+
+$("#emojiClose").addEventListener("click", closeEmojiPicker);
+
+document.querySelectorAll(".emoji-tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".emoji-tab").forEach(t => {
+      t.classList.toggle("active", t === tab);
+      t.setAttribute("aria-selected", t === tab ? "true" : "false");
+    });
+    currentEmojiTab = tab.dataset.tab;
+    renderEmojiGrid(tab.dataset.tab, $("#emojiSearch").value);
+  });
+});
+
+$("#emojiSearch").addEventListener("input", (e) => {
+  renderEmojiGrid(currentEmojiTab === "recent" || currentEmojiTab === "pinned" ? "" : currentEmojiTab, e.target.value);
+});
+
+$("#emojiGrid").addEventListener("click", (e) => {
+  const item = e.target.closest(".emoji-item");
+  if (!item) return;
+  const emoji = item.dataset.emoji;
+  if (e.shiftKey) {
+    const pinned = togglePinned(emoji);
+    const isPinned = pinned.includes(emoji);
+    item.classList.toggle("pinned", isPinned);
+  } else {
+    copyEmoji(emoji);
+    closeEmojiPicker();
+  }
+});
+
+document.addEventListener("mousedown", (e) => {
+  const picker = $("#emojiPicker");
+  if (picker.classList.contains("open") && !picker.contains(e.target) && !$("#footerEmojiBtn").contains(e.target)) {
+    closeEmojiPicker();
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && $("#emojiPicker").classList.contains("open")) {
+    closeEmojiPicker();
+  }
+});
+
 initialize();

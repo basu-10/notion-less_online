@@ -54,6 +54,10 @@
         </button>
 
         <div class="sidebar-user-menu" id="sidebarUserMenu" role="menu" aria-label="User options" aria-hidden="true">
+          <button class="user-menu-item" id="footerEmojiBtn" role="menuitem">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+            Emoji chart
+          </button>
           <button class="user-menu-item" id="footerSettingsBtn" role="menuitem">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             Settings
@@ -126,6 +130,30 @@
     <div class="hud-row"><kbd>Alt</kbd><kbd>PageDown</kbd><span>Next page</span></div>
     <div class="hud-row"><kbd>Ctrl</kbd><kbd>S</kbd><span>Save</span></div>
     <div class="hud-row"><kbd>/</kbd><span>Block menu</span></div>
+  </div>
+
+  <div id="emojiPicker" class="emoji-picker" role="dialog" aria-label="Emoji picker" aria-hidden="true">
+    <div class="emoji-header">
+      <input type="text" id="emojiSearch" placeholder="Search emojis..." aria-label="Search emojis">
+      <button class="emoji-close" id="emojiClose" aria-label="Close emoji picker">✕</button>
+    </div>
+    <div class="emoji-tabs" role="tablist">
+      <button class="emoji-tab active" data-tab="recent" role="tab" aria-selected="true">Recent</button>
+      <button class="emoji-tab" data-tab="pinned" role="tab" aria-selected="false">Pinned</button>
+      <button class="emoji-tab" data-tab="smileys" role="tab" aria-selected="false">😀</button>
+      <button class="emoji-tab" data-tab="people" role="tab" aria-selected="false">👋</button>
+      <button class="emoji-tab" data-tab="animals" role="tab" aria-selected="false">🐱</button>
+      <button class="emoji-tab" data-tab="food" role="tab" aria-selected="false">🍔</button>
+      <button class="emoji-tab" data-tab="travel" role="tab" aria-selected="false">✈️</button>
+      <button class="emoji-tab" data-tab="activities" role="tab" aria-selected="false">⚽</button>
+      <button class="emoji-tab" data-tab="objects" role="tab" aria-selected="false">💡</button>
+      <button class="emoji-tab" data-tab="symbols" role="tab" aria-selected="false">❤️</button>
+      <button class="emoji-tab" data-tab="flags" role="tab" aria-selected="false">🏁</button>
+    </div>
+    <div class="emoji-grid" id="emojiGrid" role="tabpanel"></div>
+    <div class="emoji-footer">
+      <span class="emoji-hint">Click to copy</span>
+    </div>
   </div>
 
   <aside id="settingsPanel" class="settings-panel" aria-label="Settings panel" aria-hidden="true">
