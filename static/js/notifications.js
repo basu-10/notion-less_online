@@ -1,6 +1,7 @@
 const DB_NAME = "notionless";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = "notifications";
+const STATE_STORE = "state";
 
 let db = null;
 
@@ -15,7 +16,32 @@ async function openDB() {
       if (!database.objectStoreNames.contains(STORE_NAME)) {
         database.createObjectStore(STORE_NAME, { keyPath: "id", autoIncrement: true });
       }
+      if (!database.objectStoreNames.contains(STATE_STORE)) {
+        database.createObjectStore(STATE_STORE, { keyPath: "key" });
+      }
     };
+  });
+}
+
+async function saveState(key, value) {
+  const database = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(STATE_STORE, "readwrite");
+    const store = tx.objectStore(STATE_STORE);
+    const request = store.put({ key, value });
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function getState(key) {
+  const database = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(STATE_STORE, "readonly");
+    const store = tx.objectStore(STATE_STORE);
+    const request = store.get(key);
+    request.onsuccess = () => resolve(request.result?.value);
+    request.onerror = () => reject(request.error);
   });
 }
 
@@ -73,4 +99,4 @@ async function trimNotifications(keep = 100) {
   });
 }
 
-window.notifications = { addNotification, getNotifications, clearNotifications, trimNotifications };
+window.notifications = { addNotification, getNotifications, clearNotifications, trimNotifications, saveState, getState };

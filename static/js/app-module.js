@@ -625,6 +625,7 @@ async function openPage(id) {
   const page = state.pages.get(id);
   if (!page) { state.isOpeningPage = false; return; }
   state.currentPageId = id;
+  try { await window.notifications.saveState("lastPageId", id); } catch {}
   $("#pageTitle").value = page.title || "Untitled";
   await mountEditor(page.blocks);
   state.expanded.add(page.id);
@@ -1151,7 +1152,10 @@ async function initialize() {
   state.expanded.add(ROOT);
   applyTheme(getTheme());
   initRootDropZone();
-  const first = state.pages.get("welcome") || childrenOf(ROOT)[0];
+  let lastPageId = null;
+  try { lastPageId = await window.notifications.getState("lastPageId"); } catch {}
+  const lastPage = lastPageId && state.pages.has(lastPageId) ? state.pages.get(lastPageId) : null;
+  const first = lastPage || state.pages.get("welcome") || childrenOf(ROOT)[0];
   if (first) await openPage(first.id);
   setSaveState("Ready");
 }
@@ -1410,14 +1414,14 @@ try {
   let hideTimer = null;
 
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Alt") {
+    if (e.key === "Alt" || e.key === "Control") {
       if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
       hud.classList.add("visible");
     }
   });
 
   document.addEventListener("keyup", (e) => {
-    if (e.key === "Alt") {
+    if (e.key === "Alt" || e.key === "Control") {
       hud.classList.remove("visible");
       hideTimer = setTimeout(() => { hud.classList.remove("visible"); }, 800);
     }
