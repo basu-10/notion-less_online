@@ -1165,11 +1165,11 @@ $("#collapseAll").addEventListener("click", () => {
   const collapsed = state.expanded.size === 1 && state.expanded.has(ROOT);
   if (collapsed) {
     state.expanded = new Set(allIds);
-    $("#collapseAll").textContent = "−";
+    $("#collapseAll").textContent = "▾";
     $("#collapseAll").title = "Collapse all";
   } else {
     state.expanded = new Set([ROOT]);
-    $("#collapseAll").textContent = "+";
+    $("#collapseAll").textContent = "▸";
     $("#collapseAll").title = "Show all";
   }
   renderTree();
