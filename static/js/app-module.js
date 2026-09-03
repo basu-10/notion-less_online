@@ -29,7 +29,8 @@ const state = {
   isOpeningPage: false,
   selected: new Set(),
   saveInProgress: false,
-  manualSaveTimer: null
+  manualSaveTimer: null,
+  sortOrder: (() => { try { return localStorage.getItem("notion-sort-order") || "modified"; } catch { return "modified"; } })()
 };
 
 let editorWired = false;
@@ -232,7 +233,12 @@ async function importProfile(file) {
 function childrenOf(parentId) {
   return [...state.pages.values()]
     .filter(p => p.parentId === parentId)
-    .sort((a,b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    .sort((a,b) => {
+      if (state.sortOrder === "alpha") {
+        return (a.title || "Untitled").localeCompare(b.title || "Untitled");
+      }
+      return (b.updatedAt || 0) - (a.updatedAt || 0);
+    });
 }
 
 function renderTree() {
@@ -1163,6 +1169,27 @@ $("#collapseAll").addEventListener("click", () => {
   }
   renderTree();
 });
+
+function updateSortBtn() {
+  const btn = $("#sortOrderBtn");
+  if (!btn) return;
+  if (state.sortOrder === "alpha") {
+    btn.textContent = "A↓";
+    btn.title = "Sorted alphabetically (click for modified)";
+  } else {
+    btn.textContent = "⇅";
+    btn.title = "Sorted by modified (click for alphabetical)";
+  }
+}
+
+$("#sortOrderBtn").addEventListener("click", () => {
+  state.sortOrder = state.sortOrder === "modified" ? "alpha" : "modified";
+  try { localStorage.setItem("notion-sort-order", state.sortOrder); } catch {}
+  updateSortBtn();
+  renderTree();
+});
+
+updateSortBtn();
 
 const sidebarMenuBtn = $("#sidebarMenuBtn");
 const sidebarUserMenu = $("#sidebarUserMenu");
