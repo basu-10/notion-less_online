@@ -56,7 +56,7 @@ def update_page(page_id):
     conn = get_user_db(current_user.username)
     conn.execute(
         'UPDATE pages SET title = ?, content = ?, parent_id = ?, updated_at = ? WHERE id = ?',
-        (data.get('title', ''), data.get('content', ''), data.get('parent_id'), now, page_id)
+        (data.get('title', ''), data.get('content', ''), data.get('parent_id', 'root'), now, page_id)
     )
     conn.commit()
     row = conn.execute('SELECT * FROM pages WHERE id = ?', (page_id,)).fetchone()

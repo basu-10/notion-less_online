@@ -47,6 +47,7 @@
         {% endif %}
       {% endwith %}
       <form method="POST" aria-label="Registration form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="text" name="username" placeholder="Username" required autocomplete="username" aria-label="Username" aria-required="true">
         <input type="password" name="password" placeholder="Password (6+ chars)" required autocomplete="new-password" aria-label="Password" aria-required="true">
         <button type="submit" aria-label="Create account">Create account</button>

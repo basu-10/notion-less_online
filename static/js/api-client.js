@@ -7,9 +7,14 @@ class ApiClient {
     const opts = {
       method,
       credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' }
+      headers: {}
     };
-    if (body) opts.body = JSON.stringify(body);
+    if (body && typeof body === 'object' && !(body instanceof FormData)) {
+      opts.headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify(body);
+    } else if (body) {
+      opts.body = body;
+    }
     const res = await fetch(`${this.base}${path}`, opts);
     if (res.status === 401) {
       window.location.href = '/auth/login';

@@ -549,7 +549,7 @@ function closeSelectionBar() {
   if (bar) bar.style.display = "none";
 }
 
-function movePage(pageId, newParentId) {
+async function movePage(pageId, newParentId) {
   const page = state.pages.get(pageId);
   if (!page) return;
   if (isDescendant(pageId, newParentId)) return;
@@ -557,7 +557,12 @@ function movePage(pageId, newParentId) {
   page.updatedAt = Date.now();
   state.pages.set(pageId, page);
   state.expanded.add(newParentId);
-  window.api.updatePage(pageId, { parent_id: newParentId }).catch(console.error);
+  try {
+    await window.api.updatePage(pageId, { parent_id: newParentId });
+  } catch (err) {
+    console.error("Failed to move page:", err);
+    setSaveState("Move failed");
+  }
   renderTree();
   renderBreadcrumbs();
 }

@@ -1,5 +1,6 @@
 import re
-from flask import Blueprint, request, render_template, redirect, url_for, flash, jsonify
+import secrets
+from flask import Blueprint, request, render_template, redirect, url_for, flash, jsonify, session
 from flask_login import login_user, logout_user, login_required, current_user
 from models.user import User
 
@@ -8,12 +9,24 @@ PASSWORD_MIN_LENGTH = 8
 
 auth_bp = Blueprint('auth', __name__)
 
+def generate_csrf_token():
+    if 'csrf_token' not in session:
+        session['csrf_token'] = secrets.token_hex(32)
+    return session['csrf_token']
+
+def validate_csrf_token():
+    token = session.pop('csrf_token', None)
+    return token and request.form.get('csrf_token') == token
+
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated:
         return redirect(url_for('workspace'))
     if request.method == 'GET':
-        return render_template('auth/register.html')
+        return render_template('auth/register.html', csrf_token=generate_csrf_token())
+    if not validate_csrf_token():
+        flash('Invalid request token')
+        return redirect(url_for('auth.register'))
     username = request.form.get('username', '').strip()
     password = request.form.get('password', '')
     if not username or not password:
@@ -37,7 +50,10 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for('workspace'))
     if request.method == 'GET':
-        return render_template('auth/login.html')
+        return render_template('auth/login.html', csrf_token=generate_csrf_token())
+    if not validate_csrf_token():
+        flash('Invalid request token')
+        return redirect(url_for('auth.login'))
     username = request.form.get('username', '').strip()
     password = request.form.get('password', '')
     user = User.authenticate(username, password)
