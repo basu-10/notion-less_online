@@ -1058,6 +1058,7 @@ html[data-theme="dark"] .bn-editor [data-content-type=codeBlock] {
 .toc-bar:hover { background: var(--accent-deep); opacity: 1; width: 10px; }
 
 .auto-toc:hover .toc-list,
+.auto-toc.toc-hovered .toc-list,
 .auto-toc .toc-list:hover,
 .auto-toc:focus-within .toc-list {
   opacity: 1;

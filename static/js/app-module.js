@@ -1880,6 +1880,9 @@ function renderAutoToc() {
     bar.className = "toc-bar is-h" + level;
     bar.title = (currentBlockText(h) || "Heading").trim();
     bar.dataset.index = i;
+    bar.addEventListener("click", () => {
+      scrollToHeading(i, headings);
+    });
     container.appendChild(bar);
   });
 
@@ -1952,6 +1955,26 @@ function initAutoToc() {
     window._tocTimer = setTimeout(() => renderAutoToc(), 120);
   });
   observer.observe(document.getElementById("editor") || document.body, { childList: true, subtree: true });
+
+  const toc = document.getElementById("autoToc");
+  if (!toc) return;
+  let hideTimer = null;
+  const HIDE_DELAY = 350;
+
+  function showToc() {
+    clearTimeout(hideTimer);
+    hideTimer = null;
+    toc.classList.add("toc-hovered");
+  }
+  function hideToc() {
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => {
+      toc.classList.remove("toc-hovered");
+    }, HIDE_DELAY);
+  }
+
+  toc.addEventListener("mouseenter", showToc);
+  toc.addEventListener("mouseleave", hideToc);
 }
 
 (function initShortcutHud() {
