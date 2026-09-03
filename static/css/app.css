@@ -36,6 +36,10 @@
   box-shadow: 1px 0 12px rgba(0,0,0,0.03);
 }
 
+html[data-theme="dark"] .sidebar {
+  background: linear-gradient(180deg, var(--sidebar) 0%, rgba(34,34,30,0.6) 100%);
+}
+
 /* Brand bar */
 .brandbar {
   height: 56px;
@@ -641,9 +645,13 @@
 .notification-footer .clear-btn { font-size: 14px; padding: 3px 7px; }
 
 /* ---------- Dark overrides ---------- */
+html[data-theme="dark"] .brandbar { background: rgba(24,24,20,0.75); }
+html[data-theme="dark"] .sidebar-footer { background: rgba(24,24,20,0.5); }
+html[data-theme="dark"] .topbar { background: rgba(24,24,20,0.7); box-shadow: 0 1px 8px rgba(0,0,0,0.35); }
+html[data-theme="dark"] .main { background: linear-gradient(180deg, var(--bg) 0%, rgba(18,18,17,0.5) 100%); }
+html[data-theme="dark"] .document { background: linear-gradient(180deg, #1e1e1c 0%, #181817 100%); }
 html[data-theme="dark"] .brand-mark { background: linear-gradient(135deg, #26262c, #33333a); border-color: #333; }
 html[data-theme="dark"] .page-title::placeholder { color: #4a4a42; }
-html[data-theme="dark"] .document { background: linear-gradient(180deg, #1e1e1c 0%, #181817 100%); }
 
 /* ---------- Drop zone ---------- */
 .drop-root-zone { display: none; height: 48px; margin: 6px 0; border-radius: 10px; border: 2px dashed var(--border); align-items: center; justify-content: center; }
