@@ -1,6 +1,7 @@
 import uuid
 import time
 import json
+import random
 from flask import Blueprint, request, jsonify
 from flask_login import current_user, login_required
 from models.user import User
@@ -69,6 +70,18 @@ def get_public_page(username, page_id):
     page['is_public'] = bool(page['is_public'])
     page['author'] = username
     page['author_profile'] = User.get_profile(username)
+    # Random cards of other public articles by same author (excluding current)
+    other_rows = conn.execute(
+        'SELECT id, title, parent_id, content, is_public, created_at, updated_at FROM pages WHERE id != ? AND is_public = 1',
+        (page_id,)
+    ).fetchall()
+    other_articles = []
+    for r in other_rows:
+        d = dict(r)
+        d['is_public'] = bool(d['is_public'])
+        other_articles.append(d)
+    random.shuffle(other_articles)
+    page['other_articles'] = other_articles[:3]
     # Include nested subpages to preserve nesting in shared pages
     page['subpages'] = []
     for sub in sub_rows:

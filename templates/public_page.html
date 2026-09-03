@@ -284,6 +284,11 @@
     .subpage-item a:hover { background: var(--hover); color: var(--text); }
     .subpage-icon { font-size: 14px; opacity: 0.6; }
     .subpage-empty { color: var(--muted); font-size: 0.85rem; }
+    .article-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; padding: 0 32px 28px; }
+    .article-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; text-decoration: none; color: inherit; transition: all 0.2s ease; }
+    .article-card:hover { border-color: var(--accent); box-shadow: 0 6px 20px rgba(216,91,69,0.1); transform: translateY(-2px); }
+    .article-card h4 { font-size: 0.95rem; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 8px; line-height: 1.2; }
+    .article-card .meta { font-size: 0.75rem; color: var(--muted); }
     .nested-indent { padding-left: 18px; }
     .login-prompt {
       text-align: center;
@@ -410,11 +415,24 @@
             </header>
 
             <div style="padding: 32px 32px 0;">
+              <p style="color: var(--muted); font-size: 0.85rem; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; margin-bottom: 6px;">From the blog of <a href="/wall/${username}" style="color: var(--accent); text-decoration: none;">${escapeHtml(username)}</a></p>
               <h1 class="page-title" style="font-size: 2.4rem; letter-spacing: -0.035em; line-height: 1.1; margin-bottom: 8px;">${escapeHtml(page.title || 'Untitled')}</h1>
               <div class="page-author-info" style="margin-bottom: 24px; color: var(--muted); font-size: 0.85rem;">
                 Updated ${date ? date : 'recently'} · ${page.subpages ? page.subpages.length : 0} subpage${page.subpages && page.subpages.length === 1 ? '' : 's'}
               </div>
             </div>
+
+            ${(page.other_articles && page.other_articles.length > 0) ? `
+              <div class="article-cards" style="padding: 0 32px 24px;">
+                <h3 style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 700; margin-bottom: 14px;">Other articles from this blog</h3>
+                ${page.other_articles.map(art => `
+                  <a href="/p/${username}/${art.id}" class="article-card">
+                    <h4>${escapeHtml(art.title || 'Untitled')}</h4>
+                    <span class="meta">Updated ${art.updated_at ? new Date(art.updated_at * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'recently'}</span>
+                  </a>
+                `).join('')}
+              </div>
+            ` : ''}
 
             <div class="page-content" style="padding-top: 8px;">${content}</div>
             ${subpagesHtml}
