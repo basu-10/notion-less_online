@@ -1267,6 +1267,14 @@ $("#footerExportBtn").addEventListener("click", () => {
   sidebarMenuBtn.setAttribute("aria-expanded", "false");
   exportProfile();
 });
+$("#myWallBtn").addEventListener("click", () => {
+  sidebarUserMenu.classList.remove("open");
+  sidebarMenuBtn.setAttribute("aria-expanded", "false");
+  const username = document.body.dataset.username || "";
+  if (username) {
+    window.location.href = "/wall/" + encodeURIComponent(username);
+  }
+});
 $("#pageTitle").addEventListener("input", markDirty);
 $("#pageTitle").addEventListener("blur", saveCurrent);
 $("#pageTitle").addEventListener("keydown", (e) => {

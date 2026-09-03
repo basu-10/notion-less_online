@@ -62,7 +62,7 @@ def create_app():
     def workspace():
         if not current_user.is_authenticated:
             return redirect(url_for('auth.login'))
-        return render_template('workspace.html')
+        return render_template('workspace.html', username=current_user.username)
 
     return app
 
