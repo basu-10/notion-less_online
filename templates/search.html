@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#d85b45">
+  <title>Search Users — NotionLess Cloud</title>
+  <link rel="preconnect" href="https://esm.sh">
+  <link rel="stylesheet" href="/static/css/theme.css">
+  <link rel="stylesheet" href="/static/css/auth.css">
+  <script>
+    (function() {
+      var t;
+      try { t = localStorage.getItem("notion-theme"); } catch(e) {}
+      var theme = (t === "dark" || t === "light") ? t : (
+        window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+      );
+      if (theme === "dark") { document.documentElement.setAttribute("data-theme", "dark"); }
+    })();
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #fafaf8;
+      --surface: #ffffff;
+      --border: #e8e5df;
+      --text: #1a1a18;
+      --muted: #8a8780;
+      --hover: #f0efed;
+      --accent: #d85b45;
+      --accent-light: #e87a6a;
+    }
+    [data-theme="dark"] {
+      --bg: #18181b;
+      --surface: #1c1c21;
+      --border: #2a2a2f;
+      --text: #e8e8ef;
+      --muted: #a7a7a3;
+      --hover: #2a2a30;
+    }
+    body {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+    .search-container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 80px 24px 48px;
+    }
+    .search-header {
+      margin-bottom: 32px;
+    }
+    .search-header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+    .search-header p {
+      color: var(--muted);
+    }
+    .search-nav {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .search-nav a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.2s;
+    }
+    .search-nav a:hover {
+      color: var(--accent);
+    }
+    .search-input-wrap {
+      position: relative;
+      margin-bottom: 32px;
+    }
+    .search-input {
+      width: 100%;
+      padding: 14px 16px 14px 48px;
+      font-size: 1rem;
+      font-family: inherit;
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface);
+      color: var(--text);
+      transition: border-color 0.2s;
+    }
+    .search-input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .search-input::placeholder {
+      color: var(--muted);
+    }
+    .search-icon {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 1.1rem;
+    }
+    .search-results {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .search-result-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      text-decoration: none;
+      color: var(--text);
+      transition: all 0.2s ease;
+    }
+    .search-result-card:hover {
+      border-color: var(--accent);
+      box-shadow: 0 4px 16px rgba(216, 91, 69, 0.1);
+      transform: translateY(-2px);
+    }
+    .result-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent-light));
+      display: grid;
+      place-items: center;
+      font-size: 20px;
+      font-weight: 700;
+      color: white;
+      flex-shrink: 0;
+    }
+    .result-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .result-info h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+    .result-info .username {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .result-info .bio {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .result-arrow {
+      color: var(--muted);
+      font-size: 1.2rem;
+    }
+    .search-empty {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--muted);
+    }
+    .search-empty-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+    .search-hint {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--muted);
+    }
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 48px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="search-container">
+    <nav class="search-nav">
+      <a href="/">
+        <span>←</span> Home
+      </a>
+    </nav>
+
+    <header class="search-header">
+      <h1>Find Users</h1>
+      <p>Search for people and explore their public pages</p>
+    </header>
+
+    <div class="search-input-wrap">
+      <span class="search-icon">🔍</span>
+      <input
+        type="text"
+        class="search-input"
+        id="searchInput"
+        placeholder="Search by username or display name..."
+        autocomplete="off"
+      >
+    </div>
+
+    <div id="searchResults">
+      <div class="search-hint">Start typing to search for users</div>
+    </div>
+  </div>
+
+  <script>
+    const searchInput = document.getElementById('searchInput');
+    const resultsContainer = document.getElementById('searchResults');
+    let searchTimeout = null;
+
+    async function searchUsers(query) {
+      if (!query || query.length < 1) {
+        resultsContainer.innerHTML = '<div class="search-hint">Start typing to search for users</div>';
+        return;
+      }
+
+      resultsContainer.innerHTML = '<div class="loading">Searching...</div>';
+
+      try {
+        const res = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`);
+        const users = await res.json();
+
+        if (!users || users.length === 0) {
+          resultsContainer.innerHTML = `
+            <div class="search-empty">
+              <div class="search-empty-icon">🔍</div>
+              <p>No users found for "${escapeHtml(query)}"</p>
+            </div>
+          `;
+          return;
+        }
+
+        resultsContainer.innerHTML = `
+          <div class="search-results">
+            ${users.map(user => {
+              const displayName = user.display_name || user.username;
+              const avatar = displayName.charAt(0).toUpperCase();
+              return `
+                <a href="/wall/${user.username}" class="search-result-card">
+                  <div class="result-avatar">${avatar}</div>
+                  <div class="result-info">
+                    <h3>${escapeHtml(displayName)}</h3>
+                    <span class="username">@${escapeHtml(user.username)}</span>
+                    ${user.bio ? `<p class="bio">${escapeHtml(user.bio)}</p>` : ''}
+                  </div>
+                  <span class="result-arrow">→</span>
+                </a>
+              `;
+            }).join('')}
+          </div>
+        `;
+      } catch (err) {
+        resultsContainer.innerHTML = `
+          <div class="search-empty">
+            <p>Search failed. Please try again.</p>
+          </div>
+        `;
+      }
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    searchInput.addEventListener('input', (e) => {
+      const query = e.target.value.trim();
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => searchUsers(query), 300);
+    });
+
+    searchInput.focus();
+  </script>
+</body>
+</html>

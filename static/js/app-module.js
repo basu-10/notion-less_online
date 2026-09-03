@@ -632,6 +632,7 @@ async function openPage(id) {
   state.expanded.add(page.id);
   renderTree();
   renderBreadcrumbs();
+  updatePublicToggleUI();
   $("#workspace").scrollTop = 0;
   setSaveState("Loaded");
   state.isOpeningPage = false;
@@ -1121,7 +1122,8 @@ async function initialize() {
         blocks: blocks,
         parentId: p.parent_id || ROOT,
         emoji: "",
-        updatedAt: p.updated_at || Date.now()
+        updatedAt: p.updated_at || Date.now(),
+        isPublic: Boolean(p.is_public)
       }];
     }));
   } catch (err) {
@@ -1159,6 +1161,47 @@ async function initialize() {
   const first = lastPage || state.pages.get("welcome") || childrenOf(ROOT)[0];
   if (first) await openPage(first.id);
   setSaveState("Ready");
+  initPublicToggle();
+}
+
+function initPublicToggle() {
+  const btn = document.getElementById('publicToggleBtn');
+  if (!btn) return;
+  btn.addEventListener('click', toggleCurrentPagePublic);
+}
+
+async function toggleCurrentPagePublic() {
+  const page = state.pages.get(state.currentPageId);
+  if (!page) return;
+  try {
+    const res = await fetch(`/api/pages/${state.currentPageId}/toggle-public`, { method: 'POST' });
+    if (!res.ok) throw new Error('Failed');
+    const data = await res.json();
+    page.isPublic = data.is_public;
+    updatePublicToggleUI();
+    setSaveState(data.is_public ? 'Made public' : 'Made private');
+  } catch (err) {
+    console.error('Toggle public failed:', err);
+    setSaveState('Failed to toggle public');
+  }
+}
+
+function updatePublicToggleUI() {
+  const page = state.pages.get(state.currentPageId);
+  const btn = document.getElementById('publicToggleBtn');
+  const icon = document.getElementById('publicIcon');
+  const label = document.getElementById('publicLabel');
+  if (!btn || !page) return;
+  btn.style.display = 'inline-flex';
+  if (page.isPublic) {
+    icon.textContent = '🌐';
+    label.textContent = 'Public';
+    btn.classList.add('public');
+  } else {
+    icon.textContent = '🔒';
+    label.textContent = 'Private';
+    btn.classList.remove('public');
+  }
 }
 
 $("#newPageBtn").addEventListener("click", () => createPage(ROOT));

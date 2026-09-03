@@ -26,13 +26,18 @@ The sidebar label shows the current status (Ready, Unsaved, Saved · HH:MM, etc.
 │   └── auth.py             # Password hashing
 ├── api/
 │   ├── pages.py            # Pages CRUD API
-│   └── user.py             # Profile export/import API
+│   ├── user.py             # Profile export/import API
+│   └── social.py           # Social features API
 ├── templates/
 │   ├── auth/login.html
 │   ├── auth/register.html
 │   ├── index.html
 │   ├── about.html
 │   ├── faq.html
+│   ├── wall.html           # Public user profile/wall
+│   ├── search.html         # User search page
+│   ├── public_page.html    # Public page viewer
+│   ├── 404.html            # Error page
 │   └── workspace.html      # Main app
 └── static/
     ├── css/
@@ -40,6 +45,32 @@ The sidebar label shows the current status (Ready, Unsaved, Saved · HH:MM, etc.
         ├── notifications.js  # IndexedDB notification store
         └── app-module.js    # Main app logic
 ```
+
+## Social Features
+
+### User Search
+- Visit `/search` to search for users by username or display name
+- Click a user to view their public wall
+
+### Public Profiles (Wall)
+- Each user has a public wall at `/wall/<username>`
+- Shows all pages the user has marked as public
+- Click a page to view it publicly at `/p/<username>/<page_id>`
+
+### Making Pages Public
+- In the workspace, click the 🔒/🌐 button next to the page title to toggle public/private
+- When a page is made public, all its subpages become public too (cascade)
+- Making a subpage public does NOT make its parent public
+- Public pages are visible to visitors without login
+
+### Copying Pages
+- Visitors can copy any public page to their own profile
+- The original author(s) are tracked in the page's author list
+- Copied pages are private by default (can be made public later)
+
+### Profile
+- Users have a display_name and bio stored in the main database
+- Profile can be updated via the API (future UI)
 
 ## Tech / dependencies
 

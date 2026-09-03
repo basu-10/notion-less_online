@@ -347,6 +347,36 @@ html[data-theme="dark"] .sidebar {
   box-shadow: 0 5px 18px rgba(216,91,69,0.35);
   transform: translateY(-1px);
 }
+#publicToggleBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  background: rgba(255,255,255,0.7);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  transition: all .15s ease;
+  cursor: pointer;
+  font-family: inherit;
+}
+#publicToggleBtn:hover {
+  background: var(--hover);
+  color: var(--text);
+  border-color: var(--border-subtle);
+}
+#publicToggleBtn.public {
+  background: linear-gradient(135deg, rgba(216,91,69,0.1) 0%, rgba(216,91,69,0.15) 100%);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+#publicToggleBtn.public:hover {
+  background: linear-gradient(135deg, rgba(216,91,69,0.15) 0%, rgba(216,91,69,0.2) 100%);
+}
 
 /* Workspace / Document */
 .workspace {

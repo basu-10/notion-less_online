@@ -12,7 +12,7 @@ pages_bp = Blueprint('pages', __name__)
 @login_required
 def list_pages():
     conn = get_user_db(current_user.username)
-    rows = conn.execute('SELECT id, title, content, parent_id, created_at, updated_at FROM pages').fetchall()
+    rows = conn.execute('SELECT id, title, content, parent_id, is_public, created_at, updated_at FROM pages').fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
 

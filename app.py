@@ -10,7 +10,7 @@ def create_app():
 
     login_manager = LoginManager()
     login_manager.init_app(app)
-    login_manager.login_view = 'auth.login'  # type: ignore[assignment]
+    login_manager.login_view = 'auth.login'
 
     @login_manager.user_loader
     def load_user(username):
@@ -19,10 +19,12 @@ def create_app():
     from auth import auth_bp
     from api.pages import pages_bp
     from api.user import user_bp
+    from api.social import social_bp
 
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(pages_bp, url_prefix='/api')
     app.register_blueprint(user_bp, url_prefix='/api')
+    app.register_blueprint(social_bp, url_prefix='/api')
 
     @app.route('/')
     def index():
@@ -35,6 +37,22 @@ def create_app():
     @app.route('/faq')
     def faq():
         return render_template('faq.html')
+
+    @app.route('/search')
+    def search():
+        return render_template('search.html')
+
+    @app.route('/wall/<username>')
+    def wall(username):
+        if not User.exists(username):
+            return render_template('404.html', message='User not found'), 404
+        return render_template('wall.html', username=username)
+
+    @app.route('/p/<username>/<page_id>')
+    def public_page(username, page_id):
+        if not User.exists(username):
+            return render_template('404.html', message='User not found'), 404
+        return render_template('public_page.html', username=username, page_id=page_id)
 
     @app.route('/workspace_direct')
     def workspace_direct():

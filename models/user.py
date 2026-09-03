@@ -1,8 +1,9 @@
 import os
 import re
 import sqlite3
+import time
 from config import DATA_DIR
-from services.db import get_user_db, init_user_db
+from services.db import get_user_db, init_user_db, get_main_db, init_main_db
 from services.auth import hash_password, check_password
 
 USERNAME_PATTERN = re.compile(r'^[a-zA-Z0-9_-]{3,32}$')
@@ -37,6 +38,63 @@ class User:
         return users
 
     @staticmethod
+    def search_users(query, limit=20):
+        init_main_db()
+        conn = get_main_db()
+        pattern = f'%{query}%'
+        rows = conn.execute(
+            '''SELECT username, display_name, bio FROM user_profiles
+               WHERE username LIKE ? OR display_name LIKE ?
+               LIMIT ?''',
+            (pattern, pattern, limit)
+        ).fetchall()
+        conn.close()
+        if not rows:
+            all_users = User.get_all_users()
+            matching = [u for u in all_users if query.lower() in u.lower()][:limit]
+            return [{'username': u, 'display_name': u, 'bio': ''} for u in matching]
+        return [dict(r) for r in rows]
+
+    @staticmethod
+    def get_profile(username):
+        init_main_db()
+        conn = get_main_db()
+        row = conn.execute(
+            'SELECT username, display_name, bio, created_at FROM user_profiles WHERE username = ?',
+            (username,)
+        ).fetchone()
+        conn.close()
+        if not row:
+            return {'username': username, 'display_name': username, 'bio': ''}
+        return dict(row)
+
+    @staticmethod
+    def update_profile(username, display_name=None, bio=None):
+        init_main_db()
+        conn = get_main_db()
+        existing = conn.execute('SELECT username FROM user_profiles WHERE username = ?', (username,)).fetchone()
+        now = time.time()
+        if existing:
+            if display_name is not None or bio is not None:
+                sets = []
+                params = []
+                if display_name is not None:
+                    sets.append('display_name = ?')
+                    params.append(display_name)
+                if bio is not None:
+                    sets.append('bio = ?')
+                    params.append(bio)
+                params.append(username)
+                conn.execute(f"UPDATE user_profiles SET {', '.join(sets)} WHERE username = ?", params)
+        else:
+            conn.execute(
+                'INSERT INTO user_profiles (username, display_name, bio, created_at) VALUES (?, ?, ?, ?)',
+                (username, display_name or username, bio or '', now)
+            )
+        conn.commit()
+        conn.close()
+
+    @staticmethod
     def create(username, password):
         if not USERNAME_PATTERN.match(username):
             return None
@@ -53,6 +111,14 @@ class User:
         )
         conn.commit()
         init_user_db(conn)
+        init_main_db()
+        main_conn = get_main_db()
+        main_conn.execute(
+            'INSERT OR IGNORE INTO user_profiles (username, display_name, bio, created_at) VALUES (?, ?, ?, ?)',
+            (username, username, '', time.time())
+        )
+        main_conn.commit()
+        main_conn.close()
         conn.close()
         return User(username)
 
