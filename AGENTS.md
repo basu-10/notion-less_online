@@ -61,7 +61,9 @@ Open <http://localhost:5000>
 ## Keyboard shortcuts
 
 - `Alt+PageUp` / `Alt+PageDown` — scroll through the "Your Pages" sidebar list, opening each page in turn (wraps around). Mirrors the ZIM wiki editor behavior.
-- `Alt+N` — create a new subpage under the current page
+- `Alt+Insert` — create a new subpage under the current page
+- `Alt++` — expand all pages in the sidebar
+- `Alt+-` — collapse all pages in the sidebar
 - `Ctrl+S` — save current page
 - `Ctrl+Z` / `Ctrl+Shift+Z` — undo / redo
 - `/` in editor — open block command menu

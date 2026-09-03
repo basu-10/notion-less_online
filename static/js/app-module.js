@@ -1300,9 +1300,21 @@ $("#notificationTrigger").addEventListener("click", toggleNotificationPanel);
 $("#clearNotifications").addEventListener("click", clearAllNotifications);
 
 document.addEventListener("keydown", (e) => {
-  if (e.altKey && e.key === "n") {
+  if (e.altKey && e.key === "Insert") {
     e.preventDefault();
     createPage(state.currentPageId);
+    return;
+  }
+  if (e.altKey && (e.key === "+" || e.key === "Add")) {
+    e.preventDefault();
+    state.expanded = new Set([...state.pages.keys()]);
+    renderTree();
+    return;
+  }
+  if (e.altKey && (e.key === "-" || e.key === "Subtract")) {
+    e.preventDefault();
+    state.expanded = new Set([ROOT]);
+    renderTree();
     return;
   }
   if (!e.altKey) return;
