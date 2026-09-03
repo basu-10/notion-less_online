@@ -643,7 +643,7 @@
 
 /* ---------- Dark theme component overrides ---------- */
 html[data-theme="dark"] .brand-mark { background: #26262c; border-color: #333; }
-html[data-theme="dark"] .page-title::placeholder { color: #555; }
+html[data-theme="dark"] .page-title::placeholder { color: #4a4a4a; }
 
 /* ---------- Save button visibility ---------- */
 #saveBtn { display: none; }
