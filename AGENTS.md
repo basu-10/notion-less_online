@@ -28,6 +28,7 @@ Project: NotionLess Cloud — Flask-based BlockNote Workspace with multi-account
 │   ├── auth/register.html
 │   ├── index.html
 │   ├── about.html
+│   ├── faq.html
 │   └── workspace.html      # Main app
 └── static/
     ├── css/
@@ -51,14 +52,69 @@ python app.py
 
 Open <http://localhost:5000>
 
+## Keyboard shortcuts
+
+- `Alt+PageUp` / `Alt+PageDown` — scroll through the "Your Pages" sidebar list, opening each page in turn (wraps around). Mirrors the ZIM wiki editor behavior.
+- `Ctrl+S` — save current page
+- `Ctrl+Z` / `Ctrl+Shift+Z` — undo / redo
+- `/` in editor — open block command menu
+- `Tab` / `Shift+Tab` — nest / unnest blocks
+
 ## Change rules
 
 - Edit `templates/workspace.html` for workspace UI
 - Keep `static/js/app-module.js` in sync with workspace
-- If you add pages, sync `templates/index.html` / `templates/about.html`
+- If you add pages, sync `templates/index.html` / `templates/about.html` / `templates/faq.html`
 - Update this file if behavior changes
 
 ## Key links
 
 - BlockNote docs: https://www.blocknotejs.org/
 - Flask-Login: https://flask-login.readthedocs.io/
+
+## Deployment — PythonAnywhere
+
+### 1. Upload files
+Upload via PythonAnywhere Files tab or git clone into `~/notion-less_online/`.
+
+### 2. Set up virtual environment
+```bash
+mkvirtualenv --python=python3.11 venv
+pip install -r requirements.txt
+```
+
+### 3. Create userdata directory
+```bash
+mkdir -p ~/notion-less_online/userdata
+```
+
+### 4. Set environment variable
+In PythonAnywhere Web tab → Variables:
+```
+SECRET_KEY=<generate-a-secure-random-string>
+```
+
+### 5. Configure WSGI file
+In PythonAnywhere Web tab → WSGI configuration:
+```python
+import sys
+
+project_home = '/home/<username>/notion-less_online'
+if project_home not in sys.path:
+    sys.path = [project_home] + sys.path
+
+from app import create_app
+application = create_app()
+```
+
+### 6. Static files (optional)
+In PythonAnywhere Web tab → Static files:
+- URL: `/static/` → Directory: `/home/<username>/notion-less_online/static`
+
+### 7. Reload
+Click Reload in the PythonAnywhere Web tab.
+
+**Notes:**
+- PythonAnywhere free tier doesn't support background processes or WebSockets
+- User SQLite databases are stored in `userdata/<username>.db`
+- Python version: 3.11 recommended

@@ -1245,24 +1245,28 @@ $("#importFile").addEventListener("change", (e) => { if (e.target.files && e.tar
 $("#notificationTrigger").addEventListener("click", toggleNotificationPanel);
 $("#clearNotifications").addEventListener("click", clearAllNotifications);
 
-function allPagesOrdered() {
-  return [...state.pages.values()].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-}
-
 document.addEventListener("keydown", (e) => {
   if (!e.altKey) return;
   if (e.key !== "PageUp" && e.key !== "PageDown") return;
   e.preventDefault();
-  const ordered = allPagesOrdered();
-  if (ordered.length < 2) return;
-  const currentIdx = ordered.findIndex(p => p.id === state.currentPageId);
-  let nextIdx;
+
+  const rows = [...document.querySelectorAll("#pageTree .tree-row")];
+  if (rows.length < 2) return;
+
+  const currentRow = rows.find(r => r.dataset.id === state.currentPageId);
+  let currentIdx = currentRow ? rows.indexOf(currentRow) : -1;
+
+  let nextRow;
   if (e.key === "PageUp") {
-    nextIdx = currentIdx <= 0 ? ordered.length - 1 : currentIdx - 1;
+    nextRow = currentIdx <= 0 ? rows[rows.length - 1] : rows[currentIdx - 1];
   } else {
-    nextIdx = currentIdx >= ordered.length - 1 ? 0 : currentIdx + 1;
+    nextRow = currentIdx >= rows.length - 1 ? rows[0] : rows[currentIdx + 1];
   }
-  openPage(ordered[nextIdx].id);
+
+  if (nextRow) {
+    nextRow.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    openPage(nextRow.dataset.id);
+  }
 });
 
 function toggleSidebar(force) {
