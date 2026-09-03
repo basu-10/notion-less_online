@@ -89,9 +89,13 @@ python app.py
 
 Open <http://localhost:5000>
 
+### Workspace
+- Emoji picker with search, recent, and pinned tabs available in the editor
+
 ## Keyboard shortcuts
 
 - `Alt+PageUp` / `Alt+PageDown` — scroll through the "Your Pages" sidebar list, opening each page in turn (wraps around). Mirrors the ZIM wiki editor behavior.
+- Shortcut HUD displays available shortcuts when holding `Alt` or `Ctrl`
 - `Alt+Insert` — create a new subpage under the current page
 - `Alt++` — expand all pages in the sidebar
 - `Alt+-` — collapse all pages in the sidebar

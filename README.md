@@ -11,6 +11,10 @@ NotionLess Cloud is a Flask-based note-taking app with a Notion-like block edito
 - **Multi-account** — Register, login, and logout. Each user has their own SQLite database.
 - **Cloud storage** — Data persists on the server; access from any device.
 - **Themes** — Light, dark, and auto (follows system) modes.
+- **Notifications** — Status messages persisted to IndexedDB with scrollable history.
+- **Keyboard shortcuts** — Alt+PageUp/PageDown navigation, Alt+Insert subpages, expand/collapse, undo/redo. Shortcut HUD displays available shortcuts when holding `Alt` or `Ctrl`.
+- **Social features** — User search, public profiles (`/wall/<username>`), public pages (`/p/<username>/<page_id>`), page copying.
+- **Emoji picker** — Searchable emoji picker with recent and pinned tabs.
 - **Export / Import** — Backup your entire profile as JSON.
 
 ## Tech stack
@@ -43,16 +47,24 @@ Open <http://localhost:5000> in your browser.
 │   └── auth.py             # Password hashing
 ├── api/
 │   ├── pages.py            # Pages CRUD API
-│   └── user.py             # Profile export/import API
+│   ├── user.py             # Profile export/import API
+│   └── social.py           # Social features API
 ├── templates/
 │   ├── auth/login.html
 │   ├── auth/register.html
 │   ├── index.html
 │   ├── about.html
+│   ├── faq.html
+│   ├── wall.html           # Public user profile/wall
+│   ├── search.html         # User search page
+│   ├── public_page.html    # Public page viewer
+│   ├── 404.html            # Error page
 │   └── workspace.html      # Main app
 └── static/
     ├── css/                # Stylesheets
-    └── js/                 # Client-side app logic
+    └── js/
+        ├── notifications.js  # IndexedDB notification store
+        └── app-module.js    # Main app logic
 ```
 
 ## API endpoints
@@ -70,6 +82,9 @@ Open <http://localhost:5000> in your browser.
 | DELETE | `/api/pages/<id>` | Delete page |
 | GET | `/api/export` | Export profile |
 | POST | `/api/import` | Import profile |
+| GET | `/search` | User search |
+| GET | `/wall/<username>` | Public user wall |
+| GET | `/p/<username>/<page_id>` | Public page view |
 
 ## Contributing
 
