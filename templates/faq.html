@@ -152,6 +152,55 @@
       border: 1px solid var(--border);
       box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     }
+    .header-theme {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: var(--text);
+      transition: all 0.2s ease;
+    }
+    .header-theme:hover { background: var(--hover); }
+    .header-theme svg { width: 14px; height: 14px; }
+    .header-theme-label { font-size: 0.85rem; font-weight: 500; }
+    .header-theme-wrapper { position: relative; }
+    .header-theme-menu {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      margin-top: 4px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+      padding: 4px;
+      display: none;
+      min-width: 120px;
+      z-index: 200;
+    }
+    .header-theme-menu.open { display: block; }
+    .header-theme-menu .theme-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 8px 10px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: var(--text);
+      border-radius: 6px;
+      text-align: left;
+      transition: background .15s;
+    }
+    .header-theme-menu .theme-btn:hover { background: var(--hover); }
+    .header-theme-menu .theme-btn.active { background: var(--accent); color: white; }
     .btn-secondary:hover {
       background: var(--hover);
       transform: translateY(-1px);
