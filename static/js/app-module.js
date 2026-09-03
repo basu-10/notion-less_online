@@ -1084,6 +1084,30 @@ $("#collapseAll").addEventListener("click", () => {
   }
   renderTree();
 });
+
+const sidebarMenuBtn = $("#sidebarMenuBtn");
+const sidebarUserMenu = $("#sidebarUserMenu");
+sidebarMenuBtn.addEventListener("click", () => {
+  const isOpen = sidebarUserMenu.classList.contains("open");
+  sidebarUserMenu.classList.toggle("open");
+  sidebarMenuBtn.setAttribute("aria-expanded", !isOpen);
+});
+document.addEventListener("click", (e) => {
+  if (!sidebarMenuBtn.contains(e.target) && !sidebarUserMenu.contains(e.target)) {
+    sidebarUserMenu.classList.remove("open");
+    sidebarMenuBtn.setAttribute("aria-expanded", "false");
+  }
+});
+$("#footerSettingsBtn").addEventListener("click", () => {
+  sidebarUserMenu.classList.remove("open");
+  sidebarMenuBtn.setAttribute("aria-expanded", "false");
+  $("#settingsPanel").classList.add("open");
+});
+$("#footerExportBtn").addEventListener("click", () => {
+  sidebarUserMenu.classList.remove("open");
+  sidebarMenuBtn.setAttribute("aria-expanded", "false");
+  exportProfile();
+});
 $("#pageTitle").addEventListener("input", markDirty);
 $("#pageTitle").addEventListener("blur", saveCurrent);
 $("#pageTitle").addEventListener("keydown", (e) => {
@@ -1124,11 +1148,15 @@ window.addEventListener("beforeunload", () => {
 });
 
 document.querySelectorAll(".theme-btn").forEach(b => b.addEventListener("click", () => applyTheme(b.dataset.theme)));
-$("#settingsBtn").addEventListener("click", () => $("#settingsPanel").classList.add("open"));
 $("#closeSettings").addEventListener("click", () => $("#settingsPanel").classList.remove("open"));
 document.addEventListener("mousedown", (e) => {
   const panel = $("#settingsPanel");
-  if (panel.classList.contains("open") && !panel.contains(e.target) && !$("#settingsBtn").contains(e.target)) panel.classList.remove("open");
+  const sidebarMenu = $("#sidebarUserMenu");
+  if (panel.classList.contains("open") && !panel.contains(e.target)) panel.classList.remove("open");
+  if (sidebarMenu.classList.contains("open") && !sidebarMenu.contains(e.target) && !$("#sidebarMenuBtn").contains(e.target)) {
+    sidebarMenu.classList.remove("open");
+    $("#sidebarMenuBtn").setAttribute("aria-expanded", "false");
+  }
 });
 
 $("#exportProfile").addEventListener("click", exportProfile);

@@ -205,17 +205,122 @@
     .page-more:hover { background:#dcdcd6; }
 
     .sidebar-footer {
-      padding:9px 11px;
-      border-top:1px solid var(--border);
-      font-size:11px;
-      color:var(--muted);
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
+      margin-top: auto;
+      padding: 0;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
     }
-    #saveState { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .logout-link { color: var(--muted); text-decoration: none; }
-    .logout-link:hover { color: var(--accent); }
+    .sidebar-menu-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text);
+      font-size: 13px;
+      text-align: left;
+      transition: background .15s ease;
+    }
+    .sidebar-menu-btn:hover {
+      background: var(--hover);
+    }
+    .user-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .user-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .user-menu-arrow {
+      font-size: 10px;
+      color: var(--muted);
+      transition: transform .15s ease;
+    }
+    .sidebar-menu-btn[aria-expanded="true"] .user-menu-arrow {
+      transform: rotate(180deg);
+    }
+    .sidebar-user-menu {
+      display: none;
+      position: absolute;
+      bottom: 52px;
+      left: 8px;
+      right: 8px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      padding: 6px;
+      z-index: 200;
+      animation: menuFadeIn .12s ease;
+    }
+    .sidebar-user-menu.open {
+      display: block;
+    }
+    .user-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 9px 11px;
+      border-radius: 7px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text);
+      text-decoration: none;
+      transition: background .15s ease;
+    }
+    .user-menu-item:hover {
+      background: var(--hover);
+    }
+    .user-menu-item svg {
+      flex-shrink: 0;
+      color: var(--muted);
+    }
+    .user-menu-danger {
+      color: #b33f31;
+    }
+    .user-menu-danger:hover {
+      background: #fee2e2;
+    }
+    html[data-theme="dark"] .user-menu-danger:hover {
+      background: rgba(179, 63, 49, .15);
+    }
+    .user-menu-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 5px 0;
+    }
+    .sidebar-save-state {
+      padding: 10px 12px;
+      font-size: 11px;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+    #saveState {
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
 
     /* ---------- Main ---------- */
     .main {
@@ -551,6 +656,10 @@ html[data-theme="dark"] .crumb-current { color: var(--text); }
 html[data-theme="dark"] .twisty:hover { background: var(--hover); color: var(--text); }
 html[data-theme="dark"] .page-more:hover { background: var(--hover); }
 html[data-theme="dark"] .slash-item:hover, html[data-theme="dark"] .slash-item.selected { background: var(--hover); }
+html[data-theme="dark"] .user-menu-item:hover { background: var(--hover); }
+html[data-theme="dark"] .user-menu-danger { color: #e57373; }
+html[data-theme="dark"] .user-avatar { background: var(--accent); }
+html[data-theme="dark"] .sidebar-menu-btn:hover { background: var(--hover); }
 html[data-theme="dark"] .slash-icon { background: var(--bg); color: var(--text); border-color: var(--border); }
 html[data-theme="dark"] .slash-label { color: var(--text); }
 html[data-theme="dark"] .context-item:hover { background: var(--hover); }
