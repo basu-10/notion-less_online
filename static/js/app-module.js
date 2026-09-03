@@ -1131,7 +1131,7 @@ async function initialize() {
   }
 
   if (!state.pages.size) {
-    const welcome = makePage({ id: "welcome", title: "👋 Welcome to NotionLess", emoji: "👋", parentId: ROOT, blocks: [
+    const welcome = makePage({ id: "welcome", title: "👋 Welcome to NotionLess", emoji: "", parentId: ROOT, blocks: [
       { type: "paragraph", content: "This is your personal cloud workspace. Everything you create here is automatically saved and accessible from any device." },
       { type: "heading", props: { level: 2 }, content: "What you can do here" },
       { type: "bulletListItem", content: "Create rich notes with headings, lists, tables, and more" },
@@ -1144,7 +1144,7 @@ async function initialize() {
       { type: "paragraph", content: "Start with the tutorials below to learn the basics. Each section demonstrates a key feature!" }
     ]});
 
-    const gettingStarted = makePage({ id: "getting-started", title: "🚀 Getting Started", emoji: "🚀", parentId: ROOT, blocks: [
+    const gettingStarted = makePage({ id: "getting-started", title: "🚀 Getting Started", emoji: "", parentId: welcome.id, blocks: [
       { type: "paragraph", content: "New here? Start with these essentials." },
       { type: "heading", props: { level: 2 }, content: "Your Learning Path" },
       { type: "numberedListItem", content: "Start with First Steps to learn the editor basics" },
@@ -1158,7 +1158,7 @@ async function initialize() {
       { type: "bulletListItem", content: "Click 🔒/🌐 to toggle page visibility" }
     ]});
 
-    const firstSteps = makePage({ id: "first-steps", title: "✨ First Steps", emoji: "✨", parentId: gettingStarted.id, blocks: [
+    const firstSteps = makePage({ id: "first-steps", title: "✨ First Steps", emoji: "", parentId: gettingStarted.id, blocks: [
       { type: "heading", props: { level: 1 }, content: "First Steps" },
       { type: "paragraph", content: "Let's start with the basics. Click anywhere in this block and start typing to replace the text. Try it!" },
       { type: "heading", props: { level: 2 }, content: "Creating Content" },
@@ -1173,7 +1173,7 @@ async function initialize() {
       { type: "paragraph", content: "Now delete this and try: - My bullet point" }
     ]});
 
-    const keyboardShortcuts = makePage({ id: "keyboard-shortcuts", title: "⌨️ Keyboard Shortcuts", emoji: "⌨️", parentId: gettingStarted.id, blocks: [
+    const keyboardShortcuts = makePage({ id: "keyboard-shortcuts", title: "⌨️ Keyboard Shortcuts", emoji: "", parentId: gettingStarted.id, blocks: [
       { type: "heading", props: { level: 1 }, content: "Keyboard Shortcuts" },
       { type: "paragraph", content: "Work faster with these keyboard shortcuts:" },
       { type: "heading", props: { level: 2 }, content: "Navigation" },
@@ -1191,7 +1191,7 @@ async function initialize() {
       { type: "paragraph", content: "Type / in the editor to open the block menu. Start typing to filter." }
     ]});
 
-    const writingFormatting = makePage({ id: "writing-formatting", title: "📝 Writing & Formatting", emoji: "📝", parentId: ROOT, blocks: [
+    const writingFormatting = makePage({ id: "writing-formatting", title: "📝 Writing & Formatting", emoji: "", parentId: welcome.id, blocks: [
       { type: "paragraph", content: "NotionLess supports rich text formatting to make your notes expressive and organized." },
       { type: "heading", props: { level: 2 }, content: "What's Inside" },
       { type: "bulletListItem", content: "Headings & Text — Structure your writing" },
@@ -1201,7 +1201,7 @@ async function initialize() {
       { type: "bulletListItem", content: "Quotes — Highlight important text" }
     ]});
 
-    const headingsText = makePage({ id: "headings-text", title: "Headings & Text", emoji: "📄", parentId: writingFormatting.id, blocks: [
+    const headingsText = makePage({ id: "headings-text", title: "📄 Headings & Text", emoji: "", parentId: writingFormatting.id, blocks: [
       { type: "heading", props: { level: 1 }, content: "Heading 1 — Page Title" },
       { type: "heading", props: { level: 2 }, content: "Heading 2 — Section Header" },
       { type: "heading", props: { level: 3 }, content: "Heading 3 — Subsection" },
@@ -1214,7 +1214,7 @@ async function initialize() {
       { type: "paragraph", content: "Try it! Create a new block and type ### to start a heading 3." }
     ]});
 
-    const listsCheckboxes = makePage({ id: "lists-checkboxes", title: "Lists & Checkboxes", emoji: "☑️", parentId: writingFormatting.id, blocks: [
+    const listsCheckboxes = makePage({ id: "lists-checkboxes", title: "☑️ Lists & Checkboxes", emoji: "", parentId: writingFormatting.id, blocks: [
       { type: "heading", props: { level: 1 }, content: "Lists & Checkboxes" },
       { type: "heading", props: { level: 2 }, content: "Bullet Lists" },
       { type: "paragraph", content: "Use bullet lists for unordered items:" },
@@ -1228,43 +1228,30 @@ async function initialize() {
       { type: "numberedListItem", content: "Finally, celebrate!" },
       { type: "heading", props: { level: 2 }, content: "Checklists (Task Lists)" },
       { type: "paragraph", content: "Track todos with checkboxes. Type [] to create one:" },
-      { type: "checkboxItem", content: "Learn NotionLess basics", props: { checked: true } },
-      { type: "checkboxItem", content: "Create my first page", props: { checked: true } },
-      { type: "checkboxItem", content: "Try tables", props: { checked: false } },
-      { type: "checkboxItem", content: "Share a page publicly", props: { checked: false } }
+      { type: "checkListItem", content: "Learn NotionLess basics", props: { checked: true } },
+      { type: "checkListItem", content: "Create my first page", props: { checked: true } },
+      { type: "checkListItem", content: "Try tables", props: { checked: false } },
+      { type: "checkListItem", content: "Share a page publicly", props: { checked: false } }
     ]});
 
-    const tablesDemo = makePage({ id: "tables-demo", title: "📊 Tables", emoji: "📊", parentId: writingFormatting.id, blocks: [
+    const tablesDemo = makePage({ id: "tables-demo", title: "📊 Tables", emoji: "", parentId: writingFormatting.id, blocks: [
       { type: "heading", props: { level: 1 }, content: "Tables" },
       { type: "paragraph", content: "Organize information in rows and columns. Tables are perfect for tracking data, comparing options, or structuring structured content." },
       { type: "heading", props: { level: 2 }, content: "Example: Project Tracker" },
-      { type: "table", props: { columnWidths: [120, 150, 100] }, content: [
-        { type: "tableRow", content: [
-          { type: "tableCell", content: [{ type: "paragraph", content: "Task" }] },
-          { type: "tableCell", content: [{ type: "paragraph", content: "Status" }] },
-          { type: "tableCell", content: [{ type: "paragraph", content: "Priority" }] }
-        ]},
-        { type: "tableRow", content: [
-          { type: "tableCell", content: [{ type: "paragraph", content: "Design homepage" }] },
-          { type: "tableCell", content: [{ type: "paragraph", content: "Done" }] },
-          { type: "tableCell", content: [{ type: "paragraph", content: "High" }] }
-        ]},
-        { type: "tableRow", content: [
-          { type: "tableCell", content: [{ type: "paragraph", content: "Write docs" }] },
-          { type: "tableCell", content: [{ type: "paragraph", content: "In Progress" }] },
-          { type: "tableCell", content: [{ type: "paragraph", content: "Medium" }] }
-        ]},
-        { type: "tableRow", content: [
-          { type: "tableCell", content: [{ type: "paragraph", content: "Bug fixes" }] },
-          { type: "tableCell", content: [{ type: "paragraph", content: "To Do" }] },
-          { type: "tableCell", content: [{ type: "paragraph", content: "Low" }] }
-        ]}
-      ]},
+      { type: "table", content: {
+        type: "tableContent",
+        rows: [
+          { cells: ["Task", "Status", "Priority"] },
+          { cells: ["Design homepage", "Done", "High"] },
+          { cells: ["Write docs", "In Progress", "Medium"] },
+          { cells: ["Bug fixes", "To Do", "Low"] }
+        ]
+      }},
       { type: "heading", props: { level: 2 }, content: "How to Create Tables" },
       { type: "paragraph", content: "Type /table in the editor, or use the slash command menu to insert a table. Click + to add columns, and use the menu to add or remove rows." }
     ]});
 
-    const codeBlocksDemo = makePage({ id: "code-blocks", title: "💻 Code Blocks", emoji: "💻", parentId: writingFormatting.id, blocks: [
+    const codeBlocksDemo = makePage({ id: "code-blocks", title: "💻 Code Blocks", emoji: "", parentId: writingFormatting.id, blocks: [
       { type: "heading", props: { level: 1 }, content: "Code Blocks" },
       { type: "paragraph", content: "Share code snippets with syntax highlighting. Perfect for documentation, tutorials, or keeping code snippets handy." },
       { type: "heading", props: { level: 2 }, content: "Example: JavaScript" },
@@ -1276,7 +1263,7 @@ async function initialize() {
       { type: "paragraph", content: "Type /code to insert a code block, then select the language from the block menu." }
     ]});
 
-    const quotesCallouts = makePage({ id: "quotes-callouts", title: "Quotes & Callouts", emoji: "💬", parentId: writingFormatting.id, blocks: [
+    const quotesCallouts = makePage({ id: "quotes-callouts", title: "💬 Quotes & Callouts", emoji: "", parentId: writingFormatting.id, blocks: [
       { type: "heading", props: { level: 1 }, content: "Quotes & Callouts" },
       { type: "paragraph", content: "Use quotes to highlight important passages or memorable quotes from others." },
       { type: "heading", props: { level: 2 }, content: "A Famous Quote" },
@@ -1286,7 +1273,7 @@ async function initialize() {
       { type: "paragraph", content: "💡 Tip: Use the slash command /quote to add blockquotes to your pages." }
     ]});
 
-    const organization = makePage({ id: "organization", title: "🗂️ Organization", emoji: "🗂️", parentId: ROOT, blocks: [
+    const organization = makePage({ id: "organization", title: "🗂️ Organization", emoji: "", parentId: welcome.id, blocks: [
       { type: "paragraph", content: "Structure your workspace to fit how you think." },
       { type: "heading", props: { level: 2 }, content: "Page Hierarchy" },
       { type: "paragraph", content: "Create nested pages to organize related content. This page you're reading is nested under a parent called Organization, which is nested under the root." },
@@ -1296,7 +1283,7 @@ async function initialize() {
       { type: "bulletListItem", content: "Your Space — Start building your own" }
     ]});
 
-    const nestedPagesDemo = makePage({ id: "nested-pages-demo", title: "Nested Pages", emoji: "📁", parentId: organization.id, blocks: [
+    const nestedPagesDemo = makePage({ id: "nested-pages-demo", title: "📁 Nested Pages", emoji: "", parentId: organization.id, blocks: [
       { type: "heading", props: { level: 1 }, content: "Nested Pages" },
       { type: "paragraph", content: "This page is nested inside the Organization section. Notice the indentation in the sidebar." },
       { type: "heading", props: { level: 2 }, content: "Why Nest Pages?" },
@@ -1311,7 +1298,7 @@ async function initialize() {
       { type: "paragraph", content: "↓ This page you're reading is a subpage. Look in the sidebar to see the hierarchy!" }
     ]});
 
-    const yourSpace = makePage({ id: "your-space", title: "🏠 Your Space", emoji: "🏠", parentId: organization.id, blocks: [
+    const yourSpace = makePage({ id: "your-space", title: "🏠 Your Space", emoji: "", parentId: organization.id, blocks: [
       { type: "heading", props: { level: 1 }, content: "Your Space" },
       { type: "paragraph", content: "Ready to make it yours? Delete these tutorial pages and start creating!" },
       { type: "heading", props: { level: 2 }, content: "Ideas for Your Workspace" },
@@ -1326,7 +1313,7 @@ async function initialize() {
       { type: "paragraph", content: "You can always reorganize later — your content travels with you." }
     ]});
 
-    const sharing = makePage({ id: "sharing", title: "🌐 Sharing", emoji: "🌐", parentId: ROOT, blocks: [
+    const sharing = makePage({ id: "sharing", title: "🌐 Sharing", emoji: "", parentId: welcome.id, blocks: [
       { type: "heading", props: { level: 1 }, content: "Sharing & Collaboration" },
       { type: "paragraph", content: "NotionLess makes it easy to share your knowledge with the world, or copy useful pages from others." },
       { type: "heading", props: { level: 2 }, content: "Making Pages Public" },
