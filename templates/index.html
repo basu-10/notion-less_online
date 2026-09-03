@@ -26,8 +26,8 @@
   <style>
     /* Editorial features section — no cards, no grids */
     .workflows {
-      padding: 140px 0;
-      background: linear-gradient(180deg, var(--bg) 0%, var(--surface) 60%, var(--bg) 100%);
+      padding: 80px 0 100px;
+      background: linear-gradient(180deg, #f8f6f3 0%, #fdfcfb 50%, #f8f6f3 100%);
       border-top: 1px solid var(--border);
     }
 
@@ -62,9 +62,9 @@
     .workflow-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 80px;
+      gap: 60px;
       align-items: start;
-      margin-bottom: 120px;
+      margin-bottom: 80px;
     }
     .workflow-row:nth-child(even) .workflow-text {
       order: 2;
@@ -104,7 +104,7 @@
     .workflow-text p {
       font-size: 1.05rem;
       line-height: 1.75;
-      color: var(--text-secondary);
+      color: var(--text);
       margin-bottom: 20px;
     }
     .workflow-text p strong {
@@ -133,7 +133,7 @@
       align-items: flex-start;
       font-size: 0.92rem;
       line-height: 1.55;
-      color: var(--text-secondary);
+      color: var(--text);
       margin-bottom: 10px;
     }
     .workflow-text .micro-list .key {
@@ -227,7 +227,7 @@
     /* Final editorial quote block */
     .workflows-closer {
       max-width: 780px;
-      margin-top: 140px;
+      margin-top: 80px;
       padding: 60px 0 0;
       border-top: 1px solid var(--border);
       position: relative;
@@ -247,7 +247,7 @@
     .workflows-closer p {
       font-size: 1.05rem;
       line-height: 1.75;
-      color: var(--muted);
+      color: var(--text-secondary);
       max-width: 520px;
     }
     .workflows-closer .closer-link {
@@ -300,6 +300,7 @@
     html {
       scroll-behavior: smooth;
       overflow-x: hidden;
+      overflow-y: auto;
     }
 
     body {
@@ -307,6 +308,7 @@
       background: var(--bg);
       color: var(--text);
       line-height: 1.6;
+      overflow-y: auto;
       -webkit-font-smoothing: antialiased;
     }
 
