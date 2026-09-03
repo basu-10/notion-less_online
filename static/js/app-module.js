@@ -590,9 +590,15 @@ function renderBreadcrumbs() {
   const el = $("#breadcrumbs");
   el.innerHTML = "";
   crumbs.forEach((crumb, i) => {
-    const s = document.createElement("span");
+    const isCurrent = i === crumbs.length - 1;
+    const s = document.createElement(isCurrent ? "span" : "a");
     s.textContent = crumb.title || "Untitled";
-    if (i === crumbs.length - 1) s.className = "crumb-current";
+    if (isCurrent) {
+      s.className = "crumb-current";
+    } else {
+      s.href = "#";
+      s.addEventListener("click", (e) => { e.preventDefault(); openPage(crumb.id); });
+    }
     el.appendChild(s);
     if (i < crumbs.length - 1) {
       const sep = document.createElement("span");
@@ -663,7 +669,11 @@ async function createPage(parentId=ROOT) {
     console.error("Failed to create page on server:", err);
   }
   await openPage(page.id);
-  setTimeout(() => $("#pageTitle").focus(), 60);
+  setTimeout(() => { $("#pageTitle").focus(); }, 60);
+  setTimeout(() => {
+    const row = document.querySelector(".tree-row[data-id='" + page.id + "']");
+    if (row) { row.classList.add("page-created-flash"); setTimeout(() => row.classList.remove("page-created-flash"), 600); }
+  }, 150);
 }
 
 async function deletePage(id) {

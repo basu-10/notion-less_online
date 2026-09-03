@@ -105,6 +105,7 @@ Open <http://localhost:5000>
 - Auto-save debounced at 2s; no persistent "Unsaved" state
 - `/` in editor — open block command menu
 - `Tab` / `Shift+Tab` — nest / unnest blocks
+- Page created: brief highlight flash on sidebar row; breadcrumbs segments clickable for parent nav; keyboard focus ring: cyan/purple outline on sidebar items
 
 ## Change rules
 
