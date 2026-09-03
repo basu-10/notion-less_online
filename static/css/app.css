@@ -653,6 +653,15 @@ html[data-theme="dark"] .document { background: linear-gradient(180deg, #1e1e1c 
 html[data-theme="dark"] .brand-mark { background: linear-gradient(135deg, #26262c, #33333a); border-color: #333; }
 html[data-theme="dark"] .page-title::placeholder { color: #4a4a42; }
 
+html[data-theme="dark"] .notification-panel {
+  background: linear-gradient(180deg, var(--panel) 0%, rgba(30,30,28,0.98) 100%);
+  box-shadow: 0 -10px 35px rgba(0,0,0,0.45), 0 0 0 1px rgba(0,0,0,0.25);
+}
+
+html[data-theme="dark"] .format-toolbar {
+  background: linear-gradient(180deg, var(--panel) 0%, rgba(30,30,28,0.98) 100%);
+}
+
 /* ---------- Drop zone ---------- */
 .drop-root-zone { display: none; height: 48px; margin: 6px 0; border-radius: 10px; border: 2px dashed var(--border); align-items: center; justify-content: center; }
 .drop-root-zone.visible { display: flex; border-color: var(--accent); background: var(--accent-soft); opacity: 0.8; }

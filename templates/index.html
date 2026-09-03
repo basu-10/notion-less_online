@@ -190,22 +190,6 @@
       align-items: center;
       padding-top: 72px;
       position: relative;
-      overflow: hidden;
-    }
-
-    .hero::before {
-      content: '';
-      position: absolute;
-      top: -30%; right: -15%;
-      width: 700px; height: 700px;
-      background: radial-gradient(circle at 30% 30%, rgba(216,91,69,0.08) 0%, transparent 65%);
-      pointer-events: none;
-      animation: gradientPulse 12s ease-in-out infinite alternate;
-    }
-
-    @keyframes gradientPulse {
-      from { transform: scale(1) rotate(0deg); opacity: 0.6; }
-      to { transform: scale(1.15) rotate(3deg); opacity: 1; }
     }
 
     .hero-content {
