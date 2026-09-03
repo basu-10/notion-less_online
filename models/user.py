@@ -1,5 +1,6 @@
 import os
 import re
+import sqlite3
 from config import DATA_DIR
 from services.db import get_user_db, init_user_db
 from services.auth import hash_password, check_password
@@ -50,6 +51,7 @@ class User:
             'INSERT INTO auth (username, password_hash) VALUES (?, ?)',
             (username, hash_password(password))
         )
+        conn.commit()
         init_user_db(conn)
         conn.close()
         return User(username)
@@ -66,10 +68,14 @@ class User:
         if not User.exists(username):
             return None
         conn = get_user_db(username)
-        row = conn.execute(
-            'SELECT password_hash FROM auth WHERE username = ?',
-            (username,)
-        ).fetchone()
+        try:
+            row = conn.execute(
+                'SELECT password_hash FROM auth WHERE username = ?',
+                (username,)
+            ).fetchone()
+        except sqlite3.OperationalError:
+            conn.close()
+            return None
         conn.close()
         if row and check_password(password, row['password_hash']):
             return User(username)
