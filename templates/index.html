@@ -576,36 +576,8 @@
   </style>
 </head>
 <body>
-  <header>
-    <div class="container">
-      <a href="/" class="brand">
-        <div class="brand-mark">NL</div>
-        <span>NotionLess</span>
-      </a>
-      <nav class="header-nav">
-        <a href="/about">About</a>
-        <a href="/faq">FAQ</a>
-        <a href="/app">Open App</a>
-      </nav>
-      <button class="mobile-nav-toggle" id="mobileNavToggle" aria-label="Open menu">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-      </button>
-      <div class="header-theme-wrapper">
-        <button class="header-theme" id="headerThemeBtn" aria-label="Toggle theme">
-          <svg id="themeIconLight" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-          <svg id="themeIconDark" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-          <svg id="themeIconAuto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-          <span class="header-theme-label" id="themeLabel">Light</span>
-        </button>
-        <div class="header-theme-menu" id="headerThemeMenu">
-          <button class="theme-btn active" data-theme="light">Light</button>
-          <button class="theme-btn" data-theme="dark">Dark</button>
-          <button class="theme-btn" data-theme="auto">Follow system</button>
-        </div>
-      </div>
-      <a href="/app" class="btn btn-primary">Get Started</a>
-    </div>
-  </header>
+  {% set show_cta = False %}
+  {% include 'components/navbar.html' %}
 
   <section class="hero">
     <div class="container">
@@ -788,25 +760,6 @@
     updateThemeIcon(getTheme());
     applyTheme(getTheme());
   </script>
-  <div class="mobile-nav-overlay" id="mobileNavOverlay"></div>
-  <nav class="mobile-nav-panel" id="mobileNavPanel" aria-label="Mobile navigation">
-    <div class="mobile-nav-header">
-      <a href="/" class="brand">
-        <div class="brand-mark">NL</div>
-        <span>NotionLess</span>
-      </a>
-      <button class="mobile-nav-close" id="mobileNavClose" aria-label="Close menu">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <div class="mobile-nav-divider"></div>
-    <a href="/" class="nav-link active">Home</a>
-    <a href="/about" class="nav-link">About</a>
-    <a href="/faq" class="nav-link">FAQ</a>
-    <a href="/app" class="nav-link">Open App</a>
-    <div class="mobile-nav-divider"></div>
-    <a href="/app" class="btn btn-primary" style="justify-content: center;">Get Started</a>
-  </nav>
   <script>
     const mobileNavToggle = document.getElementById('mobileNavToggle');
     const mobileNavOverlay = document.getElementById('mobileNavOverlay');
