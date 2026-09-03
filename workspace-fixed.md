@@ -1,0 +1,551 @@
+- generic [active] [ref=f4e1]:
+  - generic [ref=f4e2]:
+    - complementary "Sidebar navigation" [ref=f4e3]:
+      - link "NotionLess home" [ref=f4e5] [cursor=pointer]:
+        - /url: /
+        - generic [aria-hidden] [ref=f4e6]: NL
+        - generic [ref=f4e7]: NotionLess
+      - navigation "Pages section" [ref=f4e8]:
+        - generic [ref=f4e9]: Your Pages
+        - generic "Page actions" [ref=f4e10]:
+          - button "Sort by modified or alphabetical" [ref=f4e11] [cursor=pointer]: ⇅
+          - button "Create new page" [ref=f4e12] [cursor=pointer]: +
+          - button "Show all pages" [ref=f4e13] [cursor=pointer]: ▸
+      - generic "Page tree" [ref=f4e14]:
+        - generic [ref=f4e79]:
+          - button [ref=f4e80] [cursor=pointer]
+          - button [ref=f4e81]
+          - generic "👋 Welcome to NotionLess" [ref=f4e82] [cursor=pointer]
+          - generic "Private"
+          - button "•••" [ref=f4e83] [cursor=pointer]
+        - generic [ref=f4e84]:
+          - button [ref=f4e85] [cursor=pointer]
+          - button "▸" [ref=f4e86] [cursor=pointer]
+          - generic "🚀 Done. All fixes applied" [ref=f4e87] [cursor=pointer]
+          - generic "Public (includes subpages)" [ref=f4e88]: 🌐
+          - button "•••" [ref=f4e89] [cursor=pointer]
+        - generic [ref=f4e90]:
+          - button [ref=f4e91] [cursor=pointer]
+          - button [ref=f4e92]
+          - generic "🌐 Sharing" [ref=f4e93] [cursor=pointer]
+          - generic "Private"
+          - button "•••" [ref=f4e94] [cursor=pointer]
+        - generic [ref=f4e95]:
+          - button [ref=f4e96] [cursor=pointer]
+          - button "▸" [ref=f4e97] [cursor=pointer]
+          - generic "🗂️ Organization" [ref=f4e98] [cursor=pointer]
+          - generic "Private"
+          - button "•••" [ref=f4e99] [cursor=pointer]
+        - generic [ref=f4e100]:
+          - button [ref=f4e101] [cursor=pointer]
+          - button "▸" [ref=f4e102] [cursor=pointer]
+          - generic "📝 Writing & Formatting" [ref=f4e103] [cursor=pointer]
+          - generic "Private"
+          - button "•••" [ref=f4e104] [cursor=pointer]
+      - generic "User menu and status" [ref=f4e41]:
+        - button "Open user menu" [ref=f4e42] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f4e43]: U
+          - generic [ref=f4e44]: qwerty
+          - generic [aria-hidden] [ref=f4e45]: ▾
+        - generic "Save status" [ref=f4e46]:
+          - button "View notifications" [ref=f4e47] [cursor=pointer]:
+            - generic [ref=f4e48]: Ready
+    - generic "Resize sidebar" [ref=f4e49]
+    - main "Main workspace" [ref=f4e50]:
+      - generic "Top toolbar" [ref=f4e51]:
+        - navigation "Breadcrumb navigation" [ref=f4e105]:
+          - generic [ref=f4e106]: 👋 Welcome to NotionLess
+        - generic "Workspace actions" [ref=f4e52]:
+          - button "Toggle public" [ref=f4e107] [cursor=pointer]:
+            - generic [ref=f4e108]: 🔒
+            - generic [ref=f4e109]: Private
+          - button "Undo" [ref=f4e53] [cursor=pointer]: ↩
+          - button "Redo" [ref=f4e54] [cursor=pointer]: ↪
+      - generic "Document workspace" [ref=f4e55]:
+        - complementary "Table of contents" [ref=f4e56]:
+          - generic "What you can do here" [ref=f4e110]
+          - generic "Explore the sidebar" [ref=f4e111]
+          - generic "Getting Started" [ref=f4e112]
+          - generic "What you can do here" [ref=f4e113]
+          - generic "Explore the sidebar" [ref=f4e114]
+          - generic "Getting Started" [ref=f4e115]
+          - generic "Settings" [ref=f4e116]
+          - generic "Theme" [ref=f4e117]
+          - generic "Export / Import" [ref=f4e118]
+          - generic "What you can do here" [ref=f4e119]
+          - generic "Explore the sidebar" [ref=f4e120]
+          - generic "Getting Started" [ref=f4e121]
+          - generic "Settings" [ref=f4e122]
+          - generic "Theme" [ref=f4e123]
+          - generic "Export / Import" [ref=f4e124]
+          - generic "What you can do here" [ref=f4e125]
+          - generic "Explore the sidebar" [ref=f4e126]
+          - generic "Getting Started" [ref=f4e127]
+          - generic:
+            - generic: Contents
+            - button "What you can do here"
+            - button "Explore the sidebar"
+            - button "Getting Started"
+            - button "What you can do here"
+            - button "Explore the sidebar"
+            - button "Getting Started"
+            - button "Settings"
+            - button "Theme"
+            - button "Export / Import"
+            - button "What you can do here"
+            - button "Explore the sidebar"
+            - button "Getting Started"
+            - button "Settings"
+            - button "Theme"
+            - button "Export / Import"
+            - button "What you can do here"
+            - button "Explore the sidebar"
+            - button "Getting Started"
+        - article "Document editor" [ref=f4e57]:
+          - textbox "Page title" [ref=f4e59]:
+            - /placeholder: Untitled
+            - text: 👋 Welcome to NotionLess
+          - textbox "BlockNote editor" [ref=f4e128]:
+            - generic [ref=f4e129]:
+              - generic [ref=f4e130]:
+                - text: ⠿
+                - paragraph [ref=f4e133]: This is your personal cloud workspace. Everything you create here is automatically saved and accessible from any device.
+              - generic [ref=f4e134]:
+                - text: ⠿
+                - heading "What you can do here" [level=2] [ref=f4e137]
+              - generic [ref=f4e138]:
+                - text: ⠿
+                - generic [ref=f4e140]:
+                  - text: •
+                  - paragraph [ref=f4e141]: Create rich notes with headings, lists, tables, and more
+              - generic [ref=f4e142]:
+                - text: ⠿
+                - generic [ref=f4e144]:
+                  - text: •
+                  - paragraph [ref=f4e145]: Organize pages into nested hierarchies
+              - generic [ref=f4e146]:
+                - text: ⠿
+                - generic [ref=f4e148]:
+                  - text: •
+                  - paragraph [ref=f4e149]: Toggle content as public to share with anyone
+              - generic [ref=f4e150]:
+                - text: ⠿
+                - generic [ref=f4e152]:
+                  - text: •
+                  - paragraph [ref=f4e153]: Copy public pages from other users to your workspace
+              - generic [ref=f4e154]:
+                - text: ⠿
+                - heading "Explore the sidebar" [level=2] [ref=f4e157]
+              - generic [ref=f4e158]:
+                - text: ⠿
+                - paragraph [ref=f4e161]: Use the sidebar to navigate between pages. Click + to create new top-level pages, or use the ••• menu on any page to create subpages.
+              - generic [ref=f4e162]:
+                - text: ⠿
+                - heading "Getting Started" [level=2] [ref=f4e165]
+              - generic [ref=f4e166]:
+                - text: ⠿
+                - paragraph [ref=f4e169]: Start with the tutorials below to learn the basics. Each section demonstrates a key feature!
+              - generic [ref=f4e170]:
+                - text: ⠿
+                - paragraph [ref=f4e173]:
+                  - strong [ref=f4e174]:
+                    - link "NL" [ref=f4e175]:
+                      - /url: http://localhost:5002/
+              - generic [ref=f4e176]:
+                - text: ⠿
+                - paragraph [ref=f4e179]:
+                  - strong [ref=f4e180]:
+                    - link "NotionLess" [ref=f4e181]:
+                      - /url: http://localhost:5002/
+              - generic [ref=f4e182]:
+                - text: ⠿
+                - paragraph [ref=f4e185]:
+                  - strong [ref=f4e186]:
+                    - generic [ref=f4e187]: U
+                    - text: qwerty▾
+              - generic [ref=f4e188]:
+                - text: ⠿
+                - paragraph [ref=f4e191]: Auto-saving...
+              - generic [ref=f4e192]:
+                - text: ⠿
+                - paragraph [ref=f4e195]:
+                  - strong [ref=f4e196]: 👋 Welcome to NotionLess
+              - generic [ref=f4e197]:
+                - text: ⠿
+                - paragraph [ref=f4e200]:
+                  - strong [ref=f4e201]: 🔒Private
+                  - text: ↩↪
+              - generic [ref=f4e202]:
+                - text: ⠿
+                - paragraph [ref=f4e205]: This is your personal cloud workspace. Everything you create here is automatically saved and accessible from any device.
+              - generic [ref=f4e206]:
+                - text: ⠿
+                - heading [level=2] [ref=f4e209]:
+                  - strong [ref=f4e210]: What you can do here
+              - generic [ref=f4e211]:
+                - text: ⠿
+                - generic [ref=f4e213]:
+                  - text: •
+                  - paragraph [ref=f4e214]: Create rich notes with headings, lists, tables, and more
+              - generic [ref=f4e215]:
+                - text: ⠿
+                - generic [ref=f4e217]:
+                  - text: •
+                  - paragraph [ref=f4e218]: Organize pages into nested hierarchies
+              - generic [ref=f4e219]:
+                - text: ⠿
+                - generic [ref=f4e221]:
+                  - text: •
+                  - paragraph [ref=f4e222]: Toggle content as public to share with anyone
+              - generic [ref=f4e223]:
+                - text: ⠿
+                - generic [ref=f4e225]:
+                  - text: •
+                  - paragraph [ref=f4e226]: Copy public pages from other users to your workspace
+              - generic [ref=f4e227]:
+                - text: ⠿
+                - heading [level=2] [ref=f4e230]:
+                  - strong [ref=f4e231]: Explore the sidebar
+              - generic [ref=f4e232]:
+                - text: ⠿
+                - paragraph [ref=f4e235]: Use the sidebar to navigate between pages. Click + to create new top-level pages, or use the ••• menu on any page to create subpages.
+              - generic [ref=f4e236]:
+                - text: ⠿
+                - heading [level=2] [ref=f4e239]:
+                  - strong [ref=f4e240]: Getting Started
+              - generic [ref=f4e241]:
+                - text: ⠿
+                - paragraph [ref=f4e244]: Start with the tutorials below to learn the basics. Each section demonstrates a key feature!
+              - generic [ref=f4e245]:
+                - text: ⠿
+                - paragraph [ref=f4e248]
+              - generic [ref=f4e249]:
+                - text: ⠿
+                - paragraph [ref=f4e252]:
+                  - text: Type
+                  - strong [ref=f4e253]: /
+                  - text: for blocks. Press Tab / Shift+Tab to nest or unnest blocks.
+              - generic [ref=f4e254]:
+                - text: ⠿
+                - paragraph [ref=f4e257]: AltInsertNew subpage
+              - generic [ref=f4e258]:
+                - text: ⠿
+                - paragraph [ref=f4e261]: Alt+Expand all
+              - generic [ref=f4e262]:
+                - text: ⠿
+                - paragraph [ref=f4e265]: Alt-Collapse all
+              - generic [ref=f4e266]:
+                - text: ⠿
+                - paragraph [ref=f4e269]: AltPageUpPrev page
+              - generic [ref=f4e270]:
+                - text: ⠿
+                - paragraph [ref=f4e273]: AltPageDownNext page
+              - generic [ref=f4e274]:
+                - text: ⠿
+                - paragraph [ref=f4e277]: CtrlSSave
+              - generic [ref=f4e278]:
+                - text: ⠿
+                - paragraph [ref=f4e281]: CtrlKQuick switch
+              - generic [ref=f4e282]:
+                - text: ⠿
+                - paragraph [ref=f4e285]: /Block menu
+              - generic [ref=f4e286]:
+                - text: ⠿
+                - heading [level=2] [ref=f4e289]:
+                  - strong [ref=f4e290]: Settings
+              - generic [ref=f4e291]:
+                - text: ⠿
+                - paragraph [ref=f4e294]: ✕
+              - generic [ref=f4e295]:
+                - text: ⠿
+                - heading [level=3] [ref=f4e298]:
+                  - strong [ref=f4e299]: Theme
+              - generic [ref=f4e300]:
+                - text: ⠿
+                - paragraph [ref=f4e303]:
+                  - strong [ref=f4e304]: LightDarkFollow system
+              - generic [ref=f4e305]:
+                - text: ⠿
+                - heading [level=3] [ref=f4e308]:
+                  - strong [ref=f4e309]: Export / Import
+              - generic [ref=f4e310]:
+                - text: ⠿
+                - paragraph [ref=f4e313]:
+                  - strong [ref=f4e314]:
+                    - text: Export whole profileImport profileExport current note
+                    - link "NL" [ref=f4e315]:
+                      - /url: http://localhost:5002/
+              - generic [ref=f4e316]:
+                - text: ⠿
+                - paragraph [ref=f4e319]:
+                  - strong [ref=f4e320]:
+                    - link "NotionLess" [ref=f4e321]:
+                      - /url: http://localhost:5002/
+              - generic [ref=f4e322]:
+                - text: ⠿
+                - paragraph [ref=f4e325]:
+                  - strong [ref=f4e326]:
+                    - generic [ref=f4e327]: U
+                    - text: qwerty▾
+              - generic [ref=f4e328]:
+                - text: ⠿
+                - paragraph [ref=f4e331]: Auto-saving...
+              - generic [ref=f4e332]:
+                - text: ⠿
+                - paragraph [ref=f4e335]:
+                  - strong [ref=f4e336]: 👋 Welcome to NotionLess
+              - generic [ref=f4e337]:
+                - text: ⠿
+                - paragraph [ref=f4e340]:
+                  - strong [ref=f4e341]: 🔒Private
+                  - text: ↩↪
+              - generic [ref=f4e342]:
+                - text: ⠿
+                - paragraph [ref=f4e345]: This is your personal cloud workspace. Everything you create here is automatically saved and accessible from any device.
+              - generic [ref=f4e346]:
+                - text: ⠿
+                - heading [level=2] [ref=f4e349]:
+                  - strong [ref=f4e350]: What you can do here
+              - generic [ref=f4e351]:
+                - text: ⠿
+                - generic [ref=f4e353]:
+                  - text: •
+                  - paragraph [ref=f4e354]: Create rich notes with headings, lists, tables, and more
+              - generic [ref=f4e355]:
+                - text: ⠿
+                - generic [ref=f4e357]:
+                  - text: •
+                  - paragraph [ref=f4e358]: Organize pages into nested hierarchies
+              - generic [ref=f4e359]:
+                - text: ⠿
+                - generic [ref=f4e361]:
+                  - text: •
+                  - paragraph [ref=f4e362]: Toggle content as public to share with anyone
+              - generic [ref=f4e363]:
+                - text: ⠿
+                - generic [ref=f4e365]:
+                  - text: •
+                  - paragraph [ref=f4e366]: Copy public pages from other users to your workspace
+              - generic [ref=f4e367]:
+                - text: ⠿
+                - heading [level=2] [ref=f4e370]:
+                  - strong [ref=f4e371]: Explore the sidebar
+              - generic [ref=f4e372]:
+                - text: ⠿
+                - paragraph [ref=f4e375]: Use the sidebar to navigate between pages. Click + to create new top-level pages, or use the ••• menu on any page to create subpages.
+              - generic [ref=f4e376]:
+                - text: ⠿
+                - heading [level=2] [ref=f4e379]:
+                  - strong [ref=f4e380]: Getting Started
+              - generic [ref=f4e381]:
+                - text: ⠿
+                - paragraph [ref=f4e384]: Start with the tutorials below to learn the basics. Each section demonstrates a key feature!
+              - generic [ref=f4e385]:
+                - text: ⠿
+                - paragraph [ref=f4e388]
+              - generic [ref=f4e389]:
+                - text: ⠿
+                - paragraph [ref=f4e392]:
+                  - text: Type
+                  - strong [ref=f4e393]: /
+                  - text: for blocks. Press Tab / Shift+Tab to nest or unnest blocks.
+              - generic [ref=f4e394]:
+                - text: ⠿
+                - paragraph [ref=f4e397]: AltInsertNew subpage
+              - generic [ref=f4e398]:
+                - text: ⠿
+                - paragraph [ref=f4e401]: Alt+Expand all
+              - generic [ref=f4e402]:
+                - text: ⠿
+                - paragraph [ref=f4e405]: Alt-Collapse all
+              - generic [ref=f4e406]:
+                - text: ⠿
+                - paragraph [ref=f4e409]: AltPageUpPrev page
+              - generic [ref=f4e410]:
+                - text: ⠿
+                - paragraph [ref=f4e413]: AltPageDownNext page
+              - generic [ref=f4e414]:
+                - text: ⠿
+                - paragraph [ref=f4e417]: CtrlSSave
+              - generic [ref=f4e418]:
+                - text: ⠿
+                - paragraph [ref=f4e421]: CtrlKQuick switch
+              - generic [ref=f4e422]:
+                - text: ⠿
+                - paragraph [ref=f4e425]: /Block menu
+              - generic [ref=f4e426]:
+                - text: ⠿
+                - heading [level=2] [ref=f4e429]:
+                  - strong [ref=f4e430]: Settings
+              - generic [ref=f4e431]:
+                - text: ⠿
+                - paragraph [ref=f4e434]: ✕
+              - generic [ref=f4e435]:
+                - text: ⠿
+                - heading [level=3] [ref=f4e438]:
+                  - strong [ref=f4e439]: Theme
+              - generic [ref=f4e440]:
+                - text: ⠿
+                - paragraph [ref=f4e443]:
+                  - strong [ref=f4e444]: LightDarkFollow system
+              - generic [ref=f4e445]:
+                - text: ⠿
+                - heading [level=3] [ref=f4e448]:
+                  - strong [ref=f4e449]: Export / Import
+              - generic [ref=f4e450]:
+                - text: ⠿
+                - paragraph [ref=f4e453]:
+                  - strong [ref=f4e454]:
+                    - text: Export whole profileImport profileExport current note
+                    - link "NL" [ref=f4e455]:
+                      - /url: http://localhost:5002/
+              - generic [ref=f4e456]:
+                - text: ⠿
+                - paragraph [ref=f4e459]:
+                  - strong [ref=f4e460]:
+                    - link "NotionLess" [ref=f4e461]:
+                      - /url: http://localhost:5002/
+              - generic [ref=f4e462]:
+                - text: ⠿
+                - paragraph [ref=f4e465]:
+                  - strong [ref=f4e466]:
+                    - generic [ref=f4e467]: U
+                    - text: qwerty▾
+              - generic [ref=f4e468]:
+                - text: ⠿
+                - paragraph [ref=f4e471]: Auto-saving...
+              - generic [ref=f4e472]:
+                - text: ⠿
+                - paragraph [ref=f4e475]:
+                  - strong [ref=f4e476]: 👋 Welcome to NotionLess
+              - generic [ref=f4e477]:
+                - text: ⠿
+                - paragraph [ref=f4e480]:
+                  - strong [ref=f4e481]: 🔒Private
+                  - text: ↩↪
+              - generic [ref=f4e482]:
+                - text: ⠿
+                - paragraph [ref=f4e485]: This is your personal cloud workspace. Everything you create here is automatically saved and accessible from any device.
+              - generic [ref=f4e486]:
+                - text: ⠿
+                - heading [level=2] [ref=f4e489]:
+                  - strong [ref=f4e490]: What you can do here
+              - generic [ref=f4e491]:
+                - text: ⠿
+                - generic [ref=f4e493]:
+                  - text: •
+                  - paragraph [ref=f4e494]: Create rich notes with headings, lists, tables, and more
+              - generic [ref=f4e495]:
+                - text: ⠿
+                - generic [ref=f4e497]:
+                  - text: •
+                  - paragraph [ref=f4e498]: Organize pages into nested hierarchies
+              - generic [ref=f4e499]:
+                - text: ⠿
+                - generic [ref=f4e501]:
+                  - text: •
+                  - paragraph [ref=f4e502]: Toggle content as public to share with anyone
+              - generic [ref=f4e503]:
+                - text: ⠿
+                - generic [ref=f4e505]:
+                  - text: •
+                  - paragraph [ref=f4e506]: Copy public pages from other users to your workspace
+              - generic [ref=f4e507]:
+                - text: ⠿
+                - heading [level=2] [ref=f4e510]:
+                  - strong [ref=f4e511]: Explore the sidebar
+              - generic [ref=f4e512]:
+                - text: ⠿
+                - paragraph [ref=f4e515]: Use the sidebar to navigate between pages. Click + to create new top-level pages, or use the ••• menu on any page to create subpages.
+              - generic [ref=f4e516]:
+                - text: ⠿
+                - heading [level=2] [ref=f4e519]:
+                  - strong [ref=f4e520]: Getting Started
+              - generic [ref=f4e521]:
+                - text: ⠿
+                - paragraph [ref=f4e524]: Start with the tutorials below to learn the basics. Each section demonstrates a key feature!
+              - generic [ref=f4e525]:
+                - text: ⠿
+                - paragraph [ref=f4e528]
+              - generic [ref=f4e529]:
+                - text: ⠿
+                - paragraph [ref=f4e532]:
+                  - text: Type
+                  - strong [ref=f4e533]: /
+                  - text: for blocks. Press Tab / Shift+Tab to nest or unnest blocks.
+              - generic [ref=f4e534]:
+                - text: ⠿
+                - paragraph [ref=f4e537]: AltInsertNew subpage
+              - generic [ref=f4e538]:
+                - text: ⠿
+                - paragraph [ref=f4e541]: Alt+Expand all
+              - generic [ref=f4e542]:
+                - text: ⠿
+                - paragraph [ref=f4e545]: Alt-Collapse all
+              - generic [ref=f4e546]:
+                - text: ⠿
+                - paragraph [ref=f4e549]: AltPageUpPrev page
+              - generic [ref=f4e550]:
+                - text: ⠿
+                - paragraph [ref=f4e553]: AltPageDownNext page
+              - generic [ref=f4e554]:
+                - text: ⠿
+                - paragraph [ref=f4e557]: CtrlSSave
+              - generic [ref=f4e558]:
+                - text: ⠿
+                - paragraph [ref=f4e561]: CtrlKQuick switch
+              - generic [ref=f4e562]:
+                - text: ⠿
+                - paragraph [ref=f4e565]: /Block menu
+          - paragraph [ref=f4e61]:
+            - text: Type
+            - strong [ref=f4e62]: /
+            - text: for blocks. Press Tab / Shift+Tab to nest or unnest blocks.
+  - dialog [aria-hidden]:
+    - generic:
+      - generic: Alt
+      - generic: Insert
+      - generic: New subpage
+    - generic:
+      - generic: Alt
+      - generic: +
+      - generic: Expand all
+    - generic:
+      - generic: Alt
+      - generic: "-"
+      - generic: Collapse all
+    - generic:
+      - generic: Alt
+      - generic: PageUp
+      - generic: Prev page
+    - generic:
+      - generic: Alt
+      - generic: PageDown
+      - generic: Next page
+    - generic:
+      - generic: Ctrl
+      - generic: S
+      - generic: Save
+    - generic:
+      - generic: Ctrl
+      - generic: K
+      - generic: Quick switch
+    - generic:
+      - generic: /
+      - generic: Block menu
+  - complementary [aria-hidden] [ref=f4e63]:
+    - generic [ref=f4e64]:
+      - heading [level=2] [ref=f4e65]: Settings
+      - button [ref=f4e66] [cursor=pointer]: ✕
+    - region [ref=f4e67]:
+      - heading [level=3] [ref=f4e68]: Theme
+      - radiogroup [ref=f4e69]:
+        - radio [checked] [ref=f4e70] [cursor=pointer]: Light
+        - radio [ref=f4e71] [cursor=pointer]: Dark
+        - radio [ref=f4e72] [cursor=pointer]: Follow system
+    - region [ref=f4e73]:
+      - heading [level=3] [ref=f4e74]: Export / Import
+      - generic [ref=f4e75]:
+        - button [ref=f4e76] [cursor=pointer]: Export whole profile
+        - button [ref=f4e77] [cursor=pointer]: Import profile
+        - button [ref=f4e78] [cursor=pointer]: Export current note

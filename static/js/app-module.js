@@ -1864,11 +1864,6 @@ try {
   });
 })();
 
-(function initShortcutHud() {
-  const hud = $("#shortcutHud");
-  if (!hud) return;
-  let hideTimer = null;
-
 function renderAutoToc() {
   const container = $("#autoToc");
   if (!container) return;
@@ -1888,7 +1883,6 @@ function renderAutoToc() {
     container.appendChild(bar);
   });
 
-  // Build expanded list on hover (injected on first interaction or immediately)
   if (!container.querySelector(".toc-list")) {
     const list = document.createElement("div");
     list.className = "toc-list";
@@ -1908,7 +1902,6 @@ function renderAutoToc() {
     });
     container.appendChild(list);
   } else {
-    // Refresh list text in case headings changed
     const list = container.querySelector(".toc-list");
     const items = list.querySelectorAll(".toc-item");
     headings.forEach((h, i) => {
@@ -1920,11 +1913,9 @@ function renderAutoToc() {
         items[i].title = text;
       }
     });
-    // Remove extra items if headings reduced
     while (items.length > headings.length) {
       items[items.length - 1].remove();
     }
-    // Add new items if headings increased
     for (let i = items.length; i < headings.length; i++) {
       const h = headings[i];
       const btn = document.createElement("button");
@@ -1956,16 +1947,19 @@ function scrollToHeading(index, headings) {
 }
 
 function initAutoToc() {
-  // Re-render when editor content changes
   const observer = new MutationObserver(() => {
-    // Small debounce
     clearTimeout(window._tocTimer);
     window._tocTimer = setTimeout(() => renderAutoToc(), 120);
   });
   observer.observe(document.getElementById("editor") || document.body, { childList: true, subtree: true });
 }
 
-document.addEventListener("keydown", (e) => {
+(function initShortcutHud() {
+  const hud = $("#shortcutHud");
+  if (!hud) return;
+  let hideTimer = null;
+
+  document.addEventListener("keydown", (e) => {
     if (e.key === "Alt" || e.key === "Control") {
       if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
       hud.classList.add("visible");

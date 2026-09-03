@@ -1,0 +1,15 @@
+- generic [active] [ref=f2e1]:
+  - generic "Theme toggle" [ref=f2e2]:
+    - button "Toggle theme" [ref=f2e3] [cursor=pointer]:
+      - generic [ref=f2e10]: Light
+  - article "Login form" [ref=f2e12]:
+    - heading "NotionLess Cloud" [level=1] [ref=f2e13]
+    - heading "Welcome back" [level=2] [ref=f2e14]
+    - form "Login form" [ref=f2e15]:
+      - textbox "Username" [ref=f2e16]: qwerty
+      - textbox "Password" [ref=f2e17]: "11111111"
+      - button "Sign in" [ref=f2e18] [cursor=pointer]
+    - paragraph [ref=f2e19]:
+      - text: No account?
+      - link "Create one" [ref=f2e20] [cursor=pointer]:
+        - /url: /auth/register
