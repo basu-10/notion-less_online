@@ -1010,10 +1010,10 @@ html[data-theme="dark"] .emoji-picker {
 
 /* Fix code block text color — dark text in light theme, light text in dark */
 html[data-theme="light"] .bn-editor [class*="code"],
-html:not([data-theme="dark"]) .bn-editor [class*="code"] { color: #171714 !important; }
-html[data-theme="dark"] .bn-editor [class*="code"] { color: #f1f0ec !important; }
+html:not([data-theme="dark"]) .bn-editor [class*="code"] { color: #171714 !important; background-color: #f1f0ec !important; }
+html[data-theme="dark"] .bn-editor [class*="code"] { color: #f1f0ec !important; background-color: #2a2a28 !important; }
 .bn-editor .code-block,
-.bn-editor pre { color: inherit !important; }
+.bn-editor pre { color: inherit !important; background-color: inherit !important; }
 
 /* ---------- Auto TOC ---------- */
 .auto-toc {
