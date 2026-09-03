@@ -1,8 +1,11 @@
 import uuid
 import time
-from flask import Blueprint, request, jsonify
+import os
+from flask import Blueprint, request, jsonify, send_from_directory
 from flask_login import current_user, login_required
 from services.db import get_user_db
+
+UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads')
 
 pages_bp = Blueprint('pages', __name__)
 
@@ -71,3 +74,28 @@ def delete_page(page_id):
     conn.commit()
     conn.close()
     return '', 204
+
+@pages_bp.route('/upload', methods=['POST'])
+@login_required
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+    file = request.files['file']
+    if not file.filename:
+        return jsonify({'error': 'No file selected'}), 400
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg']:
+        return jsonify({'error': 'Unsupported file type'}), 400
+    user_dir = os.path.join(UPLOADS_DIR, current_user.username)
+    os.makedirs(user_dir, exist_ok=True)
+    filename = f"{uuid.uuid4()}{ext}"
+    filepath = os.path.join(user_dir, filename)
+    file.save(filepath)
+    return jsonify({'url': f'/api/uploads/{current_user.username}/{filename}'})
+
+@pages_bp.route('/uploads/<username>/<filename>')
+@login_required
+def serve_upload(username, filename):
+    if username != current_user.username:
+        return jsonify({'error': 'Forbidden'}), 403
+    return send_from_directory(os.path.join(UPLOADS_DIR, username), filename)

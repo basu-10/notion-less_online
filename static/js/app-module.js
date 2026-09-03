@@ -536,6 +536,10 @@ async function mountEditor(blocks) {
   state.editor = BlockNoteEditor.create({
     initialContent: initialBlocks,
     blockHandle: true,
+    uploadFile: async (file) => {
+      const { url } = await window.api.uploadFile(file);
+      return url;
+    }
   });
   state.editor.mount($("#editor"));
   state.editor.onChange(() => {

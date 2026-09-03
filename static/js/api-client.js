@@ -35,6 +35,23 @@ class ApiClient {
   async getPage(id) { return this.get(`/pages/${id}`); }
   async updatePage(id, data) { return this.put(`/pages/${id}`, data); }
   async deletePage(id) { return this.delete(`/pages/${id}`); }
+
+  async uploadFile(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${this.base}/upload`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      body: formData
+    });
+    if (res.status === 401) {
+      window.location.href = '/auth/login';
+      throw new Error('Unauthorized');
+    }
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Upload failed');
+    return data;
+  }
 }
 
 window.api = new ApiClient();
