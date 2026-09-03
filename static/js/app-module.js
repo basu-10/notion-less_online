@@ -1200,7 +1200,7 @@ $("#pageTitle").addEventListener("keydown", (e) => {
     if (afterCursor) {
       const block = state.editor.document[0];
       if (block) {
-        const blockText = state.editor.getText(block.id);
+        const blockText = currentBlockText(block);
         state.editor.updateBlock(block, { content: afterCursor + (blockText ? " " + blockText : "") });
       }
     }
@@ -1245,17 +1245,24 @@ $("#importFile").addEventListener("change", (e) => { if (e.target.files && e.tar
 $("#notificationTrigger").addEventListener("click", toggleNotificationPanel);
 $("#clearNotifications").addEventListener("click", clearAllNotifications);
 
-function scrollPageTree(delta) {
-  const tree = $("#pageTree");
-  if (!tree) return;
-  tree.scrollTop = Math.max(0, Math.min(tree.scrollTop + delta, tree.scrollHeight - tree.clientHeight));
+function allPagesOrdered() {
+  return [...state.pages.values()].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 }
 
 document.addEventListener("keydown", (e) => {
-  if (e.altKey && (e.key === "PageUp" || e.key === "PageDown")) {
-    e.preventDefault();
-    scrollPageTree(e.key === "PageUp" ? -200 : 200);
+  if (!e.altKey) return;
+  if (e.key !== "PageUp" && e.key !== "PageDown") return;
+  e.preventDefault();
+  const ordered = allPagesOrdered();
+  if (ordered.length < 2) return;
+  const currentIdx = ordered.findIndex(p => p.id === state.currentPageId);
+  let nextIdx;
+  if (e.key === "PageUp") {
+    nextIdx = currentIdx <= 0 ? ordered.length - 1 : currentIdx - 1;
+  } else {
+    nextIdx = currentIdx >= ordered.length - 1 ? 0 : currentIdx + 1;
   }
+  openPage(ordered[nextIdx].id);
 });
 
 function toggleSidebar(force) {
