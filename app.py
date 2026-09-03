@@ -36,6 +36,10 @@ def create_app():
     def faq():
         return render_template('faq.html')
 
+    @app.route('/workspace_direct')
+    def workspace_direct():
+        return render_template('workspace.html')
+
     @app.route('/app')
     def workspace():
         if not current_user.is_authenticated:

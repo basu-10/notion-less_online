@@ -4,7 +4,6 @@ body {
   font-family: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
   background: linear-gradient(180deg, var(--bg) 0%, rgba(244,243,241,0.7) 100%);
   min-height: 100vh;
-  display: flex; align-items: center; justify-content: center;
   color: var(--text);
 }
 
