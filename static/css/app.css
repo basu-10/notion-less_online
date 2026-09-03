@@ -347,7 +347,7 @@
 /* Workspace / Document */
 .workspace {
   flex: 1; min-height: 0; overflow: auto;
-  padding: 48px 24px 120px;
+  padding: 24px 0 60px;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
@@ -634,6 +634,11 @@
 .notification-text { color: var(--text); word-break: break-word; font-weight: 500; }
 .notification-time { color: var(--muted); font-size: 10.5px; }
 .notification-empty { padding: 24px; text-align: center; color: var(--muted); font-size: 13px; font-weight: 500; }
+.notification-footer {
+  display: flex; align-items: center; justify-content: flex-end;
+  padding: 8px 14px; border-top: 1px solid var(--border-subtle);
+}
+.notification-footer .clear-btn { font-size: 14px; padding: 3px 7px; }
 
 /* ---------- Dark overrides ---------- */
 html[data-theme="dark"] .brand-mark { background: linear-gradient(135deg, #26262c, #33333a); border-color: #333; }
