@@ -6,3 +6,4 @@ _headers
 *.png
 *.pyc
 userdata/
+uploads/
