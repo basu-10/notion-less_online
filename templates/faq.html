@@ -433,7 +433,7 @@
               </button>
               <div class="faq-answer">
                 <div class="faq-answer-content">
-                  <p>Yes. Your data is stored locally on your device in IndexedDB (browser storage). No data is sent to any server. Even on the hosted version, each user has an isolated SQLite database file.</p>
+                  <p>Yes. Your data is stored on the server in your own isolated SQLite database file. No data is shared with other users. Even on the hosted version, each user has an isolated SQLite database file at <code>userdata/&lt;username&gt;.db</code>.</p>
                   <div class="tip-box"><strong>Tip:</strong> Regularly export your data as JSON backup to avoid data loss.</div>
                 </div>
               </div>
@@ -445,7 +445,7 @@
               </button>
               <div class="faq-answer">
                 <div class="faq-answer-content">
-                  <p>Not at all. Once the app is loaded in your browser, it works completely offline. All your notes are stored locally in your browser's IndexedDB.</p>
+                  <p>You need an internet connection to use NotionLess Cloud. Your notes sync to the server so you can access them from any device. Once loaded, the editor is fast and responsive.</p>
                 </div>
               </div>
             </div>

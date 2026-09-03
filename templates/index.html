@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="NotionLess Cloud — A lightweight, local-first block editor. Your notes, your device, your privacy.">
+  <meta name="description" content="NotionLess Cloud — A lightweight cloud-based block editor. Your notes, your account, your privacy.">
   <meta name="theme-color" content="#d85b45">
   <title>NotionLess Cloud — Write without friction</title>
 
@@ -217,25 +217,7 @@
       font-size: 1rem;
     }
 
-    .scroll-indicator {
-      position: absolute;
-      bottom: 40px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      color: var(--muted);
-      font-size: 0.75rem;
-      opacity: 0.6;
-      animation: bounce 2s infinite;
-    }
 
-    @keyframes bounce {
-      0%, 100% { transform: translateX(-50%) translateY(0); }
-      50% { transform: translateX(-50%) translateY(6px); }
-    }
 
     .features {
       padding: 120px 0;
@@ -541,7 +523,7 @@
     <div class="container">
       <div class="hero-content">
         <h1>Write without <span>friction</span>.</h1>
-        <p>A clean, block-based editor that lives in your browser. No accounts, no sync, no noise — just you and your thoughts.</p>
+        <p>A clean, block-based editor that lives in the cloud. Create an account, sync across devices, and never lose your thoughts.</p>
         <div class="hero-buttons">
           <a href="/app" class="btn btn-primary hero-cta">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
@@ -552,10 +534,6 @@
           </a>
         </div>
       </div>
-    </div>
-    <div class="scroll-indicator">
-      <span>Scroll</span>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></svg>
     </div>
   </section>
 
@@ -585,14 +563,14 @@
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           </div>
           <h3>Your Data, Yours</h3>
-          <p>Everything saves to IndexedDB in the browser. Your data stays on your device, accessible offline.</p>
+          <p>Everything saves to the cloud. Your data is stored securely on the server, accessible from any device.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           </div>
           <h3>Always Available</h3>
-          <p>Works offline, no internet required. Open the app, start writing — no loading screens or sync delays.</p>
+          <p>Access your notes from anywhere. Log in on any device and your workspace is always up to date.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">
@@ -618,7 +596,7 @@
         <div class="privacy-text">
           <h2>Privacy by design, not by promise.</h2>
           <p>Other apps ask you to trust them with your data. NotionLess takes trust out of the equation entirely.</p>
-          <p>Your notes never leave your device. There's no server, no account system, no cloud sync. Just the browser's built-in storage and you.</p>
+          <p>Your notes live in your own private workspace. Each account gets an isolated database, and your data is encrypted in transit.</p>
           <a href="/app" class="btn btn-primary">Try it now</a>
         </div>
         <div class="privacy-visual">
@@ -628,8 +606,8 @@
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
               </div>
               <div class="privacy-stat-text">
-                <strong>100% Local Storage</strong>
-                <span>IndexedDB keeps everything on your device</span>
+                <strong>Cloud Storage</strong>
+                <span>Each account has its own isolated SQLite database</span>
               </div>
             </div>
             <div class="privacy-stat">
@@ -646,8 +624,8 @@
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
               </div>
               <div class="privacy-stat-text">
-                <strong>No Account Required</strong>
-                <span>Open and start writing instantly</span>
+                <strong>Multi-Account</strong>
+                <span>Register, login, and switch between accounts</span>
               </div>
             </div>
             <div class="privacy-stat">
@@ -655,8 +633,8 @@
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
               </div>
               <div class="privacy-stat-text">
-                <strong>Works Offline</strong>
-                <span>No internet connection needed</span>
+                <strong>Always in Sync</strong>
+                <span>Syncs to the cloud for access anywhere</span>
               </div>
             </div>
           </div>
@@ -668,7 +646,7 @@
   <section class="cta-section">
     <div class="container">
       <h2>Ready to write freely?</h2>
-      <p>No signup, no download, no setup. Just open the app and let your thoughts flow.</p>
+      <p>Create your account in seconds. Your notes are safe, synced, and always available.</p>
       <a href="/app" class="btn btn-primary">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
         Open NotionLess
