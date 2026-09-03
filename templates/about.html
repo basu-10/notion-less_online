@@ -12,6 +12,16 @@
   <link rel="stylesheet" href="https://esm.sh/@blocknote/core@0.51.3/fonts/inter.css">
 
   <link rel="stylesheet" href="/static/css/theme.css">
+  <script>
+    (function() {
+      var t;
+      try { t = localStorage.getItem("notion-theme"); } catch(e) {}
+      var theme = (t === "dark" || t === "light") ? t : (
+        window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+      );
+      if (theme === "dark") { document.documentElement.setAttribute("data-theme", "dark"); }
+    })();
+  </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 

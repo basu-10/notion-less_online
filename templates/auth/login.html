@@ -7,6 +7,16 @@
   <link rel="stylesheet" href="/static/css/theme.css">
   <link rel="stylesheet" href="/static/css/auth.css">
   <script src="/static/js/theme.js" defer></script>
+  <script>
+    (function() {
+      var t;
+      try { t = localStorage.getItem("notion-theme"); } catch(e) {}
+      var theme = (t === "dark" || t === "light") ? t : (
+        window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+      );
+      if (theme === "dark") { document.documentElement.setAttribute("data-theme", "dark"); }
+    })();
+  </script>
   <style>
     body { background: var(--bg); }
     .auth-container { background: transparent; }
