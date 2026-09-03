@@ -13,8 +13,7 @@
     "activeTab",
     "storage",
     "tabs",
-    "<all_urls>",
-    "cookies"
+    "<all_urls>"
   ],
   "background": {
     "scripts": ["background.js"],

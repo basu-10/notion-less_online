@@ -66,11 +66,9 @@ def verify_api_key():
 
     api_key = request.json.get('api_key') if request.is_json else request.args.get('api_key')
     if not api_key:
-        return cors_response({'error': 'API key required'}, 401)
+        return cors_response({'error': 'API key required', 'valid': False}, 401)
     username = User.get_username_from_api_key(api_key)
-    if not username:
-        return cors_response({'error': 'Invalid API key'}, 401)
-    return cors_response({'valid': True, 'username': username})
+    return cors_response({'valid': bool(username), 'username': username, 'key_prefix': api_key[:15] if api_key else None})
 
 @extension_bp.route('/extension/auth/login', methods=['POST', 'OPTIONS'])
 def extension_login():

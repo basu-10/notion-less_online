@@ -37,29 +37,30 @@
   let serverUrl = 'https://notionless.pythonanywhere.com';
 
   async function init() {
-    const { serverUrl: url } = await sendMessage({ action: 'getServerUrl' });
-    serverUrl = url;
-    elements.serverUrl.value = serverUrl;
+    try {
+      const { serverUrl: url } = await sendMessage({ action: 'getServerUrl' });
+      serverUrl = url;
+      elements.serverUrl.value = serverUrl;
 
-    const creds = await sendMessage({ action: 'getCredentials' });
+      const creds = await sendMessage({ action: 'getCredentials' });
+      const keyPart = creds.apiKey ? creds.apiKey.substring(0, 15) : 'none';
+      elements.authError.textContent = 'key: ' + keyPart;
 
-    if (creds.apiKey) {
-      const session = await sendMessage({ action: 'checkSession' });
-      if (session.authenticated) {
-        showClipSection(session.username, false);
-        loadCurrentPage();
-        return;
+      if (creds.apiKey) {
+        const session = await sendMessage({ action: 'checkSession' });
+        elements.authError.textContent += ' | resp: ' + JSON.stringify(session);
+        if (session.authenticated) {
+          showClipSection(session.username, false);
+          loadCurrentPage();
+          return;
+        }
       }
-    }
 
-    const cookieSession = await sendMessage({ action: 'checkSession' });
-    if (cookieSession.authenticated) {
-      showClipSection(cookieSession.username, true);
-      loadCurrentPage();
-      return;
+      showAuthSection();
+    } catch (e) {
+      elements.authError.textContent = 'Error: ' + e.message;
+      showAuthSection();
     }
-
-    showAuthSection();
     setupEventListeners();
   }
 
@@ -190,11 +191,19 @@
         elements.loginBtn.disabled = false;
         elements.loginBtn.textContent = 'Sign In';
       } else if (response.success) {
-        showClipSection(response.username, false);
-        loadCurrentPage();
+        const creds = await sendMessage({ action: 'getCredentials' });
+        elements.authError.textContent = 'After login - apiKey: ' + (creds.apiKey ? 'saved' : 'NOT saved');
+        elements.authError.style.color = creds.apiKey ? 'green' : 'red';
+        if (creds.apiKey) {
+          showClipSection(response.username, false);
+          loadCurrentPage();
+        } else {
+          elements.loginBtn.disabled = false;
+          elements.loginBtn.textContent = 'Sign In';
+        }
       }
     } catch (e) {
-      elements.authError.textContent = 'Connection failed. Is the server running?';
+      elements.authError.textContent = 'Error: ' + e.message;
       elements.loginBtn.disabled = false;
       elements.loginBtn.textContent = 'Sign In';
     }
