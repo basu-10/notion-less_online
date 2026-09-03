@@ -1474,7 +1474,7 @@ function openQuickSwitch() {
   overlay.setAttribute("aria-hidden", "false");
   $("#quickSwitchInput").value = "";
   $("#quickSwitchInput").focus();
-  renderQuickSwitch([]);
+  renderQuickSwitch("");
   document.body.style.overflow = "hidden";
 }
 
