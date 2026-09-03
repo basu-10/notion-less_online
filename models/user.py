@@ -63,6 +63,8 @@ class User:
 
     @staticmethod
     def authenticate(username, password):
+        if not User.exists(username):
+            return None
         conn = get_user_db(username)
         row = conn.execute(
             'SELECT password_hash FROM auth WHERE username = ?',
