@@ -142,6 +142,7 @@
     <div class="hud-row"><kbd>Alt</kbd><kbd>PageUp</kbd><span>Prev page</span></div>
     <div class="hud-row"><kbd>Alt</kbd><kbd>PageDown</kbd><span>Next page</span></div>
     <div class="hud-row"><kbd>Ctrl</kbd><kbd>S</kbd><span>Save</span></div>
+    <div class="hud-row"><kbd>Ctrl</kbd><kbd>K</kbd><span>Quick switch</span></div>
     <div class="hud-row"><kbd>/</kbd><span>Block menu</span></div>
   </div>
 
@@ -166,6 +167,16 @@
     <div class="emoji-grid" id="emojiGrid" role="tabpanel"></div>
     <div class="emoji-footer">
       <span class="emoji-hint">Click to copy</span>
+    </div>
+  </div>
+
+  <div id="quickSwitchOverlay" class="quick-switch-overlay" role="dialog" aria-label="Page quick switcher" aria-modal="true" aria-hidden="true">
+    <div class="quick-switch-box">
+      <div class="quick-switch-header">
+        <input type="text" id="quickSwitchInput" placeholder="Search pages..." autocomplete="off" aria-label="Search pages" spellcheck="false">
+        <span class="quick-switch-hint">↵ jump · ↑↓ navigate · Esc close</span>
+      </div>
+      <div class="quick-switch-list" id="quickSwitchList" aria-label="Matching pages"></div>
     </div>
   </div>
 

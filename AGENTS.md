@@ -11,7 +11,7 @@ Project: NotionLess Cloud — Flask-based BlockNote Workspace with multi-account
 
 ## Save state & notifications
 
-The sidebar label shows the current status (Ready, Unsaved, Saved · HH:MM, etc.). All status messages are persisted to IndexedDB and can be reviewed by clicking the label — a popup shows the scrollable notification history with timestamps. Max 100 notifications stored (oldest trimmed automatically).
+The sidebar label shows the current status (Ready, Auto-saving..., Saved · HH:MM, etc.). No persistent "Unsaved" state — auto-save debounced at 2s. All status messages are persisted to IndexedDB and can be reviewed by clicking the label — a popup shows the scrollable notification history with timestamps. Max 100 notifications stored (oldest trimmed automatically).
 
 ## Directory layout
 
@@ -99,8 +99,10 @@ Open <http://localhost:5000>
 - `Alt+Insert` — create a new subpage under the current page
 - `Alt++` — expand all pages in the sidebar
 - `Alt+-` — collapse all pages in the sidebar
-- `Ctrl+S` — save current page
+- `Ctrl+S` — save current page (manual backup)
 - `Ctrl+Z` / `Ctrl+Shift+Z` — undo / redo
+- `Ctrl+K` — quick-switcher overlay to jump between pages
+- Auto-save debounced at 2s; no persistent "Unsaved" state
 - `/` in editor — open block command menu
 - `Tab` / `Shift+Tab` — nest / unnest blocks
 

@@ -92,14 +92,14 @@ async function toggleNotificationPanel() {
 }
 
 async function renderNotificationList() {
-  const list = $("#notificationList");
+  const listEl = $("#notificationList");
   try {
     const notifications = await window.notifications.getNotifications(50);
     if (!notifications.length) {
-      list.innerHTML = '<div class="notification-empty">No notifications</div>';
+      listEl.innerHTML = '<div class="notification-empty">No notifications</div>';
       return;
     }
-    list.innerHTML = notifications.map(n => {
+    listEl.innerHTML = notifications.map(n => {
       const date = new Date(n.timestamp);
       const time = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
       const dateStr = date.toLocaleDateString();
@@ -109,7 +109,7 @@ async function renderNotificationList() {
       </div>`;
     }).join("");
   } catch (e) {
-    list.innerHTML = '<div class="notification-empty">Failed to load</div>';
+    listEl.innerHTML = '<div class="notification-empty">Failed to load</div>';
   }
 }
 
@@ -128,10 +128,10 @@ async function clearAllNotifications() {
 
 function markDirty() {
   state.dirty = true;
-  setSaveState("Unsaved");
-  $("#saveBtn").classList.add("visible");
+  setSaveState("Auto-saving...");
+  $("#saveBtn").classList.remove("visible");
   clearTimeout(state.saveTimer);
-  state.saveTimer = setTimeout(saveCurrent, 3000);
+  state.saveTimer = setTimeout(saveCurrent, 2000);
 }
 
 async function saveCurrent() {
@@ -1456,6 +1456,105 @@ $("#collapseAll").addEventListener("click", () => {
     $("#collapseAll").title = "Show all";
   }
   renderTree();
+});
+
+function openQuickSwitch() {
+  const overlay = $("#quickSwitchOverlay");
+  overlay.classList.add("open");
+  overlay.setAttribute("aria-hidden", "false");
+  $("#quickSwitchInput").value = "";
+  $("#quickSwitchInput").focus();
+  renderQuickSwitch([]);
+  document.body.style.overflow = "hidden";
+}
+
+function closeQuickSwitch() {
+  const overlay = $("#quickSwitchOverlay");
+  overlay.classList.remove("open");
+  overlay.setAttribute("aria-hidden", "true");
+  document.body.style.overflow = "";
+}
+
+function renderQuickSwitch(filterText) {
+  const listEl = $("#quickSwitchList");
+  const allPages = [...state.pages.values()].filter(p => p.id !== ROOT);
+  const filter = filterText ? filterText.toLowerCase() : "";
+  const filtered = filter ? allPages.filter(p => {
+    const title = (p.title || "Untitled").toLowerCase();
+    return title.includes(filter);
+  }) : allPages;
+  const sorted = filtered.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)).slice(0, 30);
+
+  if (!sorted.length) {
+    listEl.innerHTML = '<div class="quick-switch-empty">No pages found</div>';
+    return;
+  }
+  listEl.innerHTML = sorted.map((p, i) => {
+    const activeClass = i === 0 ? " selected" : "";
+    const parentTitle = p.parentId !== ROOT ? (state.pages.get(p.parentId)?.title || "Root") : null;
+    return `<button class="quick-switch-item${activeClass}" data-id="${escapeHtml(p.id)}" data-idx="${i}">
+      <span class="qs-emoji">${escapeHtml(p.emoji || "")}</span>
+      <span class="qs-title">${escapeHtml(p.title || "Untitled")}</span>
+      ${parentTitle ? `<span class="qs-parent">${escapeHtml(parentTitle)}</span>` : ""}
+    </button>`;
+  }).join("");
+}
+
+function handleQuickSwitchKey(e) {
+  const overlay = $("#quickSwitchOverlay");
+  if (!overlay.classList.contains("open")) return false;
+  const listEl = $("#quickSwitchList");
+  if (e.key === "Escape") { e.preventDefault(); closeQuickSwitch(); return true; }
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    const selected = listEl.querySelector(".quick-switch-item.selected") || listEl.querySelector(".quick-switch-item");
+    if (!selected) return true;
+    const next = selected.nextElementSibling;
+    if (next) { selected.classList.remove("selected"); next.classList.add("selected"); next.scrollIntoView({ block: "nearest" }); }
+    return true;
+  }
+  if (e.key === "ArrowUp") {
+    e.preventDefault();
+    const selected = listEl.querySelector(".quick-switch-item.selected") || listEl.querySelector(".quick-switch-item");
+    if (!selected) return true;
+    const prev = selected.previousElementSibling;
+    if (prev) { selected.classList.remove("selected"); prev.classList.add("selected"); prev.scrollIntoView({ block: "nearest" }); }
+    return true;
+  }
+  if (e.key === "Enter") {
+    e.preventDefault();
+    const selected = listEl.querySelector(".quick-switch-item.selected");
+    if (selected) {
+      const id = selected.dataset.id;
+      closeQuickSwitch();
+      if (id) openPage(id);
+    }
+    return true;
+  }
+  return false;
+}
+
+const listEl = $("#quickSwitchList");
+$("#quickSwitchInput").addEventListener("input", (e) => renderQuickSwitch(e.target.value));
+listEl.addEventListener("click", (e) => {
+  const btn = e.target.closest(".quick-switch-item");
+  if (!btn) return;
+  const id = btn.dataset.id;
+  closeQuickSwitch();
+  if (id) openPage(id);
+});
+
+document.addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+    e.preventDefault();
+    openQuickSwitch();
+    return;
+  }
+  if (e.key === "Escape" && $("#quickSwitchOverlay").classList.contains("open")) {
+    closeQuickSwitch();
+    return;
+  }
+  if (handleQuickSwitchKey(e)) return;
 });
 
 function updateSortBtn() {
