@@ -191,13 +191,21 @@ function renderTree() {
     for (const page of childrenOf(parentId)) {
       const children = childrenOf(page.id);
       const row = document.createElement("div");
-      row.className = "tree-row" + (page.id === state.currentPageId ? " active" : "");
+      row.className = "tree-row" + (page.id === state.currentPageId ? " active" : "") + (state.selected.has(page.id) ? " selected" : "");
       row.dataset.id = page.id;
       row.draggable = true;
 
       const indent = document.createElement("div");
       indent.className = "tree-indent";
       indent.style.flexBasis = (depth * 18) + "px";
+
+      const checkbox = document.createElement("button");
+      checkbox.className = "tree-checkbox" + (state.selected.has(page.id) ? " checked" : "");
+      checkbox.innerHTML = state.selected.has(page.id) ? "✓" : "";
+      checkbox.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleSelection(page.id, e.ctrlKey || e.metaKey);
+      });
 
       const twisty = document.createElement("button");
       twisty.className = "twisty" + (children.length ? "" : " placeholder");
@@ -219,7 +227,13 @@ function renderTree() {
       link.className = "page-link";
       link.textContent = page.title || "Untitled";
       link.title = page.title || "Untitled";
-      link.addEventListener("click", () => openPage(page.id));
+      link.addEventListener("click", (e) => {
+        if (e.ctrlKey || e.metaKey) {
+          toggleSelection(page.id, true);
+        } else {
+          openPage(page.id);
+        }
+      });
 
       row.addEventListener("contextmenu", (e) => {
         e.preventDefault();
@@ -235,6 +249,8 @@ function renderTree() {
       row.addEventListener("dragend", () => {
         row.classList.remove("dragging");
         document.querySelectorAll(".tree-row.drop-target").forEach(el => el.classList.remove("drop-target"));
+        const dropZone = root.querySelector(".drop-root-zone");
+        if (dropZone) dropZone.classList.remove("visible");
       });
 
       row.addEventListener("dragover", (e) => {
@@ -269,7 +285,7 @@ function renderTree() {
         openContextMenu(e.clientX, e.clientY, page.id);
       });
 
-      row.append(indent, twisty, emoji, link, more);
+      row.append(indent, checkbox, twisty, emoji, link, more);
       root.appendChild(row);
 
       if (children.length && state.expanded.has(page.id)) walk(page.id, depth + 1);
@@ -284,10 +300,29 @@ function renderTree() {
   dropZone.appendChild(dropLabel);
   root.appendChild(dropZone);
 
+  root.addEventListener("contextmenu", (e) => {
+    if (e.target.closest(".tree-row")) return;
+    e.preventDefault();
+    openSidebarMenu(e.clientX, e.clientY);
+  });
+
+  root.addEventListener("click", (e) => {
+    if (!e.target.closest(".tree-row")) {
+      state.selected.clear();
+      renderTree();
+      renderSelectionBar();
+    }
+  });
+}
+
+function initRootDropZone() {
+  const root = $("#pageTree");
   root.addEventListener("dragover", (e) => {
     e.preventDefault();
     if (e.dataTransfer?.types?.includes("text/plain")) {
       e.dataTransfer.dropEffect = "move";
+      const dropZone = root.querySelector(".drop-root-zone");
+      if (!dropZone) return;
       const rect = root.getBoundingClientRect();
       const lastRow = root.querySelector(".tree-row:last-of-type");
       if (lastRow) {
@@ -305,22 +340,18 @@ function renderTree() {
 
   root.addEventListener("dragleave", (e) => {
     if (!root.contains(e.relatedTarget)) {
-      dropZone.classList.remove("visible");
+      const dropZone = root.querySelector(".drop-root-zone");
+      if (dropZone) dropZone.classList.remove("visible");
     }
   });
 
   root.addEventListener("drop", (e) => {
     e.preventDefault();
-    dropZone.classList.remove("visible");
+    const dropZone = root.querySelector(".drop-root-zone");
+    if (dropZone) dropZone.classList.remove("visible");
     const draggedId = e.dataTransfer.getData("text/plain");
     if (!draggedId) return;
     movePage(draggedId, ROOT);
-  });
-
-  root.addEventListener("contextmenu", (e) => {
-    if (e.target.closest(".tree-row")) return;
-    e.preventDefault();
-    openSidebarMenu(e.clientX, e.clientY);
   });
 }
 
@@ -352,6 +383,109 @@ function isDescendant(childId, parentId) {
     cursor = state.pages.get(cursor.parentId);
   }
   return false;
+}
+
+function toggleSelection(pageId, additive) {
+  if (additive) {
+    if (state.selected.has(pageId)) {
+      state.selected.delete(pageId);
+    } else {
+      state.selected.add(pageId);
+    }
+  } else {
+    state.selected.clear();
+    state.selected.add(pageId);
+  }
+  renderTree();
+  renderSelectionBar();
+}
+
+function renderSelectionBar() {
+  let bar = $("#selectionBar");
+  if (!bar) {
+    bar = document.createElement("div");
+    bar.id = "selectionBar";
+    bar.className = "selection-bar";
+    const sidebar = document.querySelector(".sidebar");
+    sidebar.insertBefore(bar, sidebar.querySelector(".sidebar-footer"));
+  }
+  const count = state.selected.size;
+  if (count === 0) {
+    bar.innerHTML = "";
+    bar.style.display = "none";
+    return;
+  }
+  bar.style.display = "flex";
+  bar.innerHTML = `<span>${count} selected</span>
+    <button class="sel-btn" data-action="delete">Delete</button>
+    <button class="sel-btn" data-action="move">Move to...</button>
+    <button class="sel-btn" data-action="clear">Clear</button>`;
+  bar.querySelectorAll(".sel-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const action = btn.dataset.action;
+      if (action === "delete") deleteSelected();
+      else if (action === "move") moveSelectedPrompt();
+      else if (action === "clear") { state.selected.clear(); renderTree(); renderSelectionBar(); }
+    });
+  });
+}
+
+async function deleteSelected() {
+  const ids = [...state.selected];
+  if (!ids.length) return;
+  if (!confirm(`Delete ${ids.length} page(s)?`)) return;
+  for (const id of ids) {
+    state.pages.delete(id);
+    try { await window.api.deletePage(id); } catch {}
+  }
+  state.selected.clear();
+  if (!childrenOf(ROOT).length) {
+    const welcome = makePage({ id: "welcome", title: "Welcome", parentId: ROOT, emoji: "👋" });
+    state.pages.set(welcome.id, welcome);
+    try { await window.api.createPage({ id: welcome.id, title: welcome.title, content: JSON.stringify(welcome.blocks), parent_id: welcome.parentId }); } catch {}
+  }
+  const first = childrenOf(ROOT)[0];
+  if (first) await openPage(first.id);
+  renderTree();
+  renderSelectionBar();
+}
+
+function moveSelectedPrompt() {
+  const ids = [...state.selected];
+  if (!ids.length) return;
+  closeSelectionBar();
+  const menu = $("#contextMenu");
+  menu.innerHTML = "";
+  const pages = [...state.pages.values()].filter(p => !ids.includes(p.id));
+  if (!pages.length) {
+    const item = document.createElement("button");
+    item.className = "context-item";
+    item.textContent = "No pages available";
+    item.disabled = true;
+    menu.appendChild(item);
+  } else {
+    pages.forEach(p => {
+      const item = document.createElement("button");
+      item.className = "context-item";
+      item.textContent = (p.parentId !== ROOT ? "  " : "") + (p.title || "Untitled");
+      item.addEventListener("click", () => {
+        closeContextMenu();
+        ids.forEach(id => movePage(id, p.id));
+        state.selected.clear();
+        renderSelectionBar();
+      });
+      menu.appendChild(item);
+    });
+  }
+  const rect = document.querySelector(".sidebar").getBoundingClientRect();
+  menu.style.left = (rect.width / 2 - 90) + "px";
+  menu.style.top = (rect.height / 2 - 100) + "px";
+  menu.classList.add("open");
+}
+
+function closeSelectionBar() {
+  const bar = $("#selectionBar");
+  if (bar) bar.style.display = "none";
 }
 
 function movePage(pageId, newParentId) {
@@ -922,6 +1056,7 @@ async function initialize() {
 
   state.expanded.add(ROOT);
   applyTheme(getTheme());
+  initRootDropZone();
   const first = state.pages.get("welcome") || childrenOf(ROOT)[0];
   if (first) await openPage(first.id);
   setSaveState("Ready");
