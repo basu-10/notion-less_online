@@ -2,11 +2,13 @@ import os
 import re
 import sqlite3
 import time
+import random
 from config import DATA_DIR
 from services.db import get_user_db, init_user_db, get_main_db, init_main_db
 from services.auth import hash_password, check_password
 
 USERNAME_PATTERN = re.compile(r'^[a-zA-Z0-9_-]{3,32}$')
+PROFILE_AVATARS = [f'/static/images/profiles/avatar-{i}.png' for i in range(1, 13)]
 
 class User:
     def __init__(self, username):
@@ -59,37 +61,53 @@ class User:
     def get_profile(username):
         init_main_db()
         conn = get_main_db()
+        # Ensure avatar_url column exists
+        try:
+            conn.execute('SELECT avatar_url FROM user_profiles LIMIT 1')
+        except sqlite3.OperationalError:
+            conn.execute('ALTER TABLE user_profiles ADD COLUMN avatar_url TEXT DEFAULT \'\'')
+            conn.commit()
         row = conn.execute(
-            'SELECT username, display_name, bio, created_at FROM user_profiles WHERE username = ?',
+            'SELECT username, display_name, bio, created_at, avatar_url FROM user_profiles WHERE username = ?',
             (username,)
         ).fetchone()
         conn.close()
         if not row:
-            return {'username': username, 'display_name': username, 'bio': ''}
-        return dict(row)
+            return {'username': username, 'display_name': username, 'bio': '', 'avatar_url': random.choice(PROFILE_AVATARS)}
+        result = dict(row)
+        if not result.get('avatar_url'):
+            result['avatar_url'] = random.choice(PROFILE_AVATARS)
+        return result
 
     @staticmethod
-    def update_profile(username, display_name=None, bio=None):
+    def update_profile(username, display_name=None, bio=None, avatar_url=None):
         init_main_db()
         conn = get_main_db()
+        try:
+            conn.execute('SELECT avatar_url FROM user_profiles LIMIT 1')
+        except sqlite3.OperationalError:
+            conn.execute('ALTER TABLE user_profiles ADD COLUMN avatar_url TEXT DEFAULT \'\'')
         existing = conn.execute('SELECT username FROM user_profiles WHERE username = ?', (username,)).fetchone()
         now = time.time()
         if existing:
-            if display_name is not None or bio is not None:
-                sets = []
-                params = []
-                if display_name is not None:
-                    sets.append('display_name = ?')
-                    params.append(display_name)
-                if bio is not None:
-                    sets.append('bio = ?')
-                    params.append(bio)
+            sets = []
+            params = []
+            if display_name is not None:
+                sets.append('display_name = ?')
+                params.append(display_name)
+            if bio is not None:
+                sets.append('bio = ?')
+                params.append(bio)
+            if avatar_url is not None:
+                sets.append('avatar_url = ?')
+                params.append(avatar_url)
+            if sets:
                 params.append(username)
                 conn.execute(f"UPDATE user_profiles SET {', '.join(sets)} WHERE username = ?", params)
         else:
             conn.execute(
-                'INSERT INTO user_profiles (username, display_name, bio, created_at) VALUES (?, ?, ?, ?)',
-                (username, display_name or username, bio or '', now)
+                'INSERT INTO user_profiles (username, display_name, bio, created_at, avatar_url) VALUES (?, ?, ?, ?, ?)',
+                (username, display_name or username, bio or '', now, avatar_url or random.choice(PROFILE_AVATARS))
             )
         conn.commit()
         conn.close()
@@ -114,8 +132,8 @@ class User:
         init_main_db()
         main_conn = get_main_db()
         main_conn.execute(
-            'INSERT OR IGNORE INTO user_profiles (username, display_name, bio, created_at) VALUES (?, ?, ?, ?)',
-            (username, username, '', time.time())
+            'INSERT OR IGNORE INTO user_profiles (username, display_name, bio, created_at, avatar_url) VALUES (?, ?, ?, ?, ?)',
+            (username, username, '', time.time(), random.choice(PROFILE_AVATARS))
         )
         main_conn.commit()
         main_conn.close()

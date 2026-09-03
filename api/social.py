@@ -68,6 +68,7 @@ def get_public_page(username, page_id):
     page = dict(row)
     page['is_public'] = bool(page['is_public'])
     page['author'] = username
+    page['author_profile'] = User.get_profile(username)
     # Include nested subpages to preserve nesting in shared pages
     page['subpages'] = []
     for sub in sub_rows:

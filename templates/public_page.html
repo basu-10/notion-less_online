@@ -73,6 +73,67 @@
     .page-nav a:hover {
       color: var(--accent);
     }
+    .hero {
+      position: relative;
+      margin-bottom: 40px;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .hero-cover {
+      height: 160px;
+      background: linear-gradient(135deg, var(--accent) 0%, #e87a6a 60%, #f4e4c0 100%);
+      position: relative;
+    }
+    .hero-cover::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 30% 40%, rgba(255,255,255,0.25) 0%, transparent 60%);
+    }
+    .hero-body {
+      display: flex;
+      align-items: flex-end;
+      gap: 24px;
+      padding: 0 32px 28px;
+      margin-top: -60px;
+      position: relative;
+      z-index: 2;
+    }
+    .hero-avatar {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      border: 4px solid var(--surface);
+      box-shadow: 0 12px 40px rgba(216,91,69,0.35), 0 4px 16px rgba(0,0,0,0.08);
+      object-fit: cover;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, var(--accent), var(--accent-light));
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .hero-avatar:hover { transform: scale(1.03); box-shadow: 0 16px 50px rgba(216,91,69,0.45); }
+    .hero-author-block { flex: 1; min-width: 0; }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 12px; border-radius: 20px; border: 1.5px solid var(--accent);
+      color: var(--accent); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em;
+      text-transform: uppercase; margin-bottom: 12px; background: rgba(216,91,69,0.06);
+    }
+    .hero-author-name {
+      font-size: 1.6rem; font-weight: 800; letter-spacing: -0.035em; line-height: 1.1; margin: 0 0 6px;
+    }
+    .hero-author-name a { color: inherit; text-decoration: none; }
+    .hero-author-name a:hover { color: var(--accent); }
+    .hero-bio {
+      color: var(--muted); font-size: 0.95rem; max-width: 440px; line-height: 1.5; margin: 0;
+    }
+    .hero-cta {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 18px; border-radius: 22px; border: 1.5px solid var(--accent);
+      color: var(--accent); text-decoration: none; font-size: 0.85rem; font-weight: 700;
+      transition: background 0.2s ease, color 0.2s ease;
+      margin-top: 10px;
+    }
+    .hero-cta:hover { background: var(--accent); color: white; }
     .page-card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -286,6 +347,8 @@
         const page = await res.json();
 
         document.title = `${page.title || 'Untitled'} — NotionLess Cloud`;
+        const profileData = page.author_profile || {};
+        const avatarUrl = profileData.avatar_url || '';
         const displayName = page.author ? page.author.charAt(0).toUpperCase() + page.author.slice(1) : username;
         const avatar = displayName.charAt(0).toUpperCase();
         const date = page.updated_at ? new Date(page.updated_at * 1000).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : '';
@@ -332,17 +395,28 @@
 
         document.getElementById('pageContent').innerHTML = `
           <article class="page-card">
-            <header class="page-header">
-              <div class="page-author">
-                <div class="page-author-avatar">${avatar}</div>
-                <div class="page-author-info">
-                  <a href="/wall/${username}">${escapeHtml(displayName)}</a>
-                  ${date ? `<div class="date">${date}</div>` : ''}
+            <header class="hero">
+              <div class="hero-cover"></div>
+              <div class="hero-body">
+                <img src="${escapeHtml(avatarUrl)}" class="hero-avatar" alt="${escapeHtml(displayName)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';this.nextElementSibling.innerHTML='<span style=font-size:2rem;color:#fff;font-weight:800;text-align:center;width:100%;line-height:120px;>${avatar}</span>';">
+                <div class="hero-avatar" style="display:none;">${avatar}</div>
+                <div class="hero-author-block">
+                  <div class="hero-badge">Public</div>
+                  <h2 class="hero-author-name"><a href="/wall/${username}">${escapeHtml(displayName)}</a></h2>
+                  <p class="hero-bio">${escapeHtml(page.author_profile ? (page.author_profile.bio || '') : '')}</p>
+                  <a href="/wall/${username}" class="hero-cta">View profile →</a>
                 </div>
               </div>
-              <h1 class="page-title">${escapeHtml(page.title || 'Untitled')}</h1>
             </header>
-            <div class="page-content">${content}</div>
+
+            <div style="padding: 32px 32px 0;">
+              <h1 class="page-title" style="font-size: 2.4rem; letter-spacing: -0.035em; line-height: 1.1; margin-bottom: 8px;">${escapeHtml(page.title || 'Untitled')}</h1>
+              <div class="page-author-info" style="margin-bottom: 24px; color: var(--muted); font-size: 0.85rem;">
+                Updated ${date ? date : 'recently'} · ${page.subpages ? page.subpages.length : 0} subpage${page.subpages && page.subpages.length === 1 ? '' : 's'}
+              </div>
+            </div>
+
+            <div class="page-content" style="padding-top: 8px;">${content}</div>
             ${subpagesHtml}
             <div class="page-actions">
               <button class="copy-btn" id="copyBtn">

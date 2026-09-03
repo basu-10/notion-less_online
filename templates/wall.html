@@ -108,6 +108,20 @@
       color: white;
       flex-shrink: 0;
     }
+    .wall-avatar-img {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid var(--surface);
+      box-shadow: 0 6px 20px rgba(216,91,69,0.25);
+      flex-shrink: 0;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .wall-avatar-img:hover {
+      transform: scale(1.05);
+      box-shadow: 0 10px 30px rgba(216,91,69,0.35);
+    }
     .wall-info h1 {
       font-size: 1.75rem;
       font-weight: 700;
@@ -247,7 +261,7 @@
         const initial = data.profile;
         const displayName = initial.display_name || username;
         const bio = initial.bio || '';
-        const avatar = displayName.charAt(0).toUpperCase();
+        const avatarUrl = initial.avatar_url || '';
 
         function renderNestedPages(nodes, depth = 0) {
           if (!nodes || !nodes.length) return '';
@@ -300,7 +314,8 @@
 
         content.innerHTML = `
           <header class="wall-header">
-            <div class="wall-avatar">${avatar}</div>
+            <img src="${avatarUrl}" class="wall-avatar-img" alt="${escapeHtml(displayName)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+            <div class="wall-avatar" style="display:none;">${displayName.charAt(0).toUpperCase()}</div>
             <div class="wall-info">
               <h1>${escapeHtml(displayName)}</h1>
               <p class="username">@${username}</p>
