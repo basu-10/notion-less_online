@@ -1,6 +1,7 @@
 class ApiClient {
   constructor() {
     this.base = '/api';
+    this.etags = {};
   }
 
   async request(method, path, body) {
@@ -36,6 +37,7 @@ class ApiClient {
   async importProfile(data) { return this.post('/import', data); }
 
   async listPages() { return this.get('/pages'); }
+  async listPagesMeta() { return this.get('/pages/list'); }
   async createPage(data) { return this.post('/pages', data); }
   async getPage(id) { return this.get(`/pages/${id}`); }
   async updatePage(id, data) { return this.put(`/pages/${id}`, data); }

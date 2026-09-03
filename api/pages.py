@@ -1,12 +1,33 @@
 import uuid
 import time
 import os
-from flask import Blueprint, request, jsonify, send_from_directory
+import hashlib
+from flask import Blueprint, request, jsonify, send_from_directory, make_response
 from flask_login import current_user, login_required
 from services.db import get_user_db
 from config import UPLOADS_DIR
 
 pages_bp = Blueprint('pages', __name__)
+
+def compute_etag(data):
+    content = str(data).encode('utf-8')
+    return hashlib.md5(content).hexdigest()
+
+@pages_bp.route('/pages/list', methods=['GET'])
+@login_required
+def list_pages_meta():
+    conn = get_user_db(current_user.username)
+    rows = conn.execute(
+        'SELECT id, title, parent_id, is_public, created_at, updated_at FROM pages'
+    ).fetchall()
+    conn.close()
+    result = [dict(r) for r in rows]
+    etag = compute_etag(result)
+    if request.headers.get('If-None-Match') == etag:
+        return '', 304
+    response = make_response(jsonify(result))
+    response.set_etag(etag)
+    return response
 
 @pages_bp.route('/pages', methods=['GET'])
 @login_required
@@ -46,7 +67,13 @@ def get_page(page_id):
     conn.close()
     if not row:
         return jsonify({'error': 'Not found'}), 404
-    return jsonify(dict(row))
+    data = dict(row)
+    etag = compute_etag(data)
+    if request.headers.get('If-None-Match') == etag:
+        return '', 304
+    response = make_response(jsonify(data))
+    response.set_etag(etag)
+    return response
 
 @pages_bp.route('/pages/<page_id>', methods=['PUT'])
 @login_required

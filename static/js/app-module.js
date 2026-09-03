@@ -641,6 +641,21 @@ async function openPage(id) {
   if (state.dirty) await saveCurrent();
   const page = state.pages.get(id);
   if (!page) { state.isOpeningPage = false; return; }
+  if (!page.blocks) {
+    try {
+      const data = await window.api.getPage(id);
+      let blocks = data.content;
+      if (typeof blocks === "string") {
+        try { blocks = JSON.parse(blocks); } catch { blocks = [{type:"paragraph"}]; }
+      }
+      page.blocks = blocks;
+      page.title = data.title || page.title;
+      page.isPublic = Boolean(data.is_public);
+    } catch (err) {
+      console.error("Failed to load page content:", err);
+      page.blocks = [{type:"paragraph"}];
+    }
+  }
   state.currentPageId = id;
   try { await window.notifications.saveState("lastPageId", id); } catch {}
   $("#pageTitle").value = page.title || "Untitled";
@@ -736,6 +751,18 @@ function openContextMenu(x, y, pageId) {
 async function duplicatePage(pageId) {
   const page = state.pages.get(pageId);
   if (!page) return;
+  if (!page.blocks) {
+    try {
+      const data = await window.api.getPage(pageId);
+      let blocks = data.content;
+      if (typeof blocks === "string") {
+        try { blocks = JSON.parse(blocks); } catch { blocks = [{type:"paragraph"}]; }
+      }
+      page.blocks = blocks;
+    } catch {
+      page.blocks = [{type:"paragraph"}];
+    }
+  }
   const collectDescendants = (pid) => {
     const children = childrenOf(pid);
     const result = [];
@@ -746,6 +773,20 @@ async function duplicatePage(pageId) {
     return result;
   };
   const allPages = [page, ...collectDescendants(pageId)];
+  for (const p of allPages) {
+    if (!p.blocks) {
+      try {
+        const data = await window.api.getPage(p.id);
+        let blocks = data.content;
+        if (typeof blocks === "string") {
+          try { blocks = JSON.parse(blocks); } catch { blocks = [{type:"paragraph"}]; }
+        }
+        p.blocks = blocks;
+      } catch {
+        p.blocks = [{type:"paragraph"}];
+      }
+    }
+  }
   const idMap = new Map();
   for (const p of allPages) {
     const newId = uid("page");
@@ -1129,23 +1170,39 @@ function onEditorKeyup() {
 }
 
 async function initialize() {
-  try {
-    const rows = await window.api.listPages();
-    state.pages = new Map(rows.map(p => {
-      let blocks = p.content;
-      if (typeof blocks === "string") {
-        try { blocks = JSON.parse(blocks); } catch { blocks = [{type:"paragraph"}]; }
-      }
+  let cachedMeta = null;
+  try { cachedMeta = await window.notifications.getState("pageListMeta"); } catch {}
+
+  if (cachedMeta && Array.isArray(cachedMeta)) {
+    state.pages = new Map(cachedMeta.map(p => {
       return [p.id, {
         id: p.id,
         title: p.title || "Untitled",
-        blocks: blocks,
+        blocks: null,
         parentId: p.parent_id || ROOT,
         emoji: "",
         updatedAt: p.updated_at || Date.now(),
         isPublic: Boolean(p.is_public)
       }];
     }));
+    renderTree();
+  }
+
+  try {
+    const rows = await window.api.listPagesMeta();
+    state.pages = new Map(rows.map(p => {
+      return [p.id, {
+        id: p.id,
+        title: p.title || "Untitled",
+        blocks: null,
+        parentId: p.parent_id || ROOT,
+        emoji: "",
+        updatedAt: p.updated_at || Date.now(),
+        isPublic: Boolean(p.is_public)
+      }];
+    }));
+    try { await window.notifications.saveState("pageListMeta", rows); } catch {}
+    renderTree();
   } catch (err) {
     console.error("Failed to load pages:", err);
   }
@@ -1410,15 +1467,15 @@ async function toggleCurrentPagePublic() {
       setSaveState('Made public — subpages included');
     } else {
       // When making private, only this page; subpages stay as they were or become private based on DB
-      // Re-fetch from server to sync exact DB state for children
-      const syncRes = await fetch(`/api/pages`);
-      if (syncRes.ok) {
-        const syncPages = await syncRes.json();
+      // Re-fetch metadata from server to sync exact DB state for children
+      try {
+        const syncPages = await window.api.listPagesMeta();
         for (const sp of syncPages) {
           const existing = state.pages.get(sp.id);
           if (existing) existing.isPublic = Boolean(sp.is_public);
         }
-      }
+        try { await window.notifications.saveState("pageListMeta", syncPages); } catch {}
+      } catch {}
       setSaveState('Made private');
     }
     updatePublicToggleUI();
