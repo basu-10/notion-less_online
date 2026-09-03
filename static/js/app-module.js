@@ -27,7 +27,9 @@ const state = {
   slashIndex: 0,
   slashFilter: "",
   isOpeningPage: false,
-  selected: new Set()
+  selected: new Set(),
+  saveInProgress: false,
+  manualSaveTimer: null
 };
 
 let editorWired = false;
@@ -935,6 +937,26 @@ function showFormatToolbar() {
 
 function onEditorKeydown(e) {
   if (!state.editor) return;
+
+  if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+    e.preventDefault();
+    clearTimeout(state.manualSaveTimer);
+    if (!state.saveInProgress && state.dirty) {
+      state.saveInProgress = true;
+      saveCurrent().finally(() => { state.saveInProgress = false; });
+    } else if (!state.dirty) {
+      setSaveState("Nothing to save");
+    } else {
+      state.manualSaveTimer = setTimeout(() => {
+        if (!state.saveInProgress && state.dirty) {
+          state.saveInProgress = true;
+          saveCurrent().finally(() => { state.saveInProgress = false; });
+        }
+      }, 500);
+    }
+    return;
+  }
+
   const block = getCurrentBlock();
   const text = currentBlockText(block);
   const menuOpen = $("#slashMenu").classList.contains("open");
