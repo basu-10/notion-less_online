@@ -1404,4 +1404,29 @@ try {
   });
 })();
 
+(function initShortcutHud() {
+  const hud = $("#shortcutHud");
+  if (!hud) return;
+  let hideTimer = null;
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Alt") {
+      if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+      hud.classList.add("visible");
+    }
+  });
+
+  document.addEventListener("keyup", (e) => {
+    if (e.key === "Alt") {
+      hud.classList.remove("visible");
+      hideTimer = setTimeout(() => { hud.classList.remove("visible"); }, 800);
+    }
+  });
+
+  document.addEventListener("blur", () => {
+    hud.classList.remove("visible");
+    if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+  });
+})();
+
 initialize();
