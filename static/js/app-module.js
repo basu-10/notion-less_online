@@ -1245,6 +1245,19 @@ $("#importFile").addEventListener("change", (e) => { if (e.target.files && e.tar
 $("#notificationTrigger").addEventListener("click", toggleNotificationPanel);
 $("#clearNotifications").addEventListener("click", clearAllNotifications);
 
+function scrollPageTree(delta) {
+  const tree = $("#pageTree");
+  if (!tree) return;
+  tree.scrollTop = Math.max(0, Math.min(tree.scrollTop + delta, tree.scrollHeight - tree.clientHeight));
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.altKey && (e.key === "PageUp" || e.key === "PageDown")) {
+    e.preventDefault();
+    scrollPageTree(e.key === "PageUp" ? -200 : 200);
+  }
+});
+
 function toggleSidebar(force) {
   const sb = document.querySelector(".sidebar");
   const bd = $("#mobileBackdrop");

@@ -387,6 +387,15 @@ html[data-theme="dark"] .sidebar {
 
 .bn-editor .bn-block-content { font-size: 16.5px; line-height: 1.7; color: var(--text); letter-spacing: -0.01em; }
 
+.bn-editor a,
+.bn-editor a:visited {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color .15s ease;
+}
+.bn-editor a:hover { color: var(--accent-deep); }
+
 /* Block handle */
 .bn-editor .bn-block-outer { position: relative; padding-left: 28px; }
 .bn-editor .bn-block-outer::before {
