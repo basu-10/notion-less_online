@@ -5,7 +5,7 @@ import time
 import random
 import secrets
 import hashlib
-from config import DATA_DIR
+from config import DATA_DIR, BASE_DIR
 from services.db import get_user_db, init_user_db, get_main_db, init_main_db
 from services.auth import hash_password, check_password
 
@@ -36,9 +36,18 @@ class User:
     def get_all_users():
         os.makedirs(DATA_DIR, exist_ok=True)
         users = []
+        print(f"[DEBUG get_all_users] DATA_DIR={DATA_DIR}")
+        print(f"[DEBUG get_all_users] BASE_DIR={BASE_DIR}")
+        print(f"[DEBUG get_all_users] CWD={os.getcwd()}")
+        try:
+            files = os.listdir(DATA_DIR)
+            print(f"[DEBUG get_all_users] files in DATA_DIR: {files}")
+        except Exception as e:
+            print(f"[DEBUG get_all_users] Error listing DATA_DIR: {e}")
         for filename in os.listdir(DATA_DIR):
             if filename.endswith('.db'):
                 users.append(filename[:-3])
+        print(f"[DEBUG get_all_users] found users: {users}")
         return users
 
     @staticmethod
@@ -178,9 +187,10 @@ class User:
         try:
             conn.execute('SELECT api_key FROM user_settings LIMIT 1')
         except sqlite3.OperationalError:
-            conn.execute('CREATE TABLE IF NOT EXISTS user_settings (api_key TEXT, api_key_hash TEXT)')
+            conn.execute('CREATE TABLE IF NOT EXISTS user_settings (api_key TEXT PRIMARY KEY, api_key_hash TEXT)')
         api_key = f"nla_{secrets.token_urlsafe(32)}"
         api_key_hash = hashlib.sha256(api_key.encode()).hexdigest()
+        print(f"[DEBUG generate_api_key] username={username}, api_key={api_key[:20]}..., hash={api_key_hash[:20]}...")
         conn.execute('INSERT OR REPLACE INTO user_settings (api_key, api_key_hash) VALUES (?, ?)',
                      (api_key, api_key_hash))
         conn.commit()
@@ -210,16 +220,29 @@ class User:
     @staticmethod
     def get_username_from_api_key(api_key):
         if not api_key or not api_key.startswith('nla_'):
+            print(f"[DEBUG get_username_from_api_key] Key format invalid: {api_key[:20] if api_key else 'None'}")
             return None
         api_key_hash = hashlib.sha256(api_key.encode()).hexdigest()
-        for username in User.get_all_users():
+        print(f"[DEBUG get_username_from_api_key] Looking for hash: {api_key_hash[:20]}...")
+        all_users = User.get_all_users()
+        print(f"[DEBUG get_username_from_api_key] All users: {all_users}")
+        for username in all_users:
             conn = get_user_db(username)
             try:
                 row = conn.execute('SELECT api_key_hash FROM user_settings LIMIT 1').fetchone()
-                if row and secrets.compare_digest(row['api_key_hash'], api_key_hash):
-                    conn.close()
-                    return username
-            except sqlite3.OperationalError:
+                stored_hash = row['api_key_hash'] if row else None
+                print(f"[DEBUG get_username_from_api_key] User {username}, stored_hash: {stored_hash[:20] if stored_hash else 'None'}...")
+                if stored_hash:
+                    try:
+                        if secrets.compare_digest(stored_hash, api_key_hash):
+                            conn.close()
+                            print(f"[DEBUG get_username_from_api_key] MATCH found for {username}")
+                            return username
+                    except Exception as e:
+                        print(f"[DEBUG get_username_from_api_key] compare_digest error: {e}")
+            except sqlite3.OperationalError as e:
+                print(f"[DEBUG get_username_from_api_key] Error for {username}: {e}")
                 pass
             conn.close()
+        print("[DEBUG get_username_from_api_key] No match found")
         return None

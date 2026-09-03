@@ -16,12 +16,14 @@ async function verifyApiKey(apiKey) {
   const verifyUrl = `${apiBase}/extension/auth/verify`;
   console.log('verifyApiKey URL:', verifyUrl);
   console.log('verifyApiKey key:', apiKey ? apiKey.substring(0, 15) + '...' : 'null');
+  console.log('verifyApiKey full key for debug:', apiKey);
   const response = await fetch(verifyUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ api_key: apiKey })
   });
   console.log('verifyApiKey status:', response.status);
+  console.log('verifyApiKey headers:', Object.fromEntries(response.headers.entries()));
   if (!response.ok) {
     console.log('verifyApiKey failed');
     return null;
@@ -50,8 +52,14 @@ async function loginWithCredentials(username, password) {
     throw new Error('No API key returned');
   }
   console.log('Saving to storage...');
+  console.log('Storage data to save:', { apiKey: data.api_key, username: data.username });
   await browser.storage.local.set({ apiKey: data.api_key, username: data.username });
   console.log('Storage save done');
+  
+  // Verify what was saved
+  const saved = await browser.storage.local.get(['apiKey', 'username']);
+  console.log('Verification - saved data:', saved);
+  console.log('Verification - apiKey matches:', saved.apiKey === data.api_key);
   return data;
 }
 
@@ -104,18 +112,21 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
       switch (message.action) {
         case 'getCredentials': {
           const result = await browser.storage.local.get(['apiKey', 'username']);
+          console.log('[getCredentials] returning:', result);
           sendResponse({ apiKey: result.apiKey, username: result.username });
           break;
         }
         case 'checkSession': {
           const result = await browser.storage.local.get(['apiKey']);
           const keyPart = result.apiKey ? result.apiKey.substring(0, 10) + '...' : 'none';
-          console.log('checkSession key:', keyPart);
+          console.log('checkSession key from storage:', keyPart);
+          console.log('checkSession full key from storage:', result.apiKey);
           if (result.apiKey) {
             const username = await verifyApiKey(result.apiKey);
             console.log('checkSession verify result:', username);
             sendResponse({ authenticated: !!username, username });
           } else {
+            console.log('checkSession: no apiKey in storage');
             sendResponse({ authenticated: false });
           }
           break;

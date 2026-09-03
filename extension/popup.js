@@ -43,21 +43,30 @@
       elements.serverUrl.value = serverUrl;
 
       const creds = await sendMessage({ action: 'getCredentials' });
+      console.log('[popup init] creds:', creds);
+      console.log('[popup init] full apiKey:', creds.apiKey);
       const keyPart = creds.apiKey ? creds.apiKey.substring(0, 15) : 'none';
-      elements.authError.textContent = 'key: ' + keyPart;
+      elements.authError.textContent = 'key: ' + keyPart + ' (full len=' + (creds.apiKey ? creds.apiKey.length : 0) + ')';
 
       if (creds.apiKey) {
+        console.log('[popup init] have apiKey, calling checkSession');
         const session = await sendMessage({ action: 'checkSession' });
+        console.log('[popup init] checkSession resp:', JSON.stringify(session));
         elements.authError.textContent += ' | resp: ' + JSON.stringify(session);
         if (session.authenticated) {
           showClipSection(session.username, false);
           loadCurrentPage();
           return;
+        } else {
+          console.log('[popup init] session not authenticated, showing auth section');
         }
+      } else {
+        console.log('[popup init] no apiKey in creds');
       }
 
       showAuthSection();
     } catch (e) {
+      console.error('[popup init] error:', e);
       elements.authError.textContent = 'Error: ' + e.message;
       showAuthSection();
     }

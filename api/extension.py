@@ -65,9 +65,16 @@ def verify_api_key():
         return cors_response({})
 
     api_key = request.json.get('api_key') if request.is_json else request.args.get('api_key')
+    print(f"[DEBUG verify] request.method={request.method}, is_json={request.is_json}")
+    print(f"[DEBUG verify] api_key={api_key[:20] if api_key else 'None'}...")
+    print(f"[DEBUG verify] request.json={request.json}")
+    print(f"[DEBUG verify] request.args={dict(request.args)}")
+    print(f"[DEBUG verify] request.headers keys={list(request.headers.keys())}")
     if not api_key:
+        print("[DEBUG verify] ERROR: No API key provided")
         return cors_response({'error': 'API key required', 'valid': False}, 401)
     username = User.get_username_from_api_key(api_key)
+    print(f"[DEBUG verify] get_username_from_api_key returned: {username}")
     return cors_response({'valid': bool(username), 'username': username, 'key_prefix': api_key[:15] if api_key else None})
 
 @extension_bp.route('/extension/auth/login', methods=['POST', 'OPTIONS'])

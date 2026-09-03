@@ -5,6 +5,7 @@ from config import DATA_DIR
 def get_user_db(username):
     os.makedirs(DATA_DIR, exist_ok=True)
     db_path = os.path.join(DATA_DIR, f'{username}.db')
+    print(f"[DEBUG get_user_db] db_path={db_path}, exists={os.path.exists(db_path)}")
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     try:
@@ -33,6 +34,12 @@ def get_user_db(username):
                 PRIMARY KEY (page_id, username)
             )
         ''')
+    # Check user_settings table
+    try:
+        result = conn.execute('SELECT * FROM user_settings LIMIT 1').fetchone()
+        print(f"[DEBUG get_user_db] user_settings for {username}: {dict(result) if result else 'empty'}")
+    except sqlite3.OperationalError as e:
+        print(f"[DEBUG get_user_db] user_settings table error: {e}")
     return conn
 
 def init_user_db(conn):
