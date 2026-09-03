@@ -67,7 +67,7 @@ function defaultBlocks(title) {
   ];
 }
 
-function makePage({ id=uid(), title="Untitled", parentId=ROOT, emoji="📄", blocks=defaultBlocks(title), collapsed=false }={}) {
+function makePage({ id=uid(), title="Untitled", parentId=ROOT, emoji="", blocks=defaultBlocks(title), collapsed=false }={}) {
   return { id, title, parentId, emoji, blocks, collapsed, updatedAt: Date.now() };
 }
 
@@ -278,7 +278,7 @@ function renderTree() {
 
       const emoji = document.createElement("span");
       emoji.className = "page-emoji";
-      emoji.textContent = page.emoji;
+      emoji.textContent = page.emoji || "";
 
       const link = document.createElement("div");
       link.className = "page-link";
@@ -342,8 +342,9 @@ function renderTree() {
         e.stopPropagation();
         openContextMenu(e.clientX, e.clientY, page.id);
       });
-
-      row.append(indent, checkbox, twisty, emoji, link, more);
+      const parts = [indent, checkbox, twisty, link, more];
+      if (page.emoji) parts.splice(3, 0, emoji);
+      row.append(...parts);
       root.appendChild(row);
 
       if (children.length && state.expanded.has(page.id)) walk(page.id, depth + 1);
@@ -1119,7 +1120,7 @@ async function initialize() {
         title: p.title || "Untitled",
         blocks: blocks,
         parentId: p.parent_id || ROOT,
-        emoji: "📄",
+        emoji: "",
         updatedAt: p.updated_at || Date.now()
       }];
     }));
