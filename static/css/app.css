@@ -662,16 +662,36 @@ html[data-theme="dark"] .document { background: linear-gradient(180deg, #1e1e1c 
 html[data-theme="dark"] .brand-mark { background: linear-gradient(135deg, #26262c, #33333a); border-color: #333; }
 html[data-theme="dark"] .page-title::placeholder { color: #4a4a42; }
 
-html[data-theme="dark"] .notification-panel {
-  background: linear-gradient(180deg, var(--panel) 0%, rgba(30,30,28,0.98) 100%);
+html[data-theme="dark"] .notification-panel,
+html[data-theme="dark"] #notificationPanel {
+  background: linear-gradient(180deg, var(--panel) 0%, rgba(30,30,28,0.99) 100%) !important;
   box-shadow: 0 -10px 35px rgba(0,0,0,0.45), 0 0 0 1px rgba(0,0,0,0.25);
+}
+html[data-theme="dark"] #notificationPanel .notification-item {
+  border-bottom-color: var(--border-subtle);
+}
+html[data-theme="dark"] #notificationPanel .notification-header,
+html[data-theme="dark"] #notificationPanel .notification-footer {
+  border-color: var(--border-subtle);
 }
 
 html[data-theme="dark"] .format-toolbar {
   background: linear-gradient(180deg, var(--panel) 0%, rgba(30,30,28,0.98) 100%);
 }
 
+html[data-theme="dark"] #contextMenu,
+html[data-theme="dark"] .context-menu {
+  background: linear-gradient(180deg, var(--panel) 0%, rgba(30,30,28,0.98) 100%);
+  box-shadow: var(--shadow-xl), 0 0 0 1px rgba(0,0,0,0.25);
+}
+
+html[data-theme="dark"] .settings-panel {
+  background: linear-gradient(180deg, var(--panel) 0%, rgba(30,30,28,0.98) 100%);
+  box-shadow: -14px 0 50px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,0,0,0.25);
+}
+
 /* ---------- Drop zone ---------- */
 .drop-root-zone { display: none; height: 48px; margin: 6px 0; border-radius: 10px; border: 2px dashed var(--border); align-items: center; justify-content: center; }
 .drop-root-zone.visible { display: flex; border-color: var(--accent); background: var(--accent-soft); opacity: 0.8; }
 .drop-root-zone span { font-size: 12px; color: var(--muted); font-weight: 600; }
+.tree-row.drop-target { border-color: var(--accent); background: var(--accent-soft); }
