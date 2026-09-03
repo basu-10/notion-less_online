@@ -324,6 +324,7 @@ function renderTree() {
         const draggedId = e.dataTransfer.getData("text/plain");
         if (!draggedId || draggedId === page.id) return;
         if (isDescendant(draggedId, page.id)) return;
+        if (isDescendant(page.id, draggedId)) return;
         movePage(draggedId, page.id);
       });
 
@@ -428,8 +429,11 @@ function openSidebarMenu(x, y) {
 }
 
 function isDescendant(childId, parentId) {
+  const visited = new Set();
   let cursor = state.pages.get(childId);
   while (cursor) {
+    if (visited.has(cursor.id)) return false;
+    visited.add(cursor.id);
     if (cursor.parentId === parentId) return true;
     cursor = state.pages.get(cursor.parentId);
   }
@@ -1186,6 +1190,24 @@ $("#footerExportBtn").addEventListener("click", () => {
 $("#pageTitle").addEventListener("input", markDirty);
 $("#pageTitle").addEventListener("blur", saveCurrent);
 $("#pageTitle").addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+    e.preventDefault();
+    clearTimeout(state.manualSaveTimer);
+    if (!state.saveInProgress && state.dirty) {
+      state.saveInProgress = true;
+      saveCurrent().finally(() => { state.saveInProgress = false; });
+    } else if (!state.dirty) {
+      setSaveState("Nothing to save");
+    } else {
+      state.manualSaveTimer = setTimeout(() => {
+        if (!state.saveInProgress && state.dirty) {
+          state.saveInProgress = true;
+          saveCurrent().finally(() => { state.saveInProgress = false; });
+        }
+      }, 500);
+    }
+    return;
+  }
   if (e.key === "Enter") {
     e.preventDefault();
     const titleInput = $("#pageTitle");
@@ -1246,6 +1268,11 @@ $("#notificationTrigger").addEventListener("click", toggleNotificationPanel);
 $("#clearNotifications").addEventListener("click", clearAllNotifications);
 
 document.addEventListener("keydown", (e) => {
+  if (e.altKey && e.key === "n") {
+    e.preventDefault();
+    createPage(state.currentPageId);
+    return;
+  }
   if (!e.altKey) return;
   if (e.key !== "PageUp" && e.key !== "PageDown") return;
   e.preventDefault();

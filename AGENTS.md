@@ -9,6 +9,10 @@ Project: NotionLess Cloud — Flask-based BlockNote Workspace with multi-account
 - Frontend: vanilla JS + BlockNote v0.51.3 via esm.sh CDN
 - No build step. Serve with `python app.py`.
 
+## Save state & notifications
+
+The sidebar label shows the current status (Ready, Unsaved, Saved · HH:MM, etc.). All status messages are persisted to IndexedDB and can be reviewed by clicking the label — a popup shows the scrollable notification history with timestamps. Max 100 notifications stored (oldest trimmed automatically).
+
 ## Directory layout
 
 ```
@@ -33,6 +37,8 @@ Project: NotionLess Cloud — Flask-based BlockNote Workspace with multi-account
 └── static/
     ├── css/
     └── js/
+        ├── notifications.js  # IndexedDB notification store
+        └── app-module.js    # Main app logic
 ```
 
 ## Tech / dependencies
@@ -55,6 +61,7 @@ Open <http://localhost:5000>
 ## Keyboard shortcuts
 
 - `Alt+PageUp` / `Alt+PageDown` — scroll through the "Your Pages" sidebar list, opening each page in turn (wraps around). Mirrors the ZIM wiki editor behavior.
+- `Alt+N` — create a new subpage under the current page
 - `Ctrl+S` — save current page
 - `Ctrl+Z` / `Ctrl+Shift+Z` — undo / redo
 - `/` in editor — open block command menu
