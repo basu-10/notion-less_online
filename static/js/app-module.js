@@ -192,6 +192,7 @@ function renderTree() {
       const row = document.createElement("div");
       row.className = "tree-row" + (page.id === state.currentPageId ? " active" : "");
       row.dataset.id = page.id;
+      row.draggable = true;
 
       const indent = document.createElement("div");
       indent.className = "tree-indent";
@@ -224,6 +225,40 @@ function renderTree() {
         openContextMenu(e.clientX, e.clientY, page.id);
       });
 
+      row.addEventListener("dragstart", (e) => {
+        e.dataTransfer.setData("text/plain", page.id);
+        e.dataTransfer.effectAllowed = "move";
+        row.classList.add("dragging");
+      });
+
+      row.addEventListener("dragend", () => {
+        row.classList.remove("dragging");
+        document.querySelectorAll(".tree-row.drop-target").forEach(el => el.classList.remove("drop-target"));
+      });
+
+      row.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        const dragId = e.dataTransfer?.types?.includes("text/plain") ? true : false;
+        if (dragId) {
+          e.dataTransfer.dropEffect = "move";
+          row.classList.add("drop-target");
+        }
+      });
+
+      row.addEventListener("dragleave", () => {
+        row.classList.remove("drop-target");
+      });
+
+      row.addEventListener("drop", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        row.classList.remove("drop-target");
+        const draggedId = e.dataTransfer.getData("text/plain");
+        if (!draggedId || draggedId === page.id) return;
+        if (isDescendant(draggedId, page.id)) return;
+        movePage(draggedId, page.id);
+      });
+
       const more = document.createElement("button");
       more.className = "page-more";
       more.textContent = "•••";
@@ -240,6 +275,68 @@ function renderTree() {
     }
   };
   walk(ROOT, 0);
+
+  const dropZone = document.createElement("div");
+  dropZone.className = "drop-root-zone";
+  const dropLabel = document.createElement("span");
+  dropLabel.textContent = "Move to root";
+  dropZone.appendChild(dropLabel);
+  root.appendChild(dropZone);
+
+  root.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    if (e.dataTransfer?.types?.includes("text/plain")) {
+      e.dataTransfer.dropEffect = "move";
+      const rect = root.getBoundingClientRect();
+      const lastRow = root.querySelector(".tree-row:last-of-type");
+      if (lastRow) {
+        const lastRect = lastRow.getBoundingClientRect();
+        if (e.clientY > lastRect.bottom) {
+          dropZone.classList.add("visible");
+        } else {
+          dropZone.classList.remove("visible");
+        }
+      } else {
+        dropZone.classList.add("visible");
+      }
+    }
+  });
+
+  root.addEventListener("dragleave", (e) => {
+    if (!root.contains(e.relatedTarget)) {
+      dropZone.classList.remove("visible");
+    }
+  });
+
+  root.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropZone.classList.remove("visible");
+    const draggedId = e.dataTransfer.getData("text/plain");
+    if (!draggedId) return;
+    movePage(draggedId, ROOT);
+  });
+}
+
+function isDescendant(childId, parentId) {
+  let cursor = state.pages.get(childId);
+  while (cursor) {
+    if (cursor.parentId === parentId) return true;
+    cursor = state.pages.get(cursor.parentId);
+  }
+  return false;
+}
+
+function movePage(pageId, newParentId) {
+  const page = state.pages.get(pageId);
+  if (!page) return;
+  if (isDescendant(pageId, newParentId)) return;
+  page.parentId = newParentId;
+  page.updatedAt = Date.now();
+  state.pages.set(pageId, page);
+  state.expanded.add(newParentId);
+  window.api.updatePage(pageId, { parent_id: newParentId }).catch(console.error);
+  renderTree();
+  renderBreadcrumbs();
 }
 
 function renderBreadcrumbs() {
