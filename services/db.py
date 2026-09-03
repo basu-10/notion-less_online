@@ -15,6 +15,13 @@ def get_user_db(username):
         except sqlite3.OperationalError:
             pass
     try:
+        conn.execute('SELECT html_snapshot FROM pages LIMIT 1')
+    except sqlite3.OperationalError:
+        try:
+            conn.execute('ALTER TABLE pages ADD COLUMN html_snapshot TEXT DEFAULT NULL')
+        except sqlite3.OperationalError:
+            pass
+    try:
         conn.execute('SELECT page_id FROM authors LIMIT 1')
     except sqlite3.OperationalError:
         conn.execute('''
@@ -34,6 +41,7 @@ def init_user_db(conn):
             id TEXT PRIMARY KEY,
             title TEXT,
             content TEXT,
+            html_snapshot TEXT DEFAULT NULL,
             parent_id TEXT DEFAULT 'root',
             is_public INTEGER DEFAULT 0,
             created_at REAL,
@@ -44,6 +52,10 @@ def init_user_db(conn):
         conn.execute('SELECT is_public FROM pages LIMIT 1')
     except sqlite3.OperationalError:
         conn.execute('ALTER TABLE pages ADD COLUMN is_public INTEGER DEFAULT 0')
+    try:
+        conn.execute('SELECT html_snapshot FROM pages LIMIT 1')
+    except sqlite3.OperationalError:
+        conn.execute('ALTER TABLE pages ADD COLUMN html_snapshot TEXT DEFAULT NULL')
     conn.execute('''
         CREATE TABLE IF NOT EXISTS settings (
             key TEXT PRIMARY KEY,

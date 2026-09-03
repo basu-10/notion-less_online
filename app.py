@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, redirect, url_for
+from flask import Flask, render_template, redirect, url_for, jsonify, request
 from flask_login import LoginManager, current_user
 from config import SECRET_KEY
 from models.user import User
@@ -20,11 +20,25 @@ def create_app():
     from api.pages import pages_bp
     from api.user import user_bp
     from api.social import social_bp
+    from api.extension import extension_bp
 
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(pages_bp, url_prefix='/api')
     app.register_blueprint(user_bp, url_prefix='/api')
     app.register_blueprint(social_bp, url_prefix='/api')
+    app.register_blueprint(extension_bp, url_prefix='/api')
+
+    from flask_login import login_user
+    @app.route('/api/auth/login', methods=['POST'])
+    def api_auth_login():
+        data = request.get_json(silent=True) or {}
+        username = str(data.get('username', '')).strip()
+        password = str(data.get('password', ''))
+        user = User.authenticate(username, password)
+        if not user:
+            return jsonify({'error': 'Invalid credentials'}), 401
+        login_user(user)
+        return jsonify({'username': user.username})
 
     @app.route('/')
     def index():

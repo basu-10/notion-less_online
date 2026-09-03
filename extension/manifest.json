@@ -1,0 +1,38 @@
+{
+  "manifest_version": 2,
+  "name": "NotionLess Clipper",
+  "version": "1.0.0",
+  "description": "Save entire webpages as native NotionLess pages",
+  "author": "NotionLess",
+  "icons": {
+    "48": "icons/icon-48.png",
+    "96": "icons/icon-96.png",
+    "128": "icons/icon-128.png"
+  },
+  "permissions": [
+    "activeTab",
+    "storage",
+    "tabs",
+    "<all_urls>",
+    "cookies"
+  ],
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": false
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "browser_action": {
+    "default_icon": {
+      "48": "icons/icon-48.png",
+      "96": "icons/icon-96.png"
+    },
+    "default_popup": "popup.html",
+    "default_title": "Clip to NotionLess"
+  }
+}

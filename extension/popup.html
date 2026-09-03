@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NotionLess Clipper</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <rect x="3" y="3" width="18" height="18" rx="2" stroke="#d85b45" stroke-width="2"/>
+          <path d="M8 8h8M8 12h6M8 16h4" stroke="#d85b45" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span>NotionLess</span>
+      </div>
+      <button id="settingsBtn" class="icon-btn" title="Settings">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+        </svg>
+      </button>
+    </header>
+
+    <main id="mainContent">
+      <div id="authSection" class="section">
+        <h2>Sign In</h2>
+        <p class="subtitle">Connect to your NotionLess account</p>
+        <form id="loginForm">
+          <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" placeholder="Enter username" autocomplete="username" required>
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" placeholder="Enter password" autocomplete="current-password" required>
+          </div>
+          <button type="submit" id="loginBtn" class="btn btn-primary">Sign In</button>
+          <p id="authError" class="error"></p>
+        </form>
+        <div class="api-key-section">
+          <p>Or use your API key:</p>
+          <div class="api-key-input">
+            <input type="password" id="apiKeyInput" placeholder="nla_..." autocomplete="off">
+            <button id="apiKeyBtn" class="btn btn-secondary">Use Key</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="clipSection" class="section hidden">
+        <div id="loggedInBanner" class="logged-in-banner hidden">
+          <span class="user-icon">👤</span>
+          <span>Logged in as <strong id="userFromCookie"></strong></span>
+          <span class="cookie-badge">via session</span>
+        </div>
+
+        <div id="loggedInAs" class="logged-in">
+          Signed in as <strong id="userDisplay"></strong>
+        </div>
+
+        <div id="pageInfo" class="page-info">
+          <div class="page-preview">
+            <div class="spinner"></div>
+            <span>Analyzing page...</span>
+          </div>
+        </div>
+
+        <div id="extractionStatus" class="extraction-status">
+          <span class="status-icon">⏳</span>
+          <span id="statusText">Ready to clip</span>
+        </div>
+
+        <div id="parentSelect" class="form-group hidden">
+          <label for="parentPage">Save as subpage of:</label>
+          <select id="parentPage">
+            <option value="root">Root (New Page)</option>
+          </select>
+        </div>
+
+        <button id="clipBtn" class="btn btn-primary btn-large" disabled>
+          <span class="btn-text">Clip This Page</span>
+          <span class="btn-loading hidden">
+            <span class="spinner-sm"></span> Saving...
+          </span>
+        </button>
+
+        <div id="clipError" class="error"></div>
+        <div id="clipSuccess" class="success hidden">
+          <span class="success-icon">✓</span>
+          <span id="successText">Page clipped successfully!</span>
+        </div>
+      </div>
+
+      <div id="settingsSection" class="section hidden">
+        <h2>Settings</h2>
+        <div class="setting-item">
+          <span>API Key</span>
+          <button id="showApiKeyBtn" class="btn btn-small">Show</button>
+        </div>
+        <div id="apiKeyDisplay" class="api-key-display hidden">
+          <code id="apiKeyText"></code>
+          <button id="copyApiKeyBtn" class="btn btn-small">Copy</button>
+        </div>
+        <div class="setting-item">
+          <span>Server URL</span>
+          <input type="text" id="serverUrl" value="https://notionless.pythonanywhere.com" placeholder="https://notionless.pythonanywhere.com">
+        </div>
+        <div class="setting-actions">
+          <button id="logoutBtn" class="btn btn-danger">Sign Out</button>
+          <button id="closeSettingsBtn" class="btn btn-secondary">Close</button>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <a href="#" id="openWorkspace">Open NotionLess</a>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

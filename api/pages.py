@@ -33,7 +33,7 @@ def list_pages_meta():
 @login_required
 def list_pages():
     conn = get_user_db(current_user.username)
-    rows = conn.execute('SELECT id, title, content, parent_id, is_public, created_at, updated_at FROM pages').fetchall()
+    rows = conn.execute('SELECT id, title, content, html_snapshot, parent_id, is_public, created_at, updated_at FROM pages').fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
 
@@ -46,14 +46,15 @@ def create_page():
         'id': data.get('id') or str(uuid.uuid4()),
         'title': data.get('title', ''),
         'content': data.get('content', ''),
+        'html_snapshot': data.get('html_snapshot'),
         'parent_id': data.get('parent_id') or 'root',
         'created_at': now,
         'updated_at': now
     }
     conn = get_user_db(current_user.username)
     conn.execute(
-        'INSERT INTO pages (id, title, content, parent_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-        (page['id'], page['title'], page['content'], page['parent_id'], page['created_at'], page['updated_at'])
+        'INSERT INTO pages (id, title, content, html_snapshot, parent_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        (page['id'], page['title'], page['content'], page['html_snapshot'], page['parent_id'], page['created_at'], page['updated_at'])
     )
     conn.commit()
     conn.close()

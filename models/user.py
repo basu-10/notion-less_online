@@ -3,6 +3,8 @@ import re
 import sqlite3
 import time
 import random
+import secrets
+import hashlib
 from config import DATA_DIR
 from services.db import get_user_db, init_user_db, get_main_db, init_main_db
 from services.auth import hash_password, check_password
@@ -169,3 +171,55 @@ class User:
     def exists(username):
         db_path = os.path.join(DATA_DIR, f'{username}.db')
         return os.path.exists(db_path)
+
+    @staticmethod
+    def generate_api_key(username):
+        conn = get_user_db(username)
+        try:
+            conn.execute('SELECT api_key FROM user_settings LIMIT 1')
+        except sqlite3.OperationalError:
+            conn.execute('CREATE TABLE IF NOT EXISTS user_settings (api_key TEXT, api_key_hash TEXT)')
+        api_key = f"nla_{secrets.token_urlsafe(32)}"
+        api_key_hash = hashlib.sha256(api_key.encode()).hexdigest()
+        conn.execute('INSERT OR REPLACE INTO user_settings (api_key, api_key_hash) VALUES (?, ?)',
+                     (api_key, api_key_hash))
+        conn.commit()
+        conn.close()
+        return api_key
+
+    @staticmethod
+    def get_api_key_hash(username):
+        conn = get_user_db(username)
+        try:
+            row = conn.execute('SELECT api_key_hash FROM user_settings LIMIT 1').fetchone()
+        except sqlite3.OperationalError:
+            row = None
+        conn.close()
+        return row['api_key_hash'] if row else None
+
+    @staticmethod
+    def validate_api_key(username, api_key):
+        if not api_key or not api_key.startswith('nla_'):
+            return False
+        stored_hash = User.get_api_key_hash(username)
+        if not stored_hash:
+            return False
+        input_hash = hashlib.sha256(api_key.encode()).hexdigest()
+        return secrets.compare_digest(input_hash, stored_hash)
+
+    @staticmethod
+    def get_username_from_api_key(api_key):
+        if not api_key or not api_key.startswith('nla_'):
+            return None
+        api_key_hash = hashlib.sha256(api_key.encode()).hexdigest()
+        for username in User.get_all_users():
+            conn = get_user_db(username)
+            try:
+                row = conn.execute('SELECT api_key_hash FROM user_settings LIMIT 1').fetchone()
+                if row and secrets.compare_digest(row['api_key_hash'], api_key_hash):
+                    conn.close()
+                    return username
+            except sqlite3.OperationalError:
+                pass
+            conn.close()
+        return None

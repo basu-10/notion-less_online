@@ -1022,9 +1022,10 @@ html[data-theme="dark"] .bn-editor [data-content-type=codeBlock] {
 
 /* ---------- Auto TOC ---------- */
 .auto-toc {
-  position: absolute;
+  position: fixed;
   right: 14px;
-  top: 0;
+  top: 50%;
+  transform: translateY(-50%);
   width: 22px;
   height: 100%;
   pointer-events: auto;
