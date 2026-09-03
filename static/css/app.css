@@ -799,7 +799,11 @@ html[data-theme="dark"] .shortcut-hud {
   animation: menuFadeIn .15s ease;
   backdrop-filter: blur(14px);
 }
-.emoji-picker.open { display: flex; }
+.emoji-picker.open {
+  display: flex;
+  top: 100px;
+  left: 20px;
+}
 
 .emoji-header {
   display: flex;
