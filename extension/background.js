@@ -17,37 +17,45 @@ async function verifyApiKey(apiKey) {
   console.log('verifyApiKey URL:', verifyUrl);
   console.log('verifyApiKey key:', apiKey ? apiKey.substring(0, 15) + '...' : 'null');
   console.log('verifyApiKey full key for debug:', apiKey);
+  console.log('verifyApiKey fetch options:', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ api_key: apiKey }) });
   const response = await fetch(verifyUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ api_key: apiKey })
   });
   console.log('verifyApiKey status:', response.status);
+  console.log('verifyApiKey ok:', response.ok);
   console.log('verifyApiKey headers:', Object.fromEntries(response.headers.entries()));
+  console.log('verifyApiKey body length:', response.body ? 'present' : 'none');
   if (!response.ok) {
     console.log('verifyApiKey failed');
     return null;
   }
   const data = await response.json();
-  console.log('verifyApiKey data:', data);
+  console.log('verifyApiKey parsed JSON:', data);
+  console.log('verifyApiKey valid:', data.valid, 'username:', data.username);
   return data.valid ? data.username : null;
 }
 
 async function loginWithCredentials(username, password) {
   const apiBase = await getApiBase();
   console.log('Login request to:', apiBase);
+  console.log('Login body username=', username, 'password_len=', password ? password.length : 0);
   const response = await fetch(`${apiBase}/extension/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password })
   });
   console.log('Login response status:', response.status);
+  console.log('Login response ok:', response.ok);
+  console.log('Login response headers:', Object.fromEntries(response.headers.entries()));
   if (!response.ok) {
     const err = await response.json();
     throw new Error(err.error || 'Login failed');
   }
   const data = await response.json();
-  console.log('Login response data:', data);
+  console.log('Login response JSON:', JSON.stringify(data));
+  console.log('Login response data.api_key present=', !!data.api_key, 'username=', data.username);
   if (!data.api_key) {
     throw new Error('No API key returned');
   }
@@ -71,6 +79,7 @@ async function saveClip(clipData) {
   }
 
   const apiBase = await getApiBase();
+  console.log('saveClip data:', JSON.stringify(clipData));
   const response = await fetch(`${apiBase}/extension/save`, {
     method: 'POST',
     headers: {
@@ -79,6 +88,8 @@ async function saveClip(clipData) {
     },
     body: JSON.stringify(clipData)
   });
+  console.log('saveClip response status:', response.status, 'ok:', response.ok);
+  console.log('saveClip response headers:', Object.fromEntries(response.headers.entries()));
 
   if (!response.ok) {
     if (response.status === 401) {
@@ -94,6 +105,7 @@ async function saveClip(clipData) {
 
 async function getPageList() {
   const result = await browser.storage.local.get(['apiKey']);
+  console.log('[getPageList] storage result:', result);
   const apiKey = result.apiKey;
   if (!apiKey) throw new Error('Not authenticated');
 
@@ -101,6 +113,7 @@ async function getPageList() {
   const response = await fetch(`${apiBase}/extension/pages`, {
     headers: { 'X-API-Key': apiKey }
   });
+  console.log('getPageList response status:', response.status, 'ok:', response.ok);
 
   if (!response.ok) throw new Error('Failed to fetch pages');
   return response.json();
@@ -109,6 +122,7 @@ async function getPageList() {
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
   (async () => {
     try {
+      console.log('Message action:', message.action, 'data:', JSON.stringify(message));
       switch (message.action) {
         case 'getCredentials': {
           const result = await browser.storage.local.get(['apiKey', 'username']);

@@ -83,11 +83,11 @@ The sidebar label shows the current status (Ready, Auto-saving..., Saved · HH:M
 ## Running / testing
 
 ```bash
-pip install -r requirements.txt
-python app.py
+./setup_or_update.sh   # creates ../notion-less-venv if missing, installs/updates deps with the venv python, creates data dirs + NotionLess.desktop
+./run.sh               # runs the app with the venv python (port 5001)
 ```
 
-Open <http://localhost:5000>
+Open <http://localhost:5001>
 
 ### Workspace
 - Emoji picker with search, recent, and pinned tabs available in the editor

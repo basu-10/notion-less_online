@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=NotionLess Cloud
+Comment=Block-based note-taking workspace (Flask + BlockNote)
+Exec=/run/media/bobmarley/data/dev_work/web_dev/notion-less_online/run.sh
+Path=/run/media/bobmarley/data/dev_work/web_dev/notion-less_online
+Icon=/run/media/bobmarley/data/dev_work/web_dev/notion-less_online/icons/icon-512.png
+Terminal=true
+Categories=Office;Utility;
+StartupNotify=false

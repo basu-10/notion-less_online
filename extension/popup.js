@@ -37,21 +37,23 @@
   let serverUrl = 'https://notionless.pythonanywhere.com';
 
   async function init() {
+    console.log('[popup init] START');
     try {
       const { serverUrl: url } = await sendMessage({ action: 'getServerUrl' });
+      console.log('[popup init] serverUrl=', url);
       serverUrl = url;
       elements.serverUrl.value = serverUrl;
 
       const creds = await sendMessage({ action: 'getCredentials' });
-      console.log('[popup init] creds:', creds);
-      console.log('[popup init] full apiKey:', creds.apiKey);
+      console.log('[popup init] getCredentials response:', JSON.stringify(creds));
+      console.log('[popup init] full apiKey:', creds.apiKey ? 'length=' + creds.apiKey.length + ' prefix=' + creds.apiKey.substring(0,20) : 'NONE');
       const keyPart = creds.apiKey ? creds.apiKey.substring(0, 15) : 'none';
       elements.authError.textContent = 'key: ' + keyPart + ' (full len=' + (creds.apiKey ? creds.apiKey.length : 0) + ')';
 
       if (creds.apiKey) {
         console.log('[popup init] have apiKey, calling checkSession');
         const session = await sendMessage({ action: 'checkSession' });
-        console.log('[popup init] checkSession resp:', JSON.stringify(session));
+        console.log('[popup init] checkSession response:', JSON.stringify(session), 'authenticated=', session.authenticated, 'username=', session.username);
         elements.authError.textContent += ' | resp: ' + JSON.stringify(session);
         if (session.authenticated) {
           showClipSection(session.username, false);
@@ -188,12 +190,14 @@
     elements.loginBtn.disabled = true;
     elements.loginBtn.innerHTML = '<span class="spinner-sm"></span> Signing in...';
 
+    console.log('[handleLogin] username=', elements.username.value.trim(), 'password_len=', elements.password.value ? elements.password.value.length : 0);
     try {
       const response = await sendMessage({
         action: 'login',
         username: elements.username.value.trim(),
         password: elements.password.value
       });
+      console.log('[handleLogin] response:', JSON.stringify(response));
 
       if (response.error) {
         elements.authError.textContent = response.error;
