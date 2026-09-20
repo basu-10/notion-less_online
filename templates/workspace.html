@@ -7,6 +7,7 @@
   <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
   <meta name="description" content="NotionLess — a quiet, fast place to write.">
   <title>NotionLess</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
 
   <link rel="preconnect" href="https://esm.sh">
   <link rel="stylesheet" href="https://esm.sh/@blocknote/core@0.51.3/style.css">
@@ -191,6 +192,14 @@
         <span class="quick-switch-hint">↵ jump · ↑↓ navigate · Esc close</span>
       </div>
       <div class="quick-switch-list" id="quickSwitchList" aria-label="Matching pages"></div>
+    </div>
+  </div>
+
+  <div id="nlDialogOverlay" class="nl-dialog-overlay" role="presentation">
+    <div class="nl-dialog" role="alertdialog" aria-modal="true" aria-labelledby="nlDialogTitle" aria-describedby="nlDialogMessage">
+      <h2 class="nl-dialog-title" id="nlDialogTitle"></h2>
+      <p class="nl-dialog-message" id="nlDialogMessage"></p>
+      <div class="nl-dialog-actions" id="nlDialogActions"></div>
     </div>
   </div>
 

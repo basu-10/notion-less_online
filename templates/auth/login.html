@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Login — NotionLess Cloud</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="stylesheet" href="/static/css/theme.css">
   <link rel="stylesheet" href="/static/css/auth.css">
   <script src="/static/js/theme.js" defer></script>
@@ -53,8 +54,18 @@
       {% endwith %}
       <form method="POST" aria-label="Login form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <input type="text" name="username" placeholder="Username" required autocomplete="username" aria-label="Username" aria-required="true">
-        <input type="password" name="password" placeholder="Password" required autocomplete="current-password" aria-label="Password" aria-required="true">
+        <div class="field-wrap has-0">
+          <input type="text" name="username" id="loginUsername" placeholder="Username" required autocomplete="username" aria-label="Username" aria-required="true">
+        </div>
+        <div class="field-wrap has-1">
+          <input type="password" name="password" id="loginPassword" placeholder="Password" required autocomplete="current-password" aria-label="Password" aria-required="true">
+          <div class="field-actions">
+            <button type="button" class="field-btn" id="loginPwToggle" title="Show password" aria-label="Show password" aria-pressed="false">
+              <svg class="icon-eye" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="icon-eye-off" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            </button>
+          </div>
+        </div>
         <button type="submit" aria-label="Sign in">Sign in</button>
       </form>
       <p>No account? <a href="/auth/register">Create one</a></p>
@@ -97,6 +108,25 @@
     });
 
     updateThemeUI(getTheme());
+
+    // Show / hide password (inside the field)
+    (function() {
+      var toggle = document.getElementById('loginPwToggle');
+      var input = document.getElementById('loginPassword');
+      if (!toggle || !input) return;
+      var eye = toggle.querySelector('.icon-eye');
+      var eyeOff = toggle.querySelector('.icon-eye-off');
+      toggle.addEventListener('click', function() {
+        var show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        toggle.setAttribute('aria-pressed', String(show));
+        toggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+        toggle.title = show ? 'Hide password' : 'Show password';
+        if (eye) eye.style.display = show ? 'none' : 'block';
+        if (eyeOff) eyeOff.style.display = show ? 'block' : 'none';
+        input.focus({ preventScroll: true });
+      });
+    })();
   </script>
 </body>
 </html>

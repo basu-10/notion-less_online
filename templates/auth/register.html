@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Register — NotionLess Cloud</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="stylesheet" href="/static/css/theme.css">
   <link rel="stylesheet" href="/static/css/auth.css">
   <script src="/static/js/theme.js" defer></script>
@@ -48,8 +49,27 @@
       {% endwith %}
       <form method="POST" aria-label="Registration form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <input type="text" name="username" placeholder="Username" required autocomplete="username" aria-label="Username" aria-required="true">
-        <input type="password" name="password" placeholder="Password (6+ chars)" required autocomplete="new-password" aria-label="Password" aria-required="true">
+        <div class="field-wrap has-1">
+          <input type="text" name="username" id="regUsername" placeholder="Username" required autocomplete="username" aria-label="Username" aria-required="true" minlength="2">
+          <div class="field-actions">
+            <button type="button" class="field-btn" id="regUserDice" title="Generate random username" aria-label="Generate random username">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="8.5" cy="15.5" r="1.3" fill="currentColor" stroke="none"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="field-wrap has-2">
+          <input type="password" name="password" id="regPassword" placeholder="Password (6+ chars)" required autocomplete="new-password" aria-label="Password" aria-required="true" minlength="6">
+          <div class="field-actions">
+            <button type="button" class="field-btn" id="regPwDice" title="Generate random password" aria-label="Generate random password">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="8.5" cy="15.5" r="1.3" fill="currentColor" stroke="none"/></svg>
+            </button>
+            <button type="button" class="field-btn" id="regPwToggle" title="Show password" aria-label="Show password" aria-pressed="false">
+              <svg class="icon-eye" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="icon-eye-off" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            </button>
+          </div>
+        </div>
+        <p class="field-hint" id="regPwHint" aria-live="polite"></p>
         <button type="submit" aria-label="Create account">Create account</button>
       </form>
       <p>Already have an account? <a href="/auth/login">Log in</a></p>
@@ -92,6 +112,85 @@
     });
 
     updateThemeUI(getTheme());
+
+    // Show / hide + dice generators (buttons live inside the fields)
+    (function() {
+      var pw = document.getElementById('regPassword');
+      var user = document.getElementById('regUsername');
+      var toggle = document.getElementById('regPwToggle');
+      var userDice = document.getElementById('regUserDice');
+      var pwDice = document.getElementById('regPwDice');
+      var hint = document.getElementById('regPwHint');
+
+      if (toggle && pw) {
+        var eye = toggle.querySelector('.icon-eye');
+        var eyeOff = toggle.querySelector('.icon-eye-off');
+        toggle.addEventListener('click', function() {
+          var show = pw.type === 'password';
+          pw.type = show ? 'text' : 'password';
+          toggle.setAttribute('aria-pressed', String(show));
+          toggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+          toggle.title = show ? 'Hide password' : 'Show password';
+          if (eye) eye.style.display = show ? 'none' : 'block';
+          if (eyeOff) eyeOff.style.display = show ? 'block' : 'none';
+          pw.focus({ preventScroll: true });
+        });
+      }
+
+      function rand(n) {
+        var buf = new Uint32Array(n);
+        try {
+          (window.crypto || {}).getRandomValues
+            ? window.crypto.getRandomValues(buf)
+            : buf.map(function() { return Math.floor(Math.random() * 4294967295); });
+        } catch (e) {
+          for (var i = 0; i < n; i++) buf[i] = Math.floor(Math.random() * 4294967295);
+        }
+        return buf;
+      }
+
+      var ADJ = ['swift','quiet','bright','clever','calm','bold','happy','nimble','cosy','sunny','misty','rapid','gentle','vivid','witty','amber','maple','ocean','ember','lunar'];
+      var NOUN = ['fox','otter','wren','badger','heron','maple','comet','pebble','falcon','willow','sparrow','beacon','meadow','harbor','grove','ridge','brook','dune','fern','owl'];
+
+      function genUsername() {
+        var r = rand(3);
+        return ADJ[r[0] % ADJ.length] + '_' + NOUN[r[1] % NOUN.length] + '_' + (1000 + (r[2] % 9000));
+      }
+
+      function genPassword(len) {
+        len = len || 16;
+        var lower = 'abcdefghjkmnpqrstuvwxyz', upper = 'ABCDEFGHJKMNPQRSTUVWXYZ',
+            digits = '23456789', syms = '!@#$%^&*-_+=?';
+        var all = lower + upper + digits + syms;
+        var r = rand(len), out = [];
+        // Guarantee one of each class in the first 4 slots, then shuffle.
+        out.push(lower[r[0] % lower.length], upper[r[1] % upper.length],
+                 digits[r[2] % digits.length], syms[r[3] % syms.length]);
+        for (var i = 4; i < len; i++) out.push(all[r[i] % all.length]);
+        for (var j = out.length - 1; j > 0; j--) {
+          var k = r[j % r.length] % (j + 1);
+          var t = out[j]; out[j] = out[k]; out[k] = t;
+        }
+        return out.join('');
+      }
+
+      if (userDice && user) userDice.addEventListener('click', function() {
+        user.value = genUsername();
+        user.focus({ preventScroll: true });
+        user.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+
+      if (pwDice && pw) pwDice.addEventListener('click', function() {
+        // Briefly reveal so the generated value is visible, then keep it visible
+        // until the user toggles hide — no surprise hidden passwords.
+        var wasHidden = pw.type === 'password';
+        pw.value = genPassword(16);
+        if (wasHidden && toggle) toggle.click();
+        else pw.focus({ preventScroll: true });
+        pw.dispatchEvent(new Event('input', { bubbles: true }));
+        if (hint) hint.textContent = 'Generated a 16-character password — it is showing so you can save it.';
+      });
+    })();
   </script>
 </body>
 </html>

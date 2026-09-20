@@ -241,6 +241,78 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+// ---------- Themed dialog (replaces native alert/confirm) ----------
+let _dialogResolve = null;
+
+function closeDialog(value) {
+  const overlay = $("#nlDialogOverlay");
+  if (!overlay || !overlay.classList.contains("open")) return;
+  overlay.classList.remove("open");
+  overlay.setAttribute("aria-hidden", "true");
+  document.removeEventListener("keydown", _dialogEsc, true);
+  const resolve = _dialogResolve;
+  _dialogResolve = null;
+  if (resolve) resolve(value);
+}
+
+function _dialogEsc(e) {
+  if (e.key === "Escape") {
+    e.preventDefault();
+    e.stopPropagation();
+    // Cancel value is always false for confirms, undefined for alerts.
+    const actions = $("#nlDialogActions");
+    const cancelBtn = actions ? actions.querySelector('[data-value="false"], [data-value=""]') : null;
+    closeDialog(cancelBtn ? cancelBtn.dataset.value === "true" : false);
+  }
+}
+
+function showDialog({ title="Are you sure?", message="", actions=[{ label: "Cancel", kind: "ghost", value: false }, { label: "Confirm", kind: "primary", value: true }] }={}) {
+  const overlay = $("#nlDialogOverlay");
+  // Fallback to native dialogs if markup is missing (e.g. tests).
+  if (!overlay) {
+    if (actions.length <= 1) { window.alert(message || title); return Promise.resolve(actions[0]?.value); }
+    return Promise.resolve(window.confirm((title ? title + "\n\n" : "") + message));
+  }
+  // If a dialog is already open, resolve it as cancelled before replacing.
+  if (_dialogResolve) { const r = _dialogResolve; _dialogResolve = null; try { r(false); } catch {} }
+  $("#nlDialogTitle").textContent = title;
+  $("#nlDialogMessage").textContent = message;
+  const box = $("#nlDialogActions");
+  box.innerHTML = "";
+  return new Promise((resolve) => {
+    _dialogResolve = resolve;
+    actions.forEach((a) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "nl-dialog-btn " + (a.kind || "ghost");
+      btn.textContent = a.label;
+      btn.dataset.value = String(a.value ?? "");
+      btn.addEventListener("click", () => closeDialog(a.value));
+      box.appendChild(btn);
+    });
+    overlay.classList.add("open");
+    overlay.setAttribute("aria-hidden", "false");
+    document.addEventListener("keydown", _dialogEsc, true);
+    overlay.onclick = (e) => { if (e.target === overlay) closeDialog(actions.length > 1 ? false : actions[0]?.value); };
+    const first = box.querySelector(".nl-dialog-btn.danger, .nl-dialog-btn.primary") || box.querySelector(".nl-dialog-btn");
+    setTimeout(() => { try { (first || box).focus({ preventScroll: true }); } catch { try { first.focus(); } catch {} } }, 30);
+  });
+}
+
+function confirmDialog({ title="Delete?", message="", confirmLabel="Delete", cancelLabel="Cancel", danger=true }={}) {
+  return showDialog({
+    title, message,
+    actions: [
+      { label: cancelLabel, kind: "ghost", value: false },
+      { label: confirmLabel, kind: danger ? "danger" : "primary", value: true },
+    ],
+  });
+}
+
+function alertDialog({ title="Notice", message="" }={}) {
+  return showDialog({ title, message, actions: [{ label: "OK", kind: "primary", value: true }] });
+}
+
 async function clearAllNotifications() {
   try {
     await window.notifications.clearNotifications();
@@ -462,13 +534,13 @@ function exportProfile() {
     a.href = url; a.download = "notionless-profile.json"; a.click(); URL.revokeObjectURL(url);
     setSaveState("Profile exported");
   }).catch(err => {
-    alert("Export failed: " + err.message);
+    alertDialog({ title: "Export failed", message: err && err.message ? err.message : "Could not export your profile. Please try again." });
   });
 }
 
 function exportNote() {
   const page = state.pages.get(state.currentPageId);
-  if (!page) return alert("No page open");
+  if (!page) { alertDialog({ title: "No page open", message: "Open a page first, then export it." }); return; }
   const payload = { meta: { exportedAt: Date.now(), version: 1, id: page.id, title: page.title }, page };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -523,7 +595,7 @@ async function importProfile(file) {
     const first = childrenOf(ROOT)[0];
     if (first && first.id !== state.currentPageId) await openPage(first.id);
   } catch (e) {
-    alert("Import failed: " + (e.message || e));
+    alertDialog({ title: "Import failed", message: e && e.message ? e.message : String(e) });
   }
 }
 
@@ -802,7 +874,12 @@ function renderSelectionBar() {
 async function deleteSelected() {
   const ids = [...state.selected];
   if (!ids.length) return;
-  if (!confirm(`Delete ${ids.length} page(s)?`)) return;
+  const ok = await confirmDialog({
+    title: `Delete ${ids.length} page${ids.length === 1 ? "" : "s"}?`,
+    message: "This removes the selected pages and everything nested inside them. This cannot be undone.",
+    confirmLabel: "Delete",
+  });
+  if (!ok) return;
   clearTimeout(state.flushTimer);
   for (const id of ids) {
     state.pages.delete(id);
@@ -829,31 +906,116 @@ function moveSelectedPrompt() {
   closeSelectionBar();
   const menu = $("#contextMenu");
   menu.innerHTML = "";
-  const pages = [...state.pages.values()].filter(p => !ids.includes(p.id));
-  if (!pages.length) {
-    const item = document.createElement("button");
-    item.className = "context-item";
-    item.textContent = "No pages available";
-    item.disabled = true;
-    menu.appendChild(item);
-  } else {
-    pages.forEach(p => {
-      const item = document.createElement("button");
-      item.className = "context-item";
-      item.textContent = (p.parentId !== ROOT ? "  " : "") + (p.title || "Untitled");
-      item.addEventListener("click", () => {
-        closeContextMenu();
-        ids.forEach(id => movePage(id, p.id));
-        state.selected.clear();
-        renderSelectionBar();
-      });
-      menu.appendChild(item);
-    });
+  menu.classList.add("move-picker");
+  const isMobile = window.matchMedia && window.matchMedia("(max-width: 768px)").matches;
+
+  const header = document.createElement("div");
+  header.className = "move-picker-header";
+  const title = document.createElement("div");
+  title.className = "move-picker-title";
+  title.textContent = `Move ${ids.length} page${ids.length === 1 ? "" : "s"} to…`;
+  const search = document.createElement("input");
+  search.className = "move-search";
+  search.type = "text";
+  search.placeholder = "Search pages…";
+  search.setAttribute("aria-label", "Search destination pages");
+  search.autocomplete = "off";
+  search.spellcheck = false;
+  header.append(title, search);
+  menu.appendChild(header);
+
+  const list = document.createElement("div");
+  list.className = "move-list";
+  list.setAttribute("role", "listbox");
+  menu.appendChild(list);
+
+  // Eligible destinations: everything except the selection itself and their
+  // descendants (moving into your own child would orphan the tree).
+  const blocked = new Set(ids);
+  for (const id of ids) {
+    const collect = (pid) => {
+      for (const child of childrenOf(pid)) {
+        if (!blocked.has(child.id)) { blocked.add(child.id); collect(child.id); }
+      }
+    };
+    collect(id);
   }
-  const rect = document.querySelector(".sidebar").getBoundingClientRect();
-  menu.style.left = (rect.width / 2 - 90) + "px";
-  menu.style.top = (rect.height / 2 - 100) + "px";
+  const pages = [...state.pages.values()]
+    .filter(p => !blocked.has(p.id))
+    .sort((a, b) => (a.title || "Untitled").localeCompare(b.title || "Untitled"));
+
+  function pick(id, label) {
+    closeContextMenu();
+    ids.forEach(pid => movePage(pid, id));
+    state.selected.clear();
+    renderTree();
+    renderSelectionBar();
+    setSaveState(label ? `Moved to ${label}` : "Moved", false);
+  }
+
+  function renderList(filter="") {
+    list.innerHTML = "";
+    const f = filter.trim().toLowerCase();
+    const rootBtn = document.createElement("button");
+    rootBtn.className = "move-item";
+    rootBtn.setAttribute("role", "option");
+    rootBtn.innerHTML = `<span class="move-title"></span>`;
+    rootBtn.querySelector(".move-title").textContent = "Top level (no parent)";
+    if (!f || "top level".includes(f) || "root".includes(f)) {
+      rootBtn.addEventListener("click", () => pick(ROOT, "top level"));
+      list.appendChild(rootBtn);
+    }
+    const matches = f
+      ? pages.filter(p => (p.title || "Untitled").toLowerCase().includes(f) ||
+          (state.pages.get(p.parentId)?.title || "").toLowerCase().includes(f))
+      : pages;
+    if (!matches.length && list.children.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "move-empty";
+      empty.textContent = "No matching pages";
+      list.appendChild(empty);
+      return;
+    }
+    for (const p of matches) {
+      const item = document.createElement("button");
+      item.className = "move-item";
+      item.setAttribute("role", "option");
+      const t = document.createElement("span");
+      t.className = "move-title";
+      t.textContent = (p.emoji ? p.emoji + " " : "") + (p.title || "Untitled");
+      item.appendChild(t);
+      if (p.parentId !== ROOT) {
+        const parent = document.createElement("span");
+        parent.className = "move-parent";
+        parent.textContent = state.pages.get(p.parentId)?.title || "";
+        item.appendChild(parent);
+      }
+      item.title = p.title || "Untitled";
+      item.addEventListener("click", () => pick(p.id, p.title || "page"));
+      list.appendChild(item);
+    }
+  }
+
+  search.addEventListener("input", () => renderList(search.value));
+  search.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const first = list.querySelector(".move-item");
+      if (first) first.click();
+    }
+  });
+  renderList("");
+
+  if (isMobile) {
+    menu.style.left = "";
+    menu.style.top = "";
+  } else {
+    const rect = document.querySelector(".sidebar").getBoundingClientRect();
+    menu.style.left = Math.max(8, Math.min(rect.width / 2 - 140, window.innerWidth - 296)) + "px";
+    menu.style.top = Math.max(8, Math.min(rect.height / 2 - 160, window.innerHeight - 460)) + "px";
+  }
   menu.classList.add("open");
+  setTimeout(() => { try { search.focus({ preventScroll: true }); } catch { try { search.focus(); } catch {} } }, 40);
 }
 
 function closeSelectionBar() {
@@ -1197,11 +1359,21 @@ function openContextMenu(x, y, pageId) {
   const menu = $("#contextMenu");
   state.contextPageId = pageId;
   menu.innerHTML = "";
+  menu.classList.remove("move-picker");
+  const page = state.pages.get(pageId);
+  const pageTitle = page ? (page.title || "Untitled") : "this page";
   const actions = [
     ["New sub-page", () => createPage(pageId)],
     ["Duplicate", () => duplicatePage(pageId)],
     ["Rename", () => { openPage(pageId).then(() => { const input = $("#pageTitle"); input.focus(); input.select(); }); }],
-    ["Delete page", () => { if (confirm("Delete this page and all nested pages?")) deletePage(pageId); }],
+    ["Delete page", async () => {
+      const ok = await confirmDialog({
+        title: `Delete "${pageTitle.length > 40 ? pageTitle.slice(0, 40) + "…" : pageTitle}"?`,
+        message: "This removes the page and all of its nested pages. This cannot be undone.",
+        confirmLabel: "Delete",
+      });
+      if (ok) deletePage(pageId);
+    }],
   ];
   actions.forEach(([label, fn], idx) => {
     const b = document.createElement("button");
@@ -1210,8 +1382,8 @@ function openContextMenu(x, y, pageId) {
     b.addEventListener("click", () => { closeContextMenu(); fn(); });
     menu.appendChild(b);
   });
-  menu.style.left = Math.min(x, window.innerWidth - 195) + "px";
-  menu.style.top = Math.min(y, window.innerHeight - 130) + "px";
+  menu.style.left = Math.min(x, window.innerWidth - 235) + "px";
+  menu.style.top = Math.min(y, window.innerHeight - 200) + "px";
   menu.classList.add("open");
 }
 
@@ -1299,7 +1471,19 @@ async function duplicatePage(pageId) {
   }
   renderTree();
 }
-function closeContextMenu() { $("#contextMenu").classList.remove("open"); }
+function closeContextMenu() {
+  const menu = $("#contextMenu");
+  if (!menu) return;
+  const wasMovePicker = menu.classList.contains("move-picker");
+  menu.classList.remove("open");
+  menu.classList.remove("move-picker");
+  menu.style.left = "";
+  menu.style.top = "";
+  // Cancelling the move picker must not strand the selection with no bar.
+  if (wasMovePicker && state.selected && state.selected.size) {
+    try { renderSelectionBar(); } catch {}
+  }
+}
 
 function getCurrentBlock() {
   try { return state.editor?.getTextCursorPosition()?.block || null; } catch { return null; }
@@ -2309,6 +2493,11 @@ document.addEventListener("keydown", (e) => {
   }
   if (e.key === "Escape" && $("#quickSwitchOverlay").classList.contains("open")) {
     closeQuickSwitch();
+    return;
+  }
+  // Dialog handles its own Escape (capture phase); only close menus here.
+  if (e.key === "Escape" && $("#contextMenu")?.classList.contains("open")) {
+    closeContextMenu();
     return;
   }
   if (handleQuickSwitchKey(e)) return;
