@@ -97,7 +97,19 @@
     .mobile-nav-panel .nav-link:hover { background: var(--hover); }
     .mobile-nav-panel .nav-link.active { color: var(--accent); }
     .mobile-nav-panel .btn { margin-top: 12px; }
-    @media (max-width: 768px) { .header-theme-label { display: none; } .mobile-nav-toggle { display: flex; } .header-nav { display: none; } }
+    @media (max-width: 768px) {
+      .header-theme-label { display: none; }
+      .mobile-nav-toggle { display: flex; }
+      .header-nav { display: none; }
+      header .container { padding: 0 16px; gap: 10px; }
+      header .container .btn { padding: 7px 14px; }
+      .search-container { padding: 76px 16px 48px; }
+      .search-header h1 { font-size: 24px; }
+      .search-header p { font-size: 14px; }
+      .search-input { font-size: 16px; padding: 11px 14px 11px 36px; }
+      .search-result-card { padding: 9px 12px 9px 9px; gap: 10px; }
+      .result-avatar { width: 40px; height: 40px; font-size: 16px; }
+    }
 
     .search-container {
       max-width: 640px;

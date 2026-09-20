@@ -99,7 +99,21 @@
     .mobile-nav-panel .nav-link:hover { background: var(--hover); }
     .mobile-nav-panel .nav-link.active { color: var(--accent); }
     .mobile-nav-panel .btn { margin-top: 12px; }
-    @media (max-width: 768px) { .header-theme-label { display: none; } .mobile-nav-toggle { display: flex; } .header-nav { display: none; } }
+    @media (max-width: 768px) {
+      .header-theme-label { display: none; }
+      .mobile-nav-toggle { display: flex; }
+      .header-nav { display: none; }
+      header .container { padding: 0 16px; gap: 10px; }
+      header .container .btn { padding: 7px 14px; }
+      .wall-container { padding: 68px 16px 48px; }
+      .wall-cover { height: 104px; }
+      .wall-header { border-radius: 14px; margin-bottom: 24px; }
+      .wall-body { padding: 0 18px 20px; margin-top: -40px; gap: 14px; }
+      .wall-avatar, .wall-avatar-img { width: 84px; height: 84px; border-width: 3px; font-size: 32px; }
+      .wall-info-block h1, .wall-info h1 { font-size: 22px; }
+      .wall-page-card { padding: 10px 12px 10px 10px; gap: 12px; }
+      .wall-page-icon { width: 34px; height: 34px; }
+    }
 
     .wall-container {
       max-width: 800px;
