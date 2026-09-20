@@ -256,7 +256,10 @@ function snapshotCurrentToPage() {
   } catch {}
   const titleEl = $("#pageTitle");
   if (titleEl) page.title = titleEl.value.trim() || "Untitled";
-  page.updatedAt = Date.now();
+  // NOTE: do NOT touch page.updatedAt here. updatedAt drives the
+  // "modified" sidebar sort, so it must only change on a real local edit
+  // (see markDirty) or a confirmed server modification — never on a mere
+  // view/navigation snapshot, or clicking through pages reorders the tree.
   page.epoch = (page.epoch || 0) + 1;
   return page;
 }
@@ -284,6 +287,7 @@ function markDirty() {
       return;
     }
   }
+  page.updatedAt = Date.now();
   page.dirty = true;
   refreshGlobalDirty();
   setSaveState("Unsaved · will sync", false);
@@ -955,12 +959,14 @@ function fetchWithTimeout(promise, ms) {
 
 async function openPage(id) {
   // Queue current page snapshot locally (fast switch, no server wait).
+  // NOTE: no updatedAt bump here — the previous page already got its
+  // modified-time bump when it was actually edited (markDirty). Bumping on
+  // every navigation would reorder the "modified" sort just by looking.
   const prev = state.pages.get(state.currentPageId);
   if (prev && prev.dirty && state.editor && state.currentPageId !== id) {
     try { prev.blocks = structuredClone(state.editor.document); } catch {}
     const t = $("#pageTitle");
     if (t) prev.title = t.value.trim() || "Untitled";
-    prev.updatedAt = Date.now();
     await writeDraft(prev);
     scheduleFlush(SAVE_DEBOUNCE_MS);
   }
@@ -1045,7 +1051,10 @@ async function openPage(id) {
         page.baseUpdatedAt = data.updated_at ?? page.baseUpdatedAt;
         page.baseTitle = page.title;
         page.baseHash = hashContent(serverBlocks);
-        page.updatedAt = Date.now();
+        // Viewing must not change sort order: adopt the server's modified
+        // time instead of Date.now(), so merely opening a page never
+        // promotes it to the top of the "modified" sort.
+        if (serverUpdated) page.updatedAt = serverUpdated * 1000;
         page.contentLoaded = true;
         await writeDraft(page);
         if (state.currentPageId === id) {
@@ -1097,8 +1106,8 @@ async function createPage(parentId=ROOT) {
       try { cur.blocks = structuredClone(state.editor.document); } catch {}
       const t = $("#pageTitle");
       if (t) cur.title = t.value.trim() || "Untitled";
-      cur.updatedAt = Date.now();
       if (cur.dirty || pageContentHash(cur) !== (cur.baseHash || "")) {
+        cur.updatedAt = Date.now();
         cur.dirty = true;
         await writeDraft(cur);
       }
@@ -2360,7 +2369,17 @@ $("#pageTitle").addEventListener("input", markDirty);
 $("#pageTitle").addEventListener("blur", () => {
   const page = state.pages.get(state.currentPageId);
   if (!page) return;
+  const titleEl = $("#pageTitle");
+  const nextTitle = titleEl ? titleEl.value.trim() || "Untitled" : page.title;
+  let nextBlocks = page.blocks;
+  try { if (state.editor) nextBlocks = structuredClone(state.editor.document); } catch {}
+  const titleChanged = nextTitle !== (page.baseTitle ?? page.title);
+  const contentChanged = !page.baseHash || hashContent(nextBlocks) !== page.baseHash;
+  // Blurring (e.g. clicking another page in the sidebar) is not an edit —
+  // only queue a save when something actually changed.
+  if (!titleChanged && !contentChanged && !page.dirty) return;
   snapshotCurrentToPage();
+  if (titleChanged || contentChanged) page.updatedAt = Date.now();
   page.dirty = true;
   refreshGlobalDirty();
   writeDraft(page);
