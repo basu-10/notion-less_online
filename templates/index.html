@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="NotionLess Cloud — A lightweight cloud-based block editor. Your notes, your account, your privacy.">
-  <meta name="theme-color" content="#d85b45">
+  <meta name="theme-color" content="#d9a400">
   <title>NotionLess Cloud — Write without friction</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
 
@@ -283,8 +283,9 @@
       --text: #1a1a18;
       --muted: #8a8780;
       --hover: #f0efed;
-      --accent: #d85b45;
-      --accent-light: #e87a6a;
+      --accent: #d9a400;
+      --accent-light: #eab800;
+      --accent-deep: #b89400;
       --header-bg: rgba(250, 250, 248, 0.85);
     }
 
@@ -296,6 +297,17 @@
       --muted: #a7a7a3;
       --hover: #2a2a30;
       --header-bg: rgba(24, 24, 27, 0.85);
+      --accent: #d9a400;
+      --accent-light: #eab800;
+      --accent-deep: #b89400;
+      --accent-soft: rgba(217, 164, 0, 0.14);
+      --accent-wash: rgba(217, 164, 0, 0.22);
+    }
+    [data-theme="dark"] .workflows {
+      background: linear-gradient(180deg, #1e1e22 0%, #18181b 100%);
+    }
+    [data-theme="dark"] .editor-mock .mock-line.code {
+      background: linear-gradient(90deg, #2a2a30 0%, #252529 100%);
     }
 
     html {
@@ -315,7 +327,7 @@
 
     ::selection {
       background: var(--accent);
-      color: white;
+      color: #1a1a18;
     }
 
     /* Subtle grain texture for final-product depth */
@@ -410,14 +422,14 @@
 
     .btn-primary {
       background: var(--accent);
-      color: white;
-      box-shadow: 0 4px 16px rgba(216, 91, 69, 0.25);
+      color: #1a1a18;
+      box-shadow: 0 4px 16px rgba(217, 164, 0, 0.28);
     }
 
     .btn-primary:hover {
       background: var(--accent-light);
       transform: translateY(-1px);
-      box-shadow: 0 6px 24px rgba(216, 91, 69, 0.3);
+      box-shadow: 0 6px 24px rgba(217, 164, 0, 0.35);
     }
 
     .btn-secondary {
@@ -559,10 +571,10 @@
       place-items: center;
       border-radius: 12px;
       background: linear-gradient(135deg, var(--accent), var(--accent-light));
-      color: white;
+      color: #1a1a18;
       font-size: 20px;
       margin-bottom: 20px;
-      box-shadow: 0 4px 16px rgba(216, 91, 69, 0.2);
+      box-shadow: 0 4px 16px rgba(217, 164, 0, 0.25);
     }
 
     .feature-card h3 {
@@ -768,7 +780,7 @@
     }
     .header-theme-menu button.active {
       background: var(--accent);
-      color: white;
+      color: #1a1a18;
     }
     .header-theme-wrapper {
       position: relative;
@@ -984,7 +996,7 @@
             <h4>Public Profile</h4>
             <div class="editor-mock" style="padding:20px;">
               <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-                <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-light));display:grid;place-items:center;color:white;font-weight:700;font-size:14px;">AB</div>
+                <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-light));display:grid;place-items:center;color:#1a1a18;font-weight:700;font-size:14px;">AB</div>
                 <div>
                   <div style="font-weight:600;font-size:0.9rem;">Asesh Basu</div>
                   <div style="font-size:0.8rem;color:var(--muted);">3 public guides · 28 pages</div>

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="FAQ — NotionLess Cloud. Get started and learn more about features.">
-  <meta name="theme-color" content="#d85b45">
+  <meta name="theme-color" content="#d9a400">
   <title>FAQ — NotionLess Cloud</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
 
@@ -34,8 +34,9 @@
       --text: #1a1a18;
       --muted: #8a8780;
       --hover: #f0efed;
-      --accent: #d85b45;
-      --accent-light: #e87a6a;
+      --accent: #d9a400;
+      --accent-light: #eab800;
+      --accent-deep: #b89400;
       --header-bg: rgba(250, 250, 248, 0.85);
     }
 
@@ -46,6 +47,11 @@
       --text: #e8e8ef;
       --muted: #a7a7a3;
       --hover: #2a2a30;
+      --accent: #d9a400;
+      --accent-light: #eab800;
+      --accent-deep: #b89400;
+      --accent-soft: rgba(217, 164, 0, 0.14);
+      --accent-wash: rgba(217, 164, 0, 0.22);
       --header-bg: rgba(24, 24, 27, 0.85);
     }
 
@@ -64,7 +70,7 @@
 
     ::selection {
       background: var(--accent);
-      color: white;
+      color: #1a1a18;
     }
 
     .container {
@@ -149,13 +155,13 @@
     }
     .btn-primary {
       background: var(--accent);
-      color: white;
-      box-shadow: 0 4px 16px rgba(216,91,69,0.25);
+      color: #1a1a18;
+      box-shadow: 0 4px 16px rgba(217,164,0,0.28);
     }
     .btn-primary:hover {
       background: var(--accent-light);
       transform: translateY(-1px);
-      box-shadow: 0 6px 24px rgba(216,91,69,0.3);
+      box-shadow: 0 6px 24px rgba(217,164,0,0.35);
     }
     .btn-secondary {
       background: var(--surface);
@@ -211,7 +217,7 @@
       transition: background .15s;
     }
     .header-theme-menu .theme-btn:hover { background: var(--hover); }
-    .header-theme-menu .theme-btn.active { background: var(--accent); color: white; }
+    .header-theme-menu .theme-btn.active { background: var(--accent); color: #1a1a18; }
     .btn-secondary:hover {
       background: var(--hover);
       transform: translateY(-1px);
@@ -409,8 +415,8 @@
     }
 
     .tip-box {
-      background: rgba(216, 91, 69, 0.08);
-      border: 1px solid rgba(216, 91, 69, 0.2);
+      background: rgba(217, 164, 0, 0.1);
+      border: 1px solid rgba(217, 164, 0, 0.25);
       border-radius: 8px;
       padding: 12px 16px;
       margin-top: 12px;

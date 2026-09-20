@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="About NotionLess Cloud — A cloud-based block editor by Asesh Basu.">
-  <meta name="theme-color" content="#d85b45">
+  <meta name="theme-color" content="#d9a400">
   <title>About — NotionLess Cloud</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
 
@@ -33,8 +33,9 @@
       --text: #1a1a18;
       --muted: #8a8780;
       --hover: #f0efed;
-      --accent: #d85b45;
-      --accent-light: #e87a6a;
+      --accent: #d9a400;
+      --accent-light: #eab800;
+      --accent-deep: #b89400;
       --header-bg: rgba(250, 250, 248, 0.85);
     }
 
@@ -46,6 +47,11 @@
       --muted: #a7a7a3;
       --hover: #2a2a30;
       --header-bg: rgba(24, 24, 27, 0.85);
+      --accent: #d9a400;
+      --accent-light: #eab800;
+      --accent-deep: #b89400;
+      --accent-soft: rgba(217, 164, 0, 0.14);
+      --accent-wash: rgba(217, 164, 0, 0.22);
     }
 
     html {
@@ -63,7 +69,7 @@
 
     ::selection {
       background: var(--accent);
-      color: white;
+      color: #1a1a18;
     }
 
     body::before {
@@ -157,14 +163,14 @@
 
     .btn-primary {
       background: var(--accent);
-      color: white;
-      box-shadow: 0 4px 16px rgba(216, 91, 69, 0.25);
+      color: #1a1a18;
+      box-shadow: 0 4px 16px rgba(217, 164, 0, 0.28);
     }
 
     .btn-primary:hover {
       background: var(--accent-light);
       transform: translateY(-1px);
-      box-shadow: 0 6px 24px rgba(216, 91, 69, 0.3);
+      box-shadow: 0 6px 24px rgba(217, 164, 0, 0.35);
     }
 
     .back-link {
@@ -255,9 +261,9 @@
       place-items: center;
       font-size: 36px;
       font-weight: 700;
-      color: white;
+      color: #1a1a18;
       flex-shrink: 0;
-      box-shadow: 0 8px 32px rgba(216, 91, 69, 0.25);
+      box-shadow: 0 8px 32px rgba(217, 164, 0, 0.28);
     }
 
     .developer-info h3 {
@@ -520,7 +526,7 @@
     }
     .header-theme-menu button.active {
       background: var(--accent);
-      color: white;
+      color: #1a1a18;
     }
     .header-theme-wrapper {
       position: relative;
