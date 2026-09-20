@@ -308,6 +308,8 @@ html[data-theme="dark"] .main,
 .breadcrumbs a:hover { color: var(--accent); text-decoration: none; }
 
 .top-actions { display: flex; align-items: center; gap: 8px; }
+#docWidthBtn[data-width="wide"] { color: var(--text); }
+#docWidthBtn[data-width="full"] { color: var(--accent); }
 .top-divider { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
 .history-group {
   display: flex;

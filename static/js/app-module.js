@@ -75,6 +75,94 @@ function getTheme() {
   try { return localStorage.getItem("notion-theme") || "auto"; } catch { return "auto"; }
 }
 
+// ---------- Content width: narrow / wide / full, persisted per user ----------
+const DOC_WIDTHS = ["narrow", "wide", "full"];
+const DOC_WIDTH_LABELS = { narrow: "Narrow", wide: "Wide", full: "Full" };
+const DEFAULT_DOC_WIDTH = "wide";
+
+function docWidthStorageKey() {
+  // Per-account so two logins on one browser keep their own width.
+  try { return scopedKey("docWidth"); } catch { return "docWidth"; }
+}
+
+function docWidthLocalKey() {
+  const u = currentUsername();
+  return u ? "notion-doc-width:" + u : "notion-doc-width";
+}
+
+function validDocWidth(v) {
+  return DOC_WIDTHS.includes(v) ? v : null;
+}
+
+function getDocWidth() {
+  const cur = validDocWidth(document.documentElement.dataset.docWidth);
+  if (cur) return cur;
+  try {
+    const ls = validDocWidth(localStorage.getItem(docWidthLocalKey()))
+      || validDocWidth(localStorage.getItem("notion-doc-width"));
+    if (ls) return ls;
+  } catch {}
+  return DEFAULT_DOC_WIDTH;
+}
+
+function updateDocWidthBtn(mode) {
+  const btn = $("#docWidthBtn");
+  if (!btn) return;
+  const label = DOC_WIDTH_LABELS[mode] || mode;
+  const next = DOC_WIDTHS[(DOC_WIDTHS.indexOf(mode) + 1) % DOC_WIDTHS.length];
+  const nextLabel = DOC_WIDTH_LABELS[next] || next;
+  btn.title = "Content width: " + label + " (click for " + nextLabel + ")";
+  btn.setAttribute("aria-label", "Content width: " + label + ". Activate for " + nextLabel);
+  btn.dataset.width = mode;
+}
+
+function applyDocWidth(mode, { persist=false }={}) {
+  mode = validDocWidth(mode) || DEFAULT_DOC_WIDTH;
+  document.documentElement.dataset.docWidth = mode;
+  updateDocWidthBtn(mode);
+  if (!persist) return;
+  try { localStorage.setItem(docWidthLocalKey(), mode); } catch {}
+  try { localStorage.setItem("notion-doc-width", mode); } catch {}
+  // IndexedDB is the durable store; never let it stall the toggle.
+  try {
+    idbOrFallback(
+      window.notifications.saveState(docWidthStorageKey(), mode).catch(() => {}),
+      2000, null
+    ).catch(() => {});
+  } catch {}
+}
+
+function toggleDocWidth() {
+  const cur = getDocWidth();
+  const next = DOC_WIDTHS[(DOC_WIDTHS.indexOf(cur) + 1) % DOC_WIDTHS.length];
+  applyDocWidth(next, { persist: true });
+  setSaveState("Content width: " + (DOC_WIDTH_LABELS[next] || next), false);
+}
+
+async function initDocWidth() {
+  // Instant: localStorage (head script already applied the global fallback).
+  try {
+    const ls = validDocWidth(localStorage.getItem(docWidthLocalKey()))
+      || validDocWidth(localStorage.getItem("notion-doc-width"));
+    applyDocWidth(ls || DEFAULT_DOC_WIDTH);
+  } catch { applyDocWidth(DEFAULT_DOC_WIDTH); }
+  // Durable: per-user IndexedDB wins when present.
+  try {
+    const saved = await idbOrFallback(
+      window.notifications.getState(docWidthStorageKey()).catch(() => null),
+      3000, null
+    );
+    const valid = validDocWidth(saved);
+    if (valid && valid !== getDocWidth()) applyDocWidth(valid);
+    else updateDocWidthBtn(getDocWidth());
+  } catch { updateDocWidthBtn(getDocWidth()); }
+  const btn = $("#docWidthBtn");
+  if (btn && !btn.dataset.wired) {
+    btn.dataset.wired = "1";
+    btn.addEventListener("click", toggleDocWidth);
+  }
+}
+
 function uid(prefix="page") {
   return prefix + "_" + Math.random().toString(36).slice(2, 8) + Date.now().toString(36);
 }
@@ -1947,6 +2035,8 @@ function upsertPageMeta(row, { fromServer=false }={}) {
 }
 
 async function initialize() {
+  // Content width first: instant local apply, IndexedDB value follows.
+  try { initDocWidth(); } catch {}
   // 1. Local drafts first: crash-safe truth, zero server cost.
   // Guarded with a timeout so a blocked IndexedDB upgrade (another open tab
   // holding the old version) can never hang boot with an empty sidebar.

@@ -24,6 +24,15 @@
         window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
       );
       if (theme === "dark") { document.documentElement.setAttribute("data-theme", "dark"); }
+      // Apply saved content-width early (no flash). Full value loads from IndexedDB in app-module.js.
+      try {
+        var w = null;
+        var u = document.body ? document.body.getAttribute("data-username") : "";
+        // body isn't parsed yet here; fall back to unscoped key, scoped key applied on boot.
+        w = localStorage.getItem("notion-doc-width") || localStorage.getItem("notion-doc-width:" + u);
+        if (w === "narrow" || w === "wide" || w === "full") { document.documentElement.setAttribute("data-doc-width", w); }
+        else { document.documentElement.setAttribute("data-doc-width", "wide"); }
+      } catch(e) { try { document.documentElement.setAttribute("data-doc-width", "wide"); } catch(_){} }
     })();
   </script>
 </head>
@@ -108,6 +117,7 @@
         <nav class="breadcrumbs" id="breadcrumbs" aria-label="Breadcrumb navigation"></nav>
         <div class="top-actions" aria-label="Workspace actions">
           <button class="icon-btn mobile-menu-btn" id="mobileMenuBtn" title="Menu" aria-label="Open sidebar menu" aria-expanded="false" aria-controls="sidebar"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+          <button class="icon-btn" id="docWidthBtn" title="Content width: Wide (click to change)" aria-label="Toggle content width"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><path d="M8 3v18M16 3v18" opacity="0.55"/></svg></button>
           <button class="top-action" id="publicToggleBtn" title="Toggle public" aria-label="Toggle public" style="display:none;">
             <span id="publicIcon" aria-hidden="true"></span>
             <span id="publicLabel">Private</span>

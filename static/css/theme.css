@@ -30,7 +30,7 @@
   --radius-xl: 18px;
   --radius-pill: 980px;
   --sidebar-width: 272px;
-  --doc-max: 800px;
+  --doc-max: 1120px;
   --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Inter, "Segoe UI", sans-serif;
   --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Helvetica, Inter, "Segoe UI", sans-serif;
   --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
@@ -124,6 +124,13 @@
 }
 
 * { box-sizing: border-box; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
+/* Content width preference: narrow (classic) / wide (default) / full (fluid).
+   Toggled from the topbar width button, persisted per user in IndexedDB. */
+html[data-doc-width="narrow"] { --doc-max: 800px; }
+html[data-doc-width="wide"] { --doc-max: 1120px; }
+html[data-doc-width="full"] { --doc-max: none; }
+html[data-doc-width="full"] .document { max-width: none; }
 
 :focus-visible { outline: none; box-shadow: 0 0 0 4px var(--accent-wash); border-radius: var(--radius-sm); }
 .tree-row:focus-visible, .page-link:focus-visible, .twisty:focus-visible, .page-more:focus-visible, .tree-checkbox:focus-visible {
