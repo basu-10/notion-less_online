@@ -11,7 +11,18 @@ async function openDB() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
     request.onerror = () => reject(request.error);
-    request.onsuccess = () => { db = request.result; resolve(db); };
+    request.onsuccess = () => {
+      db = request.result;
+      // Release the connection when a newer version needs to upgrade,
+      // otherwise other tabs block the upgrade forever (silent boot hang).
+      try {
+        db.onversionchange = () => { try { db.close(); } catch {} db = null; };
+      } catch {}
+      resolve(db);
+    };
+    request.onblocked = () => {
+      console.warn("notionless: IndexedDB upgrade blocked — close other NotionLess tabs, then reload this one.");
+    };
     request.onupgradeneeded = (e) => {
       const database = e.target.result;
       if (!database.objectStoreNames.contains(STORE_NAME)) {

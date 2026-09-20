@@ -154,11 +154,12 @@ function setLocked(page, locked, reason) {
 }
 
 async function writeDraft(page) {
-  try {
-    await window.notifications.saveDraft({
+  // Never let a hung IndexedDB (e.g. upgrade blocked by another tab) stall
+  // the save queue: fall through after 3s, server remains source of truth.
+  const payload = {
       id: page.id,
       title: page.title,
-      blocks: structuredClone(page.blocks || []),
+      blocks: null,
       parentId: page.parentId,
       emoji: page.emoji || "",
       updatedAt: page.updatedAt,
@@ -169,8 +170,22 @@ async function writeDraft(page) {
       baseHash: page.baseHash ?? hashContent(page.blocks),
       dirty: !!page.dirty,
       isPublic: !!page.isPublic,
-    });
+  };
+  try { payload.blocks = structuredClone(page.blocks || []); }
+  catch { try { payload.blocks = JSON.parse(JSON.stringify(page.blocks || [])); } catch { payload.blocks = []; } }
+  try {
+    await Promise.race([
+      window.notifications.saveDraft(payload),
+      new Promise(res => setTimeout(res, 3000)),
+    ]);
   } catch (e) { console.warn("Draft write failed:", e); }
+}
+
+function idbOrFallback(promise, ms, fallback) {
+  return Promise.race([
+    promise,
+    new Promise(res => setTimeout(() => res(fallback), ms)),
+  ]);
 }
 
 async function persistNotification(text) {
@@ -1644,8 +1659,11 @@ function upsertPageMeta(row, { fromServer=false }={}) {
 
 async function initialize() {
   // 1. Local drafts first: crash-safe truth, zero server cost.
+  // Guarded with a timeout so a blocked IndexedDB upgrade (another open tab
+  // holding the old version) can never hang boot with an empty sidebar.
   try {
-    const drafts = await window.notifications.getAllDrafts();
+    const drafts = await idbOrFallback(
+      window.notifications.getAllDrafts().catch(() => []), 4000, []);
     for (const d of drafts || []) {
       state.pages.set(d.id, {
         id: d.id,
