@@ -63,6 +63,13 @@ def get_public_page(username, page_id):
         'SELECT id, title, parent_id, content, is_public, created_at, updated_at FROM pages WHERE parent_id = ? AND is_public = 1',
         (page_id,)
     ).fetchall()
+    # Random cards of other public articles by same author (excluding current).
+    # NOTE: must run before conn.close() — previously crashed with
+    # "Cannot operate on a closed database".
+    other_rows = conn.execute(
+        'SELECT id, title, parent_id, content, is_public, created_at, updated_at FROM pages WHERE id != ? AND is_public = 1',
+        (page_id,)
+    ).fetchall()
     conn.close()
     if not row:
         return jsonify({'error': 'Page not found or not public'}), 404
@@ -70,11 +77,6 @@ def get_public_page(username, page_id):
     page['is_public'] = bool(page['is_public'])
     page['author'] = username
     page['author_profile'] = User.get_profile(username)
-    # Random cards of other public articles by same author (excluding current)
-    other_rows = conn.execute(
-        'SELECT id, title, parent_id, content, is_public, created_at, updated_at FROM pages WHERE id != ? AND is_public = 1',
-        (page_id,)
-    ).fetchall()
     other_articles = []
     for r in other_rows:
         d = dict(r)

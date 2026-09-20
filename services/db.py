@@ -100,6 +100,24 @@ def init_user_db(conn):
         ''')
     conn.commit()
 
+def _ensure_main_columns(conn):
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS user_profiles (
+            username TEXT PRIMARY KEY,
+            display_name TEXT,
+            bio TEXT,
+            created_at REAL,
+            avatar_url TEXT DEFAULT ''
+        )
+    ''')
+    try:
+        conn.execute('SELECT avatar_url FROM user_profiles LIMIT 1')
+    except sqlite3.OperationalError:
+        try:
+            conn.execute("ALTER TABLE user_profiles ADD COLUMN avatar_url TEXT DEFAULT ''")
+        except sqlite3.OperationalError:
+            pass
+
 def get_main_db():
     os.makedirs(DATA_DIR, exist_ok=True)
     db_path = os.path.join(DATA_DIR, 'notionless_main.db')
@@ -109,13 +127,6 @@ def get_main_db():
 
 def init_main_db():
     conn = get_main_db()
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS user_profiles (
-            username TEXT PRIMARY KEY,
-            display_name TEXT,
-            bio TEXT,
-            created_at REAL
-        )
-    ''')
+    _ensure_main_columns(conn)
     conn.commit()
     conn.close()
