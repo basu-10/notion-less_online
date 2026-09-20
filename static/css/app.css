@@ -1135,3 +1135,47 @@ html[data-theme="dark"] .toc-list {
 @media (max-width: 820px) {
   .auto-toc { display: none; }
 }
+
+/* ---------- Robust save: sync + conflict banners, locked editor ---------- */
+.sync-banner {
+  margin: 0 0 10px 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  background: var(--hover);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+.sync-banner.is-offline {
+  border-color: rgba(216,91,69,0.5);
+  color: var(--accent);
+}
+.conflict-bar {
+  margin: 0 0 10px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  background: rgba(216,91,69,0.1);
+  border: 1px solid rgba(216,91,69,0.55);
+  color: var(--text);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+.conflict-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.conflict-btn {
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.conflict-btn:hover { border-color: var(--accent); color: var(--accent); }
+.document.is-locked #editor { opacity: 0.55; pointer-events: none; }
+.document.is-locked #pageTitle { opacity: 0.6; }

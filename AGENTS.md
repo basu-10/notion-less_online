@@ -11,7 +11,7 @@ Project: NotionLess Cloud — Flask-based BlockNote Workspace with multi-account
 
 ## Save state & notifications
 
-The sidebar label shows the current status (Ready, Auto-saving..., Saved · HH:MM, etc.). No persistent "Unsaved" state — auto-save debounced at 2s. All status messages are persisted to IndexedDB and can be reviewed by clicking the label — a popup shows the scrollable notification history with timestamps. Max 100 notifications stored (oldest trimmed automatically).
+Local-first robust saving (Plan B): every keystroke persists instantly to IndexedDB drafts (zero server cost). Server flush is debounced at 8s, single-flight (one request at a time), partial PATCH with hash-equality skip (title-only edits send bytes, not full docs). Each page carries `rev` + `base_updated_at`; stale pushes get `409` and raise a per-page conflict bar (Keep mine / Load server / Keep both) — never silent overwrite. Opening a cached page mounts instantly but locked as `Cached copy — checking for newer version…` until its own verify fetch completes; late fetches never clobber edits made while verifying (epoch guard). New pages are always creatable, even mid-sync/offline, and queue for later. `pagehide`/`visibilitychange` trigger a single keepalive beacon; offline shows `Offline — editing locally` and retries at 15s/60s/300s. The sidebar label shows status (Ready, Unsaved · will sync, Saving..., Saved · HH:MM, Conflict, Offline). Meaningful statuses persist to IndexedDB notification history (max 100).
 
 ## Directory layout
 
@@ -103,10 +103,11 @@ Open <http://localhost:5001>
 - `Ctrl+S` — save current page (manual backup)
 - `Ctrl+Z` / `Ctrl+Shift+Z` — undo / redo
 - `Ctrl+K` — quick-switcher overlay to jump between pages
-- Auto-save debounced at 2s; no persistent "Unsaved" state
+- Auto-save debounced at 8s with offline IndexedDB drafts; status shows Unsaved · will sync
 - `/` in editor — open block command menu
 - `Tab` / `Shift+Tab` — nest / unnest blocks
 - Page created: brief highlight flash on sidebar row; breadcrumbs segments clickable for parent nav; keyboard focus ring: cyan/purple outline on sidebar items
+- Conflict bar: `Keep mine` force-pushes, `Load server` discards local, `Keep both` duplicates server copy aside
 
 ## Change rules
 

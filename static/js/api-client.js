@@ -22,14 +22,23 @@ class ApiClient {
       throw new Error('Unauthorized');
     }
     if (res.status === 204) return null;
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Request failed');
+    if (res.status === 304) return null;
+    let data = null;
+    try { data = await res.json(); } catch { data = null; }
+    if (!res.ok) {
+      const err = new Error((data && data.error) || 'Request failed');
+      err.status = res.status;
+      err.data = data;
+      err.server = data && data.server;
+      throw err;
+    }
     return data;
   }
 
   get(path) { return this.request('GET', path); }
   post(path, body) { return this.request('POST', path, body); }
   put(path, body) { return this.request('PUT', path, body); }
+  patch(path, body) { return this.request('PATCH', path, body); }
   delete(path) { return this.request('DELETE', path); }
 
   async me() { return this.get('/me'); }
@@ -40,7 +49,7 @@ class ApiClient {
   async listPagesMeta() { return this.get('/pages/list'); }
   async createPage(data) { return this.post('/pages', data); }
   async getPage(id) { return this.get(`/pages/${id}`); }
-  async updatePage(id, data) { return this.put(`/pages/${id}`, data); }
+  async updatePage(id, data) { return this.request('PATCH', `/pages/${id}`, data); }
   async deletePage(id) { return this.delete(`/pages/${id}`); }
 
   async uploadFile(file) {

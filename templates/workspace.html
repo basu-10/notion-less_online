@@ -119,6 +119,15 @@
       <div class="workspace" id="workspace" aria-label="Document workspace">
         <aside id="autoToc" class="auto-toc" aria-label="Table of contents"></aside>
         <article class="document" aria-label="Document editor">
+          <div id="syncBanner" class="sync-banner" role="status" aria-live="polite" style="display:none;"></div>
+          <div id="conflictBar" class="conflict-bar" role="alert" style="display:none;">
+            <span id="conflictText">This page changed on another device.</span>
+            <span class="conflict-actions">
+              <button class="conflict-btn" id="conflictKeepMine" type="button">Keep mine</button>
+              <button class="conflict-btn" id="conflictLoadServer" type="button">Load server</button>
+              <button class="conflict-btn" id="conflictDuplicate" type="button">Keep both</button>
+            </span>
+          </div>
           <header class="document-header">
             <input id="pageTitle" class="page-title" placeholder="Untitled" autocomplete="off" spellcheck="true" aria-label="Page title">
           </header>

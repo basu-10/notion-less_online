@@ -30,8 +30,18 @@ const state = {
   selected: new Set(),
   saveInProgress: false,
   manualSaveTimer: null,
+  // Robust save engine (Plan B): per-page verified gate + single-flight flusher.
+  metaReady: false,
+  flushTimer: null,
+  flushing: false,
+  flushQueued: false,
   sortOrder: (() => { try { return localStorage.getItem("notion-sort-order") || "modified"; } catch { return "modified"; } })()
 };
+
+// Tunables chosen for PythonAnywhere free tier: few, small requests.
+const SAVE_DEBOUNCE_MS = 8000;
+const VERIFY_TIMEOUT_MS = 8000;
+const RETRY_DELAYS = [15000, 60000, 300000];
 
 let editorWired = false;
 
@@ -68,15 +78,110 @@ function defaultBlocks(title) {
 }
 
 function makePage({ id=uid(), title="Untitled", parentId=ROOT, emoji="", blocks=defaultBlocks(title), collapsed=false }={}) {
-  return { id, title, parentId, emoji, blocks, collapsed, updatedAt: Date.now() };
+  const now = Date.now();
+  return {
+    id, title, parentId, emoji, blocks, collapsed, updatedAt: now,
+    rev: 1, baseRev: null, baseUpdatedAt: null, baseTitle: title, baseHash: hashContent(blocks),
+    lastSyncedHash: null, dirty: false, verified: false, locked: false,
+    epoch: 0, mountEpoch: 0, retryCount: 0, conflictServer: null, isPublic: false,
+  };
+}
+
+function hashContent(blocks) {
+  try {
+    const s = typeof blocks === "string" ? blocks : JSON.stringify(blocks || []);
+    let h = 5381;
+    for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+    return h.toString(36) + ":" + s.length;
+  } catch { return "0:0"; }
+}
+
+function pageContentHash(page) {
+  try {
+    const blocks = (page.id === state.currentPageId && state.editor)
+      ? state.editor.document
+      : page.blocks;
+    return hashContent(blocks);
+  } catch { return hashContent(page.blocks); }
+}
+
+function refreshGlobalDirty() {
+  const anyDirty = [...state.pages.values()].some(p => p.dirty);
+  state.dirty = anyDirty;
+  return anyDirty;
+}
+
+function showSyncBanner(text, offline=false) {
+  const el = $("#syncBanner");
+  if (!el) return;
+  if (!text) { el.style.display = "none"; el.textContent = ""; return; }
+  el.style.display = "block";
+  el.textContent = text;
+  el.classList.toggle("is-offline", !!offline);
+}
+
+function hideSyncBanner() { showSyncBanner(null); }
+
+function showConflictBar(page) {
+  const bar = $("#conflictBar");
+  if (!bar || !page || !page.conflictServer) return;
+  bar.style.display = "flex";
+  const srv = page.conflictServer;
+  let when = "";
+  try {
+    const t = srv.updated_at ? new Date(srv.updated_at * 1000) : null;
+    when = t ? " (server " + t.toLocaleString() + ")" : "";
+  } catch {}
+  $("#conflictText").textContent = "This page changed on another device" + when + ". Your local edits are kept — choose how to resolve.";
+}
+
+function hideConflictBar() {
+  const bar = $("#conflictBar");
+  if (bar) bar.style.display = "none";
+}
+
+function setLocked(page, locked, reason) {
+  if (!page) return;
+  page.locked = !!locked;
+  const doc = document.querySelector(".document");
+  const title = $("#pageTitle");
+  if (page.id === state.currentPageId) {
+    if (doc) doc.classList.toggle("is-locked", !!locked);
+    if (title) title.readOnly = !!locked;
+    if (locked && reason) showSyncBanner(reason, false);
+    else if (!locked && !page.conflictServer) hideSyncBanner();
+  }
+}
+
+async function writeDraft(page) {
+  try {
+    await window.notifications.saveDraft({
+      id: page.id,
+      title: page.title,
+      blocks: structuredClone(page.blocks || []),
+      parentId: page.parentId,
+      emoji: page.emoji || "",
+      updatedAt: page.updatedAt,
+      rev: page.rev || 1,
+      baseRev: page.baseRev ?? null,
+      baseUpdatedAt: page.baseUpdatedAt ?? null,
+      baseTitle: page.baseTitle ?? page.title,
+      baseHash: page.baseHash ?? hashContent(page.blocks),
+      dirty: !!page.dirty,
+      isPublic: !!page.isPublic,
+    });
+  } catch (e) { console.warn("Draft write failed:", e); }
 }
 
 async function persistNotification(text) {
   try { await window.notifications.addNotification(text, "info"); } catch (e) { console.warn("Notification add failed:", e); }
 }
 
-async function setSaveState(text) {
-  $("#saveState").textContent = text;
+async function setSaveState(text, persist=true) {
+  const el = $("#saveState");
+  if (el) el.textContent = text;
+  // Don't spam IndexedDB with transient states; persist only meaningful ones.
+  if (!persist) return;
   await persistNotification(text);
 }
 
@@ -126,55 +231,192 @@ async function clearAllNotifications() {
   } catch (e) { console.warn("Failed to clear notifications:", e); }
 }
 
+function snapshotCurrentToPage() {
+  const page = state.pages.get(state.currentPageId);
+  if (!page) return null;
+  try {
+    if (state.editor) page.blocks = structuredClone(state.editor.document);
+  } catch {}
+  const titleEl = $("#pageTitle");
+  if (titleEl) page.title = titleEl.value.trim() || "Untitled";
+  page.updatedAt = Date.now();
+  page.epoch = (page.epoch || 0) + 1;
+  return page;
+}
+
 function markDirty() {
-  state.dirty = true;
-  setSaveState("Auto-saving...");
-  $("#saveBtn").classList.remove("visible");
+  const page = state.pages.get(state.currentPageId);
+  if (!page) return;
+  if (page.locked) {
+    // Locked = unverified cached copy. Count the attempt so a late fetch can
+    // never clobber it (generation guard), then keep it queued.
+    page.epoch = (page.epoch || 0) + 1;
+  }
+  snapshotCurrentToPage();
+  const curHash = pageContentHash(page);
+  if (!page.dirty) {
+    // Skip server write entirely if nothing changed since last sync base.
+    if (page.baseHash && curHash === page.baseHash && page.title === (page.baseTitle ?? page.title)) {
+      refreshGlobalDirty();
+      return;
+    }
+  }
+  page.dirty = true;
+  refreshGlobalDirty();
+  setSaveState("Unsaved · will sync", false);
+  const btn = $("#saveBtn");
+  if (btn) btn.classList.remove("visible");
+  writeDraft(page);
+  renderTree();
+  scheduleFlush(SAVE_DEBOUNCE_MS);
+}
+
+function scheduleFlush(delay=SAVE_DEBOUNCE_MS) {
+  clearTimeout(state.flushTimer);
   clearTimeout(state.saveTimer);
-  state.saveTimer = setTimeout(saveCurrent, 2000);
+  state.flushTimer = setTimeout(() => { flushQueue(); }, delay);
+}
+
+function pickNextDirtyPage() {
+  let best = null;
+  for (const p of state.pages.values()) {
+    if (!p.dirty || p.conflictServer) continue;
+    if (!best || (p.updatedAt || 0) < (best.updatedAt || 0)) best = p;
+  }
+  return best;
+}
+
+async function flushQueue() {
+  clearTimeout(state.flushTimer);
+  if (state.flushing) { state.flushQueued = true; return; }
+  const page = pickNextDirtyPage();
+  if (!page) { refreshGlobalDirty(); return; }
+  // Snapshot live editor if this is the open page.
+  if (page.id === state.currentPageId && state.editor) {
+    try { page.blocks = structuredClone(state.editor.document); } catch {}
+    const t = $("#pageTitle");
+    if (t) page.title = t.value.trim() || "Untitled";
+  }
+  const curHash = pageContentHash(page);
+  const titleChanged = page.title !== (page.baseTitle ?? page.title);
+  const contentChanged = !page.baseHash || curHash !== page.baseHash;
+  const parentChanged = page._parentChanged === true;
+  if (!titleChanged && !contentChanged && !parentChanged) {
+    page.dirty = false;
+    page.retryCount = 0;
+    await writeDraft(page);
+    refreshGlobalDirty();
+    if (pickNextDirtyPage()) scheduleFlush(2000);
+    else setSaveState("Saved · " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+    return;
+  }
+  state.flushing = true;
+  if (page.id === state.currentPageId) setSaveState("Saving...", false);
+  const payload = {};
+  if (titleChanged) payload.title = page.title;
+  if (contentChanged) {
+    const blocks = (page.id === state.currentPageId && state.editor) ? state.editor.document : page.blocks;
+    payload.content = JSON.stringify(blocks || []);
+  }
+  if (parentChanged || payload.title || payload.content) payload.parent_id = page.parentId;
+  if (page.baseRev != null) payload.base_rev = page.baseRev;
+  if (page.baseUpdatedAt != null) payload.base_updated_at = page.baseUpdatedAt;
+  // Local-only pages (never synced) have no base: create-or-repair then patch.
+  try {
+    let res = null;
+    if (page._localOnly) {
+      try {
+        res = await window.api.createPage({
+          id: page.id, title: page.title,
+          content: JSON.stringify((page.id === state.currentPageId && state.editor) ? state.editor.document : (page.blocks || [])),
+          parent_id: page.parentId,
+        });
+      } catch (e) {
+        // Already exists server-side (e.g. created on another device): fall through to patch.
+        res = null;
+      }
+    }
+    if (!res) res = await window.api.updatePage(page.id, payload);
+    page.rev = res.rev ?? ((page.rev || 1) + 1);
+    page.baseRev = page.rev;
+    page.baseUpdatedAt = res.updated_at ?? (Date.now() / 1000);
+    page.baseTitle = page.title;
+    page.baseHash = pageContentHash(page);
+    page.lastSyncedHash = page.baseHash;
+    page.updatedAt = Date.now();
+    page.dirty = false;
+    page.retryCount = 0;
+    page._parentChanged = false;
+    page._localOnly = false;
+    await writeDraft(page);
+    refreshGlobalDirty();
+    if (page.id === state.currentPageId) {
+      setSaveState("Saved · " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+      renderBreadcrumbs();
+    }
+    renderTree();
+  } catch (err) {
+    console.error("Save failed:", err);
+    if (err && (err.status === 409 || err.server)) {
+      const server = err.server || (err.data && err.data.server);
+      page.conflictServer = server || null;
+      page.retryCount = 0;
+      await writeDraft(page);
+      if (page.id === state.currentPageId) {
+        showConflictBar(page);
+        setSaveState("Conflict — action needed");
+      } else {
+        setSaveState("Conflict on '" + (page.title || "Untitled") + "'");
+      }
+      renderTree();
+    } else {
+      page.retryCount = (page.retryCount || 0) + 1;
+      const delay = RETRY_DELAYS[Math.min(page.retryCount - 1, RETRY_DELAYS.length - 1)];
+      if (page.id === state.currentPageId) setSaveState("Offline — retrying", false);
+      else setSaveState("Offline — " + [...state.pages.values()].filter(p => p.dirty).length + " unsynced");
+      scheduleFlush(delay);
+    }
+  } finally {
+    state.flushing = false;
+    if (state.flushQueued) {
+      state.flushQueued = false;
+      if (pickNextDirtyPage()) scheduleFlush(2000);
+    } else if (pickNextDirtyPage()) {
+      scheduleFlush(2000);
+    }
+  }
 }
 
 async function saveCurrent() {
-  if (state.isOpeningPage) return;
+  // Manual save: flush the current page immediately (single-flight safe).
   const page = state.pages.get(state.currentPageId);
-  if (!page || !state.editor) return;
-  page.blocks = structuredClone(state.editor.document);
-  page.title = $("#pageTitle").value.trim() || "Untitled";
-  page.updatedAt = Date.now();
-  state.pages.set(page.id, page);
-  try {
-    await window.api.updatePage(page.id, {
-      title: page.title,
-      content: JSON.stringify(page.blocks),
-      parent_id: page.parentId
-    });
-  } catch (err) {
-    console.error("Save failed:", err);
-    setSaveState("Save failed");
+  if (!page) return;
+  if (page.conflictServer) {
+    setSaveState("Resolve conflict first");
+    showConflictBar(page);
     return;
   }
-  state.dirty = false;
-  $("#saveBtn").classList.remove("visible");
-  setSaveState("Saved · " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
-  renderTree();
-  renderBreadcrumbs();
+  snapshotCurrentToPage();
+  page.dirty = true;
+  refreshGlobalDirty();
+  await writeDraft(page);
+  clearTimeout(state.flushTimer);
+  await flushQueue();
 }
 
 async function saveAll() {
-  for (const page of state.pages.values()) {
-    try {
-      await window.api.updatePage(page.id, {
-        title: page.title,
-        content: JSON.stringify(page.blocks),
-        parent_id: page.parentId
-      });
-    } catch (err) {
-      console.error("Save failed:", err);
-    }
+  // Sequential single-flight drain (free-tier friendly: one request at a time).
+  for (;;) {
+    const next = pickNextDirtyPage();
+    if (!next) break;
+    if (next.id !== state.currentPageId) {
+      // Non-open pages already have snapshots in memory + drafts.
+    } else snapshotCurrentToPage();
+    await flushQueue();
+    if (next.conflictServer) continue; // leave conflicts for explicit resolution
   }
-  state.dirty = false;
-  $("#saveBtn").classList.remove("visible");
-  setSaveState("All pages saved");
+  refreshGlobalDirty();
+  setSaveState(refreshGlobalDirty() ? "Some pages need attention" : "All pages saved");
 }
 
 function exportProfile() {
@@ -207,20 +449,41 @@ async function importProfile(file) {
     const data = JSON.parse(text);
     if (!data.pages || !Array.isArray(data.pages)) throw new Error("Invalid profile file");
     for (const p of data.pages) {
-      const page = {
-        id: p.id,
+      const pid = p.id || uid("page");
+      const blocks = p.blocks || (typeof p.content === "string" ? parseBlocks(p.content) : (p.content || [{type:"paragraph"}]));
+      const local = makePage({
+        id: pid,
         title: p.title || "Untitled",
-        content: p.content || p.blocks ? JSON.stringify(p.blocks || p.content) : "[]",
-        parent_id: p.parentId || ROOT
-      };
-      state.pages.set(page.id, page);
+        parentId: p.parentId || p.parent_id || ROOT,
+        emoji: p.emoji || "",
+        blocks,
+      });
+      local._localOnly = true;
+      local.dirty = true;
+      local.baseRev = null;
+      state.pages.set(pid, local);
+      await writeDraft(local);
       try {
-        await window.api.createPage(page);
+        const res = await window.api.createPage({
+          id: pid, title: local.title,
+          content: JSON.stringify(local.blocks), parent_id: local.parentId,
+        });
+        if (res) {
+          local.rev = res.rev ?? 1;
+          local.baseRev = local.rev;
+          local.baseUpdatedAt = res.updated_at ?? (Date.now() / 1000);
+          local.baseTitle = local.title;
+          local.baseHash = hashContent(local.blocks);
+          local.dirty = false;
+          local._localOnly = false;
+          await writeDraft(local);
+        }
       } catch (err) {
-        console.error("Failed to create page during import:", err, page);
+        console.error("Failed to create page during import:", err, pid);
       }
     }
-    state.dirty = false; $("#saveBtn").classList.remove("visible");
+    refreshGlobalDirty();
+    $("#saveBtn").classList.remove("visible");
     setSaveState("Profile imported");
     renderTree(); renderBreadcrumbs();
     const first = childrenOf(ROOT)[0];
@@ -506,14 +769,18 @@ async function deleteSelected() {
   const ids = [...state.selected];
   if (!ids.length) return;
   if (!confirm(`Delete ${ids.length} page(s)?`)) return;
+  clearTimeout(state.flushTimer);
   for (const id of ids) {
     state.pages.delete(id);
+    try { await window.notifications.deleteDraft(id); } catch {}
     try { await window.api.deletePage(id); } catch {}
   }
   state.selected.clear();
   if (!childrenOf(ROOT).length) {
     const welcome = makePage({ id: "welcome", title: "Welcome", parentId: ROOT, emoji: "👋" });
+    welcome._localOnly = true; welcome.dirty = true;
     state.pages.set(welcome.id, welcome);
+    await writeDraft(welcome);
     try { await window.api.createPage({ id: welcome.id, title: welcome.title, content: JSON.stringify(welcome.blocks), parent_id: welcome.parentId }); } catch {}
   }
   const first = childrenOf(ROOT)[0];
@@ -566,16 +833,19 @@ async function movePage(pageId, newParentId) {
   if (isDescendant(pageId, newParentId)) return;
   page.parentId = newParentId;
   page.updatedAt = Date.now();
+  page.epoch = (page.epoch || 0) + 1;
+  page.dirty = true;
+  page._parentChanged = true;
+  page._localOnly = page._localOnly || page.baseRev == null;
   state.pages.set(pageId, page);
   state.expanded.add(newParentId);
-  try {
-    await window.api.updatePage(pageId, { parent_id: newParentId });
-  } catch (err) {
-    console.error("Failed to move page:", err);
-    setSaveState("Move failed");
-  }
+  refreshGlobalDirty();
+  await writeDraft(page);
   renderTree();
   renderBreadcrumbs();
+  scheduleFlush(3000);
+  // Attempt immediate single-flight move; conflicts surface via flushQueue.
+  flushQueue();
 }
 
 function renderBreadcrumbs() {
@@ -636,29 +906,43 @@ async function mountEditor(blocks) {
   wireEditorInteractions();
 }
 
+function parseBlocks(content) {
+  let blocks = content;
+  if (typeof blocks === "string") {
+    try { blocks = JSON.parse(blocks); } catch { blocks = [{type:"paragraph"}]; }
+  }
+  if (!blocks || !blocks.length) blocks = [{type:"paragraph"}];
+  return blocks;
+}
+
+function fetchWithTimeout(promise, ms) {
+  let timer = null;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error("timeout")), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 async function openPage(id) {
+  // Queue current page snapshot locally (fast switch, no server wait).
+  const prev = state.pages.get(state.currentPageId);
+  if (prev && prev.dirty && state.editor && state.currentPageId !== id) {
+    try { prev.blocks = structuredClone(state.editor.document); } catch {}
+    const t = $("#pageTitle");
+    if (t) prev.title = t.value.trim() || "Untitled";
+    prev.updatedAt = Date.now();
+    await writeDraft(prev);
+    scheduleFlush(SAVE_DEBOUNCE_MS);
+  }
   state.isOpeningPage = true;
-  clearTimeout(state.saveTimer);
-  if (state.dirty) await saveCurrent();
+  hideConflictBar();
   const page = state.pages.get(id);
   if (!page) { state.isOpeningPage = false; return; }
-  if (!page.blocks) {
-    try {
-      const data = await window.api.getPage(id);
-      let blocks = data.content;
-      if (typeof blocks === "string") {
-        try { blocks = JSON.parse(blocks); } catch { blocks = [{type:"paragraph"}]; }
-      }
-      page.blocks = blocks;
-      page.title = data.title || page.title;
-      page.isPublic = Boolean(data.is_public);
-    } catch (err) {
-      console.error("Failed to load page content:", err);
-      page.blocks = [{type:"paragraph"}];
-    }
-  }
   state.currentPageId = id;
   try { await window.notifications.saveState("lastPageId", id); } catch {}
+  page.mountEpoch = (page.epoch || 0);
+  // Mount cached copy instantly, locked until verified (stale-cache guard).
+  if (!page.blocks) page.blocks = [{type:"paragraph"}];
   $("#pageTitle").value = page.title || "Untitled";
   await mountEditor(page.blocks);
   setTimeout(() => renderAutoToc(), 80);
@@ -667,23 +951,141 @@ async function openPage(id) {
   renderBreadcrumbs();
   updatePublicToggleUI();
   $("#workspace").scrollTop = 0;
-  setSaveState("Loaded");
+  if (page.conflictServer) {
+    setLocked(page, false);
+    showConflictBar(page);
+    setSaveState("Conflict — action needed");
+    state.isOpeningPage = false;
+    return;
+  }
+  setLocked(page, true, "Cached copy — checking for newer version…");
+  setSaveState("Loading...", false);
+  // Local-only pages need no verification.
+  if (page._localOnly && page.baseRev == null) {
+    setLocked(page, false);
+    hideSyncBanner();
+    setSaveState("New page — editing locally", false);
+    state.isOpeningPage = false;
+    return;
+  }
+  try {
+    const data = await fetchWithTimeout(window.api.getPage(id), VERIFY_TIMEOUT_MS);
+    // Navigated away while verifying: never touch the editor (stale-fetch guard).
+    if (state.currentPageId !== id) { state.isOpeningPage = false; return; }
+    const editedDuringVerify = (page.epoch || 0) !== (page.mountEpoch || 0);
+    let serverBlocks = parseBlocks(data.content);
+    const serverUpdated = parseFloat(data.updated_at || 0);
+    const localBase = parseFloat(page.baseUpdatedAt || 0);
+    const serverNewer = (serverUpdated - localBase > 0.001) ||
+      (data.rev != null && page.baseRev != null && parseInt(data.rev, 10) !== parseInt(page.baseRev, 10));
+    const serverHash = hashContent(serverBlocks);
+    if (page.dirty || editedDuringVerify) {
+      // NEVER overwrite local edits with a late fetch. Update base tracking
+      // only; if server is also newer this is a real conflict.
+      if (serverNewer && serverHash !== pageContentHash(page)) {
+        page.conflictServer = data;
+        await writeDraft(page);
+        setLocked(page, false);
+        showConflictBar(page);
+        setSaveState("Conflict — action needed");
+      } else {
+        page.baseRev = data.rev ?? page.baseRev;
+        page.baseUpdatedAt = data.updated_at ?? page.baseUpdatedAt;
+        page.rev = data.rev ?? page.rev ?? 1;
+        setLocked(page, false);
+        setSaveState(page.dirty ? "Unsaved · will sync" : "Ready", false);
+        if (page.dirty) scheduleFlush(3000);
+      }
+    } else {
+      if (serverNewer) {
+        page.blocks = serverBlocks;
+        page.title = data.title || page.title;
+        page.parentId = data.parent_id || page.parentId;
+        page.isPublic = Boolean(data.is_public);
+        page.rev = data.rev ?? page.rev ?? 1;
+        page.baseRev = page.rev;
+        page.baseUpdatedAt = data.updated_at ?? page.baseUpdatedAt;
+        page.baseTitle = page.title;
+        page.baseHash = hashContent(serverBlocks);
+        page.updatedAt = Date.now();
+        await writeDraft(page);
+        if (state.currentPageId === id) {
+          $("#pageTitle").value = page.title || "Untitled";
+          await mountEditor(page.blocks);
+          setTimeout(() => renderAutoToc(), 80);
+          renderTree();
+          renderBreadcrumbs();
+          updatePublicToggleUI();
+        }
+        setSaveState("Updated to latest", false);
+      } else {
+        page.rev = data.rev ?? page.rev ?? 1;
+        page.baseRev = page.baseRev ?? page.rev;
+        page.baseUpdatedAt = page.baseUpdatedAt ?? data.updated_at;
+        page.baseTitle = page.baseTitle ?? page.title;
+        page.baseHash = page.baseHash ?? hashContent(page.blocks);
+      }
+      setLocked(page, false);
+    }
+  } catch (err) {
+    console.warn("Verify failed, staying on local copy:", err);
+    if (state.currentPageId !== id) { state.isOpeningPage = false; return; }
+    // Offline escape: unlock for local editing, edits queue in drafts.
+    setLocked(page, false);
+    showSyncBanner("Offline — editing local copy, will sync later", true);
+    setSaveState("Offline — editing locally", false);
+  }
   state.isOpeningPage = false;
 }
 
 async function createPage(parentId=ROOT) {
+  // During initial meta sync, force root parenting: parent links are unverified.
+  if (!state.metaReady) parentId = ROOT;
+  if (state.currentPageId) {
+    const cur = state.pages.get(state.currentPageId);
+    if (cur && state.editor) {
+      try { cur.blocks = structuredClone(state.editor.document); } catch {}
+      const t = $("#pageTitle");
+      if (t) cur.title = t.value.trim() || "Untitled";
+      cur.updatedAt = Date.now();
+      if (cur.dirty || pageContentHash(cur) !== (cur.baseHash || "")) {
+        cur.dirty = true;
+        await writeDraft(cur);
+      }
+    }
+  }
   const page = makePage({ parentId, title: "Untitled", blocks: [{type:"paragraph", content:""}] });
+  page.verified = true;
+  page.dirty = true;
+  page._localOnly = true;
+  page.baseRev = null;
+  page.baseUpdatedAt = null;
+  page.baseHash = null;
   state.pages.set(page.id, page);
   state.expanded.add(parentId);
+  refreshGlobalDirty();
+  await writeDraft(page);
+  renderTree();
   try {
-    await window.api.createPage({
+    const res = await window.api.createPage({
       id: page.id,
       title: page.title,
       content: JSON.stringify(page.blocks),
       parent_id: page.parentId
     });
+    page.rev = res.rev ?? 1;
+    page.baseRev = page.rev;
+    page.baseUpdatedAt = res.updated_at ?? (Date.now() / 1000);
+    page.baseTitle = page.title;
+    page.baseHash = hashContent(page.blocks);
+    page.dirty = false;
+    page._localOnly = false;
+    await writeDraft(page);
+    refreshGlobalDirty();
   } catch (err) {
-    console.error("Failed to create page on server:", err);
+    console.warn("Create queued offline:", err);
+    setSaveState("Offline — new page saved locally", false);
+    scheduleFlush(15000);
   }
   await openPage(page.id);
   setTimeout(() => { $("#pageTitle").focus(); }, 60);
@@ -709,12 +1111,15 @@ async function deletePage(id) {
   collect(id);
   for (const did of [id, ...descendants]) {
     state.pages.delete(did);
+    try { await window.notifications.deleteDraft(did); } catch {}
     try { await window.api.deletePage(did); } catch {}
   }
   const remaining = childrenOf(ROOT);
   if (!remaining.length) {
     const welcome = makePage({ id: "welcome", title: "Welcome", parentId: ROOT, emoji: "👋" });
+    welcome._localOnly = true; welcome.dirty = true;
     state.pages.set(welcome.id, welcome);
+    await writeDraft(welcome);
     try {
       await window.api.createPage({
         id: welcome.id,
@@ -806,15 +1211,30 @@ async function duplicatePage(pageId) {
     });
     state.pages.set(newId, newPage);
     state.expanded.add(newParentId);
+    newPage._localOnly = true;
+    newPage.dirty = true;
+    newPage.baseRev = null;
+    await writeDraft(newPage);
     try {
-      await window.api.createPage({
+      const res = await window.api.createPage({
         id: newId,
         title: newPage.title,
         content: JSON.stringify(newPage.blocks),
         parent_id: newPage.parentId,
       });
+      if (res) {
+        newPage.rev = res.rev ?? 1;
+        newPage.baseRev = newPage.rev;
+        newPage.baseUpdatedAt = res.updated_at ?? (Date.now() / 1000);
+        newPage.baseTitle = newPage.title;
+        newPage.baseHash = hashContent(newPage.blocks);
+        newPage.dirty = false;
+        newPage._localOnly = false;
+        await writeDraft(newPage);
+      }
     } catch (err) {
       console.error("Failed to create page during duplicate:", err);
+      scheduleFlush(15000);
     }
   }
   renderTree();
@@ -1074,20 +1494,12 @@ function onEditorKeydown(e) {
 
   if ((e.ctrlKey || e.metaKey) && e.key === "s") {
     e.preventDefault();
-    clearTimeout(state.manualSaveTimer);
-    if (!state.saveInProgress && state.dirty) {
-      state.saveInProgress = true;
-      saveCurrent().finally(() => { state.saveInProgress = false; });
-    } else if (!state.dirty) {
-      setSaveState("Nothing to save");
-    } else {
-      state.manualSaveTimer = setTimeout(() => {
-        if (!state.saveInProgress && state.dirty) {
-          state.saveInProgress = true;
-          saveCurrent().finally(() => { state.saveInProgress = false; });
-        }
-      }, 500);
+    const pg = state.pages.get(state.currentPageId);
+    if (!pg || !pg.dirty) {
+      setSaveState("Nothing to save", false);
+      return;
     }
+    saveCurrent();
     return;
   }
 
@@ -1171,42 +1583,134 @@ function onEditorKeyup() {
   }
 }
 
+function upsertPageMeta(row, { fromServer=false }={}) {
+  const id = row.id;
+  if (!id) return;
+  const existing = state.pages.get(id);
+  if (!existing) {
+    state.pages.set(id, {
+      id,
+      title: row.title || "Untitled",
+      blocks: null,
+      parentId: row.parent_id || row.parentId || ROOT,
+      emoji: row.emoji || "",
+      updatedAt: row.updated_at ? row.updated_at * 1000 : Date.now(),
+      rev: row.rev ?? 1,
+      baseRev: fromServer ? (row.rev ?? 1) : (row.baseRev ?? null),
+      baseUpdatedAt: fromServer ? (row.updated_at ?? null) : (row.baseUpdatedAt ?? null),
+      baseTitle: fromServer ? (row.title || "Untitled") : (row.baseTitle ?? row.title),
+      baseHash: fromServer ? (existing?.baseHash ?? null) : (row.baseHash ?? null),
+      lastSyncedHash: null,
+      dirty: fromServer ? false : !!row.dirty,
+      verified: false,
+      locked: false,
+      epoch: 0, mountEpoch: 0, retryCount: 0, conflictServer: null,
+      isPublic: Boolean(row.is_public ?? row.isPublic),
+      _localOnly: fromServer ? false : !!row._localOnly,
+    });
+    return;
+  }
+  if (fromServer) {
+    // Merge, never clobber: dirty pages and local-only pages keep local truth.
+    if (existing.dirty || existing._localOnly) {
+      existing.rev = existing.rev ?? row.rev ?? 1;
+      existing.isPublic = existing.isPublic;
+      return;
+    }
+    existing.title = row.title || existing.title;
+    existing.parentId = row.parent_id || existing.parentId;
+    existing.isPublic = Boolean(row.is_public ?? existing.isPublic);
+    existing.rev = row.rev ?? existing.rev ?? 1;
+    existing.baseRev = existing.rev;
+    existing.baseUpdatedAt = row.updated_at ?? existing.baseUpdatedAt;
+    existing.baseTitle = existing.title;
+    existing.updatedAt = row.updated_at ? row.updated_at * 1000 : existing.updatedAt;
+    return;
+  }
+  // Local cache/draft source.
+  existing.title = row.title || existing.title;
+  if (row.blocks) existing.blocks = row.blocks;
+  if (row.parentId || row.parent_id) existing.parentId = row.parentId || row.parent_id;
+  if (row.emoji) existing.emoji = row.emoji;
+  if (row.dirty) existing.dirty = true;
+  if (row.baseRev != null) existing.baseRev = row.baseRev;
+  if (row.baseUpdatedAt != null) existing.baseUpdatedAt = row.baseUpdatedAt;
+  if (row.baseTitle != null) existing.baseTitle = row.baseTitle;
+  if (row.baseHash != null) existing.baseHash = row.baseHash;
+  if (row.rev != null) existing.rev = row.rev;
+  if (row.isPublic != null) existing.isPublic = Boolean(row.is_public ?? row.isPublic);
+  if (row._localOnly) existing._localOnly = true;
+}
+
 async function initialize() {
+  // 1. Local drafts first: crash-safe truth, zero server cost.
+  try {
+    const drafts = await window.notifications.getAllDrafts();
+    for (const d of drafts || []) {
+      state.pages.set(d.id, {
+        id: d.id,
+        title: d.title || "Untitled",
+        blocks: d.blocks || null,
+        parentId: d.parentId || ROOT,
+        emoji: d.emoji || "",
+        updatedAt: d.updatedAt || Date.now(),
+        rev: d.rev ?? 1,
+        baseRev: d.baseRev ?? null,
+        baseUpdatedAt: d.baseUpdatedAt ?? null,
+        baseTitle: d.baseTitle ?? d.title,
+        baseHash: d.baseHash ?? (d.blocks ? hashContent(d.blocks) : null),
+        lastSyncedHash: null,
+        dirty: !!d.dirty,
+        verified: false,
+        locked: false,
+        epoch: 0, mountEpoch: 0, retryCount: 0, conflictServer: null,
+        isPublic: Boolean(d.isPublic),
+        _localOnly: (d.baseRev == null && !!d.dirty),
+      });
+    }
+    if (drafts && drafts.length) renderTree();
+  } catch (e) { console.warn("Draft load failed:", e); }
+
   let cachedMeta = null;
   try { cachedMeta = await window.notifications.getState("pageListMeta"); } catch {}
 
   if (cachedMeta && Array.isArray(cachedMeta)) {
-    state.pages = new Map(cachedMeta.map(p => {
-      return [p.id, {
-        id: p.id,
-        title: p.title || "Untitled",
-        blocks: null,
-        parentId: p.parent_id || ROOT,
-        emoji: "",
-        updatedAt: p.updated_at || Date.now(),
-        isPublic: Boolean(p.is_public)
-      }];
-    }));
+    for (const p of cachedMeta) {
+      if (state.pages.has(p.id)) {
+        const ex = state.pages.get(p.id);
+        if (!ex.dirty && !ex.blocks) {
+          ex.title = p.title || ex.title;
+          ex.parentId = p.parent_id || ex.parentId;
+          ex.isPublic = Boolean(p.is_public ?? ex.isPublic);
+          if (p.rev != null) ex.rev = p.rev;
+        }
+        continue;
+      }
+      upsertPageMeta(p, { fromServer: false });
+    }
     renderTree();
   }
 
   try {
     const rows = await window.api.listPagesMeta();
-    state.pages = new Map(rows.map(p => {
-      return [p.id, {
-        id: p.id,
-        title: p.title || "Untitled",
-        blocks: null,
-        parentId: p.parent_id || ROOT,
-        emoji: "",
-        updatedAt: p.updated_at || Date.now(),
-        isPublic: Boolean(p.is_public)
-      }];
-    }));
+    for (const p of rows || []) upsertPageMeta(p, { fromServer: true });
+    // Drop deleted-on-server stubs that are clean (keep dirty/local-only).
+    const serverIds = new Set((rows || []).map(r => r.id));
+    for (const [id, pg] of [...state.pages]) {
+      if (id === ROOT) continue;
+      if (!serverIds.has(id) && !pg.dirty && !pg._localOnly && pg.baseRev != null) {
+        state.pages.delete(id);
+        try { await window.notifications.deleteDraft(id); } catch {}
+      }
+    }
     try { await window.notifications.saveState("pageListMeta", rows); } catch {}
+    state.metaReady = true;
+    refreshGlobalDirty();
     renderTree();
+    if ([...state.pages.values()].some(p => p.dirty)) scheduleFlush(4000);
   } catch (err) {
     console.error("Failed to load pages:", err);
+    state.metaReady = true;
   }
 
   if (!state.pages.size) {
@@ -1413,17 +1917,27 @@ async function initialize() {
     const allPages = [welcome, gettingStarted, firstSteps, keyboardShortcuts, writingFormatting, headingsText, listsCheckboxes, tablesDemo, codeBlocksDemo, quotesCallouts, organization, nestedPagesDemo, yourSpace, sharing];
 
     for (const p of allPages) {
+      p.baseTitle = p.title;
+      p.baseHash = hashContent(p.blocks);
+      p.baseRev = 1;
       state.pages.set(p.id, p);
+      writeDraft(p);
     }
 
     try {
       for (const p of allPages) {
-        await window.api.createPage({
+        const res = await window.api.createPage({
           id: p.id,
           title: p.title,
           content: JSON.stringify(p.blocks),
           parent_id: p.parentId
         });
+        if (res) {
+          p.rev = res.rev ?? 1;
+          p.baseRev = p.rev;
+          p.baseUpdatedAt = res.updated_at ?? (Date.now() / 1000);
+          await writeDraft(p);
+        }
       }
     } catch (err) {
       console.error("Failed to create initial pages:", err);
@@ -1438,7 +1952,7 @@ async function initialize() {
   const lastPage = lastPageId && state.pages.has(lastPageId) ? state.pages.get(lastPageId) : null;
   const first = lastPage || state.pages.get("welcome") || childrenOf(ROOT)[0];
   if (first) await openPage(first.id);
-  setSaveState("Ready");
+  else setSaveState("Ready");
   initPublicToggle();
   initAutoToc();
 }
@@ -1457,11 +1971,15 @@ async function toggleCurrentPagePublic() {
     if (!res.ok) throw new Error('Failed');
     const data = await res.json();
     page.isPublic = data.is_public;
+    if (data.rev != null) { page.rev = data.rev; page.baseRev = data.rev; }
+    if (data.updated_at != null) page.baseUpdatedAt = data.updated_at;
+    await writeDraft(page);
     // Cascade to subpages in UI state so flow is clear
     function updateSubpages(parentId, isPublic) {
       const children = childrenOf(parentId);
       for (const child of children) {
         child.isPublic = isPublic;
+        writeDraft(child);
         updateSubpages(child.id, isPublic);
       }
     }
@@ -1470,12 +1988,19 @@ async function toggleCurrentPagePublic() {
       setSaveState('Made public — subpages included');
     } else {
       // When making private, only this page; subpages stay as they were or become private based on DB
-      // Re-fetch metadata from server to sync exact DB state for children
+      // Re-fetch metadata from server to sync exact DB state for children.
+      // Merge, never clobber dirty local titles.
       try {
         const syncPages = await window.api.listPagesMeta();
         for (const sp of syncPages) {
           const existing = state.pages.get(sp.id);
-          if (existing) existing.isPublic = Boolean(sp.is_public);
+          if (existing) {
+            if (!existing.dirty) {
+              existing.isPublic = Boolean(sp.is_public);
+              if (sp.rev != null) { existing.rev = sp.rev; existing.baseRev = sp.rev; }
+              if (sp.updated_at != null) existing.baseUpdatedAt = sp.updated_at;
+            }
+          } else upsertPageMeta(sp, { fromServer: true });
         }
         try { await window.notifications.saveState("pageListMeta", syncPages); } catch {}
       } catch {}
@@ -1487,6 +2012,98 @@ async function toggleCurrentPagePublic() {
     console.error('Toggle public failed:', err);
     setSaveState('Failed to toggle public');
   }
+}
+
+async function resolveConflictKeepMine() {
+  const page = state.pages.get(state.currentPageId);
+  if (!page || !page.conflictServer) return;
+  // Force-push local copy: drop base so server accepts (last-writer-wins by choice).
+  page.baseRev = null;
+  page.baseUpdatedAt = null;
+  page.conflictServer = null;
+  hideConflictBar();
+  setLocked(page, false);
+  snapshotCurrentToPage();
+  page.dirty = true;
+  refreshGlobalDirty();
+  await writeDraft(page);
+  setSaveState("Resolving — keeping your copy...", false);
+  await flushQueue();
+}
+
+async function resolveConflictLoadServer() {
+  const page = state.pages.get(state.currentPageId);
+  if (!page || !page.conflictServer) return;
+  const srv = page.conflictServer;
+  page.blocks = parseBlocks(srv.content);
+  page.title = srv.title || page.title;
+  page.parentId = srv.parent_id || page.parentId;
+  page.isPublic = Boolean(srv.is_public);
+  page.rev = srv.rev ?? page.rev ?? 1;
+  page.baseRev = page.rev;
+  page.baseUpdatedAt = srv.updated_at ?? null;
+  page.baseTitle = page.title;
+  page.baseHash = hashContent(page.blocks);
+  page.dirty = false;
+  page.retryCount = 0;
+  page.conflictServer = null;
+  page.epoch = (page.epoch || 0) + 1;
+  page.mountEpoch = page.epoch;
+  await writeDraft(page);
+  refreshGlobalDirty();
+  hideConflictBar();
+  $("#pageTitle").value = page.title || "Untitled";
+  await mountEditor(page.blocks);
+  setLocked(page, false);
+  setSaveState("Loaded server copy");
+  renderTree();
+  renderBreadcrumbs();
+}
+
+async function resolveConflictDuplicate() {
+  const page = state.pages.get(state.currentPageId);
+  if (!page || !page.conflictServer) return;
+  const srv = page.conflictServer;
+  // Keep current editor (mine) as-is; stash server copy as a new sibling page.
+  const copyBlocks = parseBlocks(srv.content);
+  const copy = makePage({
+    title: (srv.title || page.title || "Untitled") + " (server copy)",
+    parentId: page.parentId,
+    blocks: copyBlocks,
+  });
+  copy.verified = true;
+  copy.dirty = true;
+  copy._localOnly = true;
+  copy.baseRev = null;
+  copy.baseUpdatedAt = null;
+  copy.baseHash = null;
+  state.pages.set(copy.id, copy);
+  await writeDraft(copy);
+  try {
+    const res = await window.api.createPage({
+      id: copy.id, title: copy.title,
+      content: JSON.stringify(copy.blocks), parent_id: copy.parentId,
+    });
+    copy.rev = res.rev ?? 1;
+    copy.baseRev = copy.rev;
+    copy.baseUpdatedAt = res.updated_at ?? (Date.now() / 1000);
+    copy.baseTitle = copy.title;
+    copy.baseHash = hashContent(copy.blocks);
+    copy.dirty = false;
+    copy._localOnly = false;
+    await writeDraft(copy);
+  } catch (e) { scheduleFlush(15000); }
+  page.conflictServer = null;
+  hideConflictBar();
+  snapshotCurrentToPage();
+  page.dirty = true;
+  page.baseRev = null;
+  page.baseUpdatedAt = null;
+  await writeDraft(page);
+  refreshGlobalDirty();
+  renderTree();
+  setSaveState("Kept both — resolving your copy...", false);
+  await flushQueue();
 }
 
 function updatePublicToggleUI() {
@@ -1680,24 +2297,24 @@ $("#myWallBtn").addEventListener("click", () => {
   }
 });
 $("#pageTitle").addEventListener("input", markDirty);
-$("#pageTitle").addEventListener("blur", saveCurrent);
+$("#pageTitle").addEventListener("blur", () => {
+  const page = state.pages.get(state.currentPageId);
+  if (!page) return;
+  snapshotCurrentToPage();
+  page.dirty = true;
+  refreshGlobalDirty();
+  writeDraft(page);
+  scheduleFlush(1500);
+});
 $("#pageTitle").addEventListener("keydown", (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === "s") {
     e.preventDefault();
-    clearTimeout(state.manualSaveTimer);
-    if (!state.saveInProgress && state.dirty) {
-      state.saveInProgress = true;
-      saveCurrent().finally(() => { state.saveInProgress = false; });
-    } else if (!state.dirty) {
-      setSaveState("Nothing to save");
-    } else {
-      state.manualSaveTimer = setTimeout(() => {
-        if (!state.saveInProgress && state.dirty) {
-          state.saveInProgress = true;
-          saveCurrent().finally(() => { state.saveInProgress = false; });
-        }
-      }, 500);
+    const page = state.pages.get(state.currentPageId);
+    if (!page || (!page.dirty && !refreshGlobalDirty())) {
+      setSaveState("Nothing to save", false);
+      return;
     }
+    saveCurrent();
     return;
   }
   if (e.key === "Enter") {
@@ -1732,9 +2349,62 @@ document.addEventListener("mousedown", (e) => {
 window.addEventListener("resize", () => {
   if ($("#slashMenu").classList.contains("open")) positionSlashMenu();
 });
-window.addEventListener("beforeunload", () => {
-  if (state.dirty) saveCurrent();
+function flushBeacon() {
+  // Drafts are already in IndexedDB from markDirty; best-effort server push.
+  const dirty = [...state.pages.values()].filter(p => p.dirty && !p.conflictServer);
+  if (!dirty.length) return;
+  const cur = state.pages.get(state.currentPageId);
+  if (cur && cur.dirty && state.editor) {
+    try { cur.blocks = structuredClone(state.editor.document); } catch {}
+    const t = $("#pageTitle");
+    if (t) cur.title = t.value.trim() || "Untitled";
+    writeDraft(cur);
+  }
+  // One keepalive request max on hide (free-tier friendly). Rest stays queued.
+  const page = dirty.sort((a, b) => (a.updatedAt || 0) - (b.updatedAt || 0))[0];
+  try {
+    const blocks = (page.id === state.currentPageId && state.editor) ? state.editor.document : page.blocks;
+    const payload = { title: page.title, content: JSON.stringify(blocks || []), parent_id: page.parentId };
+    if (page.baseRev != null) payload.base_rev = page.baseRev;
+    if (page.baseUpdatedAt != null) payload.base_updated_at = page.baseUpdatedAt;
+    fetch(`/api/pages/${encodeURIComponent(page.id)}/save-beacon`, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {}
+}
+window.addEventListener("pagehide", flushBeacon);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") {
+    const anyDirty = refreshGlobalDirty();
+    if (anyDirty) {
+      const cur = state.pages.get(state.currentPageId);
+      if (cur && state.editor) {
+        try { cur.blocks = structuredClone(state.editor.document); } catch {}
+        const t = $("#pageTitle");
+        if (t) cur.title = t.value.trim() || "Untitled";
+        cur.dirty = true;
+        writeDraft(cur);
+      }
+      flushBeacon();
+      scheduleFlush(15000);
+    }
+  } else if (document.visibilityState === "visible") {
+    if ([...state.pages.values()].some(p => p.dirty)) scheduleFlush(2000);
+  }
 });
+window.addEventListener("online", () => {
+  hideSyncBanner();
+  setSaveState("Back online — syncing...", false);
+  scheduleFlush(1000);
+});
+window.addEventListener("offline", () => {
+  showSyncBanner("Offline — editing local copy, will sync later", true);
+});
+window.addEventListener("beforeunload", flushBeacon);
 
 document.querySelectorAll(".theme-btn").forEach(b => b.addEventListener("click", () => applyTheme(b.dataset.theme)));
 $("#closeSettings").addEventListener("click", () => $("#settingsPanel").classList.remove("open"));
@@ -1758,6 +2428,9 @@ $("#importProfile").addEventListener("click", () => $("#importFile").click());
 $("#importFile").addEventListener("change", (e) => { if (e.target.files && e.target.files[0]) importProfile(e.target.files[0]); e.target.value = ""; });
 $("#notificationTrigger").addEventListener("click", toggleNotificationPanel);
 $("#clearNotifications").addEventListener("click", clearAllNotifications);
+$("#conflictKeepMine")?.addEventListener("click", resolveConflictKeepMine);
+$("#conflictLoadServer")?.addEventListener("click", resolveConflictLoadServer);
+$("#conflictDuplicate")?.addEventListener("click", resolveConflictDuplicate);
 
 document.addEventListener("keydown", (e) => {
   if (e.altKey && e.key === "Insert") {

@@ -13,12 +13,79 @@ def compute_etag(data):
     content = str(data).encode('utf-8')
     return hashlib.md5(content).hexdigest()
 
+def _row_to_dict(row):
+    d = dict(row)
+    try:
+        d['is_public'] = bool(d.get('is_public'))
+    except Exception:
+        pass
+    return d
+
+def _get_page(conn, page_id):
+    return conn.execute('SELECT * FROM pages WHERE id = ?', (page_id,)).fetchone()
+
+def _conflict_response(server_row):
+    return jsonify({'error': 'Conflict: server has newer version', 'server': _row_to_dict(server_row)}), 409
+
+def _is_stale(existing, data):
+    """Optimistic concurrency: True if client's base is older than server."""
+    if not existing:
+        return False
+    try:
+        base_rev = data.get('base_rev')
+        if base_rev is not None:
+            server_rev = existing['rev'] if 'rev' in existing.keys() else 1
+            if int(base_rev) != int(server_rev or 1):
+                return True
+    except Exception:
+        pass
+    try:
+        base_updated = data.get('base_updated_at')
+        if base_updated is not None:
+            server_updated = float(existing['updated_at'] or 0)
+            if float(base_updated) < server_updated - 0.001:
+                return True
+    except Exception:
+        pass
+    return False
+
+def _apply_write(conn, page_id, data):
+    """Partial, conflict-checked write. Returns (row, status)."""
+    existing = _get_page(conn, page_id)
+    if not existing:
+        return None, 404
+    if _is_stale(existing, data):
+        return existing, 409
+    prev = dict(existing)
+    now = time.time()
+    # Partial update: only overwrite fields present in payload (legacy PUT with
+    # missing keys previously wiped title/content/parent_id — no longer).
+    title = data.get('title', prev.get('title', ''))
+    content = data.get('content', prev.get('content', ''))
+    parent_id = data.get('parent_id', prev.get('parent_id', 'root')) or 'root'
+    html_snapshot = data.get('html_snapshot', prev.get('html_snapshot'))
+    is_public = prev.get('is_public', 0)
+    if 'is_public' in data:
+        is_public = 1 if data.get('is_public') else 0
+    try:
+        server_rev = int(prev.get('rev') or 1)
+    except Exception:
+        server_rev = 1
+    new_rev = server_rev + 1
+    conn.execute(
+        'UPDATE pages SET title = ?, content = ?, html_snapshot = ?, parent_id = ?, is_public = ?, rev = ?, updated_at = ? WHERE id = ?',
+        (title, content, html_snapshot, parent_id, is_public, new_rev, now, page_id)
+    )
+    conn.commit()
+    row = _get_page(conn, page_id)
+    return row, 200
+
 @pages_bp.route('/pages/list', methods=['GET'])
 @login_required
 def list_pages_meta():
     conn = get_user_db(current_user.username)
     rows = conn.execute(
-        'SELECT id, title, parent_id, is_public, created_at, updated_at FROM pages'
+        'SELECT id, title, parent_id, is_public, rev, created_at, updated_at FROM pages'
     ).fetchall()
     conn.close()
     result = [dict(r) for r in rows]
@@ -33,7 +100,7 @@ def list_pages_meta():
 @login_required
 def list_pages():
     conn = get_user_db(current_user.username)
-    rows = conn.execute('SELECT id, title, content, html_snapshot, parent_id, is_public, created_at, updated_at FROM pages').fetchall()
+    rows = conn.execute('SELECT id, title, content, html_snapshot, parent_id, is_public, rev, created_at, updated_at FROM pages').fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
 
@@ -48,13 +115,18 @@ def create_page():
         'content': data.get('content', ''),
         'html_snapshot': data.get('html_snapshot'),
         'parent_id': data.get('parent_id') or 'root',
+        'rev': 1,
         'created_at': now,
         'updated_at': now
     }
     conn = get_user_db(current_user.username)
+    existing = _get_page(conn, page['id'])
+    if existing:
+        conn.close()
+        return jsonify(_row_to_dict(existing)), 200
     conn.execute(
-        'INSERT INTO pages (id, title, content, html_snapshot, parent_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        (page['id'], page['title'], page['content'], page['html_snapshot'], page['parent_id'], page['created_at'], page['updated_at'])
+        'INSERT INTO pages (id, title, content, html_snapshot, parent_id, is_public, rev, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)',
+        (page['id'], page['title'], page['content'], page['html_snapshot'], page['parent_id'], page['rev'], page['created_at'], page['updated_at'])
     )
     conn.commit()
     conn.close()
@@ -76,22 +148,47 @@ def get_page(page_id):
     response.set_etag(etag)
     return response
 
-@pages_bp.route('/pages/<page_id>', methods=['PUT'])
+@pages_bp.route('/pages/<page_id>', methods=['PUT', 'PATCH'])
 @login_required
 def update_page(page_id):
     data = request.json or {}
-    now = time.time()
     conn = get_user_db(current_user.username)
-    conn.execute(
-        'UPDATE pages SET title = ?, content = ?, parent_id = ?, updated_at = ? WHERE id = ?',
-        (data.get('title', ''), data.get('content', ''), data.get('parent_id', 'root'), now, page_id)
-    )
-    conn.commit()
-    row = conn.execute('SELECT * FROM pages WHERE id = ?', (page_id,)).fetchone()
-    conn.close()
-    if not row:
+    row, status = _apply_write(conn, page_id, data)
+    if status == 404:
+        conn.close()
         return jsonify({'error': 'Not found'}), 404
-    return jsonify(dict(row))
+    if status == 409:
+        payload = _row_to_dict(row)
+        conn.close()
+        return jsonify({'error': 'Conflict: server has newer version', 'server': payload}), 409
+    payload = _row_to_dict(row)
+    conn.close()
+    return jsonify(payload)
+
+@pages_bp.route('/pages/<page_id>/save-beacon', methods=['POST'])
+@login_required
+def save_beacon(page_id):
+    """Beacon/keepalive target for pagehide: POST-only alias of conditional write."""
+    data = request.json or {}
+    # sendBeacon posts FormData or text; accept both.
+    if not data and request.form:
+        try:
+            data = {k: request.form.get(k) for k in request.form.keys()}
+        except Exception:
+            data = {}
+    conn = get_user_db(current_user.username)
+    row, status = _apply_write(conn, page_id, data if isinstance(data, dict) else {})
+    if status == 404:
+        conn.close()
+        return jsonify({'error': 'Not found'}), 404
+    if status == 409:
+        payload = _row_to_dict(row)
+        conn.close()
+        # Beacon has no useful 409 handling; report conflict so next flush resolves.
+        return jsonify({'error': 'Conflict: server has newer version', 'server': payload}), 409
+    payload = _row_to_dict(row)
+    conn.close()
+    return jsonify(payload)
 
 @pages_bp.route('/pages/<page_id>', methods=['DELETE'])
 @login_required

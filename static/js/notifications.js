@@ -1,7 +1,8 @@
 const DB_NAME = "notionless";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE_NAME = "notifications";
 const STATE_STORE = "state";
+const DRAFT_STORE = "drafts";
 
 let db = null;
 
@@ -18,6 +19,9 @@ async function openDB() {
       }
       if (!database.objectStoreNames.contains(STATE_STORE)) {
         database.createObjectStore(STATE_STORE, { keyPath: "key" });
+      }
+      if (!database.objectStoreNames.contains(DRAFT_STORE)) {
+        database.createObjectStore(DRAFT_STORE, { keyPath: "id" });
       }
     };
   });
@@ -99,4 +103,49 @@ async function trimNotifications(keep = 100) {
   });
 }
 
-window.notifications = { addNotification, getNotifications, clearNotifications, trimNotifications, saveState, getState };
+// ---- Offline drafts: per-page local truth, zero server cost ----
+async function saveDraft(draft) {
+  const database = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(DRAFT_STORE, "readwrite");
+    const store = tx.objectStore(DRAFT_STORE);
+    const request = store.put(draft);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function getDraft(id) {
+  const database = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(DRAFT_STORE, "readonly");
+    const store = tx.objectStore(DRAFT_STORE);
+    const request = store.get(id);
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function getAllDrafts() {
+  const database = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(DRAFT_STORE, "readonly");
+    const store = tx.objectStore(DRAFT_STORE);
+    const request = store.getAll();
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function deleteDraft(id) {
+  const database = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(DRAFT_STORE, "readwrite");
+    const store = tx.objectStore(DRAFT_STORE);
+    const request = store.delete(id);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+window.notifications = { addNotification, getNotifications, clearNotifications, trimNotifications, saveState, getState, saveDraft, getDraft, getAllDrafts, deleteDraft };

@@ -94,26 +94,43 @@ def get_public_page(username, page_id):
 @login_required
 def toggle_public(page_id):
     conn = get_user_db(current_user.username)
-    row = conn.execute('SELECT id, is_public, parent_id FROM pages WHERE id = ?', (page_id,)).fetchone()
+    row = conn.execute('SELECT id, is_public, parent_id, rev, updated_at FROM pages WHERE id = ?', (page_id,)).fetchone()
     if not row:
         conn.close()
         return jsonify({'error': 'Page not found'}), 404
     is_public = bool(row['is_public'])
     new_public = not is_public
     now = time.time()
-    conn.execute('UPDATE pages SET is_public = ?, updated_at = ? WHERE id = ?', (1 if new_public else 0, now, page_id))
+    try:
+        cur_rev = int(row['rev']) if 'rev' in row.keys() and row['rev'] is not None else 1
+    except Exception:
+        cur_rev = 1
+    conn.execute('UPDATE pages SET is_public = ?, rev = ?, updated_at = ? WHERE id = ?', (1 if new_public else 0, cur_rev + 1, now, page_id))
     if new_public:
         def cascade_public(parent_id):
-            children = conn.execute('SELECT id FROM pages WHERE parent_id = ?', (parent_id,)).fetchall()
+            children = conn.execute('SELECT id, rev FROM pages WHERE parent_id = ?', (parent_id,)).fetchall()
             for child in children:
-                conn.execute('UPDATE pages SET is_public = 1, updated_at = ? WHERE id = ?', (now, child['id']))
+                try:
+                    r = int(child['rev']) if 'rev' in child.keys() and child['rev'] is not None else 1
+                except Exception:
+                    r = 1
+                conn.execute('UPDATE pages SET is_public = 1, rev = ?, updated_at = ? WHERE id = ?', (r + 1, now, child['id']))
                 cascade_public(child['id'])
         cascade_public(page_id)
         conn.execute('INSERT OR REPLACE INTO authors (page_id, username, role, created_at) VALUES (?, ?, ?, ?)',
                     (page_id, current_user.username, 'author', now))
     conn.commit()
+    updated = conn.execute('SELECT rev, updated_at FROM pages WHERE id = ?', (page_id,)).fetchone()
     conn.close()
-    return jsonify({'is_public': new_public})
+    try:
+        out_rev = int(updated['rev']) if updated and updated['rev'] is not None else cur_rev + 1
+    except Exception:
+        out_rev = cur_rev + 1
+    try:
+        out_updated = float(updated['updated_at']) if updated and updated['updated_at'] else now
+    except Exception:
+        out_updated = now
+    return jsonify({'is_public': new_public, 'rev': out_rev, 'updated_at': out_updated})
 
 @social_bp.route('/pages/<page_id>/copy', methods=['POST'])
 @login_required
@@ -136,8 +153,8 @@ def copy_page(page_id):
     new_id = str(uuid.uuid4())
     dest_conn = get_user_db(current_user.username)
     dest_conn.execute(
-        '''INSERT INTO pages (id, title, content, parent_id, is_public, created_at, updated_at)
-           VALUES (?, ?, ?, ?, 0, ?, ?)''',
+        '''INSERT INTO pages (id, title, content, parent_id, is_public, rev, created_at, updated_at)
+           VALUES (?, ?, ?, ?, 0, 1, ?, ?)''',
         (new_id, source_page['title'], source_page['content'], 'root', now, now)
     )
     authors = dest_conn.execute('SELECT username FROM authors WHERE page_id = ?', (page_id,)).fetchall()
