@@ -190,7 +190,8 @@ function idbOrFallback(promise, ms, fallback) {
 }
 
 async function persistNotification(text) {
-  try { await window.notifications.addNotification(text, "info"); } catch (e) { console.warn("Notification add failed:", e); }
+  // Timeout-guarded: a hung IndexedDB must never stall save-state updates.
+  try { await idbOrFallback(window.notifications.addNotification(text, "info").catch(() => {}), 2000, null); } catch (e) { console.warn("Notification add failed:", e); }
 }
 
 async function setSaveState(text, persist=true) {
@@ -801,7 +802,7 @@ async function deleteSelected() {
   clearTimeout(state.flushTimer);
   for (const id of ids) {
     state.pages.delete(id);
-    try { await window.notifications.deleteDraft(id); } catch {}
+    try { window.notifications.deleteDraft(id).catch(() => {}); } catch {}
     try { await window.api.deletePage(id); } catch {}
   }
   state.selected.clear();
@@ -968,7 +969,7 @@ async function openPage(id) {
   const page = state.pages.get(id);
   if (!page) { state.isOpeningPage = false; return; }
   state.currentPageId = id;
-  try { await window.notifications.saveState("lastPageId", id); } catch {}
+  try { await idbOrFallback(window.notifications.saveState("lastPageId", id).catch(() => {}), 2000, null); } catch {}
   page.mountEpoch = (page.epoch || 0);
   // Mount cached copy instantly, locked until verified (stale-cache guard).
   const hadContent = page.blocks != null;
@@ -1030,7 +1031,11 @@ async function openPage(id) {
         if (page.dirty) scheduleFlush(3000);
       }
     } else {
-      if (serverNewer) {
+      // Meta-only pages (no body yet) always need the server copy, even when
+      // rev/updated_at already match — the match is trivially true because we
+      // have nothing to compare against. Applying is safe: the editor holds
+      // only the empty placeholder and the page is not dirty (edit gate).
+      if (serverNewer || !hadContent) {
         page.blocks = serverBlocks;
         page.title = data.title || page.title;
         page.parentId = data.parent_id || page.parentId;
@@ -1051,7 +1056,7 @@ async function openPage(id) {
           renderBreadcrumbs();
           updatePublicToggleUI();
         }
-        setSaveState("Updated to latest", false);
+        setSaveState(hadContent ? "Updated to latest" : "Ready", false);
       } else {
         page.rev = data.rev ?? page.rev ?? 1;
         page.baseRev = page.baseRev ?? page.rev;
@@ -1059,6 +1064,7 @@ async function openPage(id) {
         page.baseTitle = page.baseTitle ?? page.title;
         page.baseHash = page.baseHash ?? hashContent(page.blocks);
         if (page.blocks != null) page.contentLoaded = true;
+        setSaveState("Ready", false);
       }
       setLocked(page, false);
     }
@@ -1155,7 +1161,7 @@ async function deletePage(id) {
   collect(id);
   for (const did of [id, ...descendants]) {
     state.pages.delete(did);
-    try { await window.notifications.deleteDraft(did); } catch {}
+    try { window.notifications.deleteDraft(did).catch(() => {}); } catch {}
     try { await window.api.deletePage(did); } catch {}
   }
   const remaining = childrenOf(ROOT);
@@ -1723,7 +1729,9 @@ async function initialize() {
   } catch (e) { console.warn("Draft load failed:", e); }
 
   let cachedMeta = null;
-  try { cachedMeta = await window.notifications.getState("pageListMeta"); } catch {}
+  // Same blocked-IDB guard as drafts: every IndexedDB await on the boot path
+  // must time out, otherwise one wedged connection hangs the whole workspace.
+  try { cachedMeta = await idbOrFallback(window.notifications.getState("pageListMeta").catch(() => null), 4000, null); } catch {}
 
   if (cachedMeta && Array.isArray(cachedMeta)) {
     for (const p of cachedMeta) {
@@ -1751,10 +1759,11 @@ async function initialize() {
       if (id === ROOT) continue;
       if (!serverIds.has(id) && !pg.dirty && !pg._localOnly && pg.baseRev != null) {
         state.pages.delete(id);
-        try { await window.notifications.deleteDraft(id); } catch {}
+        // Fire-and-forget: must never stall boot on a wedged IndexedDB.
+        try { window.notifications.deleteDraft(id).catch(() => {}); } catch {}
       }
     }
-    try { await window.notifications.saveState("pageListMeta", rows); } catch {}
+    try { await idbOrFallback(window.notifications.saveState("pageListMeta", rows).catch(() => {}), 4000, null); } catch {}
     state.metaReady = true;
     refreshGlobalDirty();
     renderTree();
@@ -1999,7 +2008,7 @@ async function initialize() {
   applyTheme(getTheme());
   initRootDropZone();
   let lastPageId = null;
-  try { lastPageId = await window.notifications.getState("lastPageId"); } catch {}
+  try { lastPageId = await idbOrFallback(window.notifications.getState("lastPageId").catch(() => null), 2000, null); } catch {}
   const lastPage = lastPageId && state.pages.has(lastPageId) ? state.pages.get(lastPageId) : null;
   const first = lastPage || state.pages.get("welcome") || childrenOf(ROOT)[0];
   if (first) await openPage(first.id);
@@ -2053,7 +2062,7 @@ async function toggleCurrentPagePublic() {
             }
           } else upsertPageMeta(sp, { fromServer: true });
         }
-        try { await window.notifications.saveState("pageListMeta", syncPages); } catch {}
+        try { await idbOrFallback(window.notifications.saveState("pageListMeta", syncPages).catch(() => {}), 2000, null); } catch {}
       } catch {}
       setSaveState('Made private');
     }
