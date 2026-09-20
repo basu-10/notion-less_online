@@ -84,6 +84,7 @@ function makePage({ id=uid(), title="Untitled", parentId=ROOT, emoji="", blocks=
     rev: 1, baseRev: null, baseUpdatedAt: null, baseTitle: title, baseHash: hashContent(blocks),
     lastSyncedHash: null, dirty: false, verified: false, locked: false,
     epoch: 0, mountEpoch: 0, retryCount: 0, conflictServer: null, isPublic: false,
+    contentLoaded: true,
   };
 }
 
@@ -262,6 +263,12 @@ function snapshotCurrentToPage() {
 function markDirty() {
   const page = state.pages.get(state.currentPageId);
   if (!page) return;
+  if (!page.contentLoaded && !page._localOnly) {
+    // Content never loaded (failed verify, empty placeholder): refuse to
+    // snapshot, so a stray keystroke can never queue a blank doc over the
+    // real server content.
+    return;
+  }
   if (page.locked) {
     // Locked = unverified cached copy. Count the attempt so a late fetch can
     // never clobber it (generation guard), then keep it queued.
@@ -296,6 +303,9 @@ function pickNextDirtyPage() {
   let best = null;
   for (const p of state.pages.values()) {
     if (!p.dirty || p.conflictServer) continue;
+    // Safety net: never push a page whose content never loaded, unless it is
+    // a local-only new page (its placeholder IS the content).
+    if (!p.contentLoaded && !p._localOnly) continue;
     if (!best || (p.updatedAt || 0) < (best.updatedAt || 0)) best = p;
   }
   return best;
@@ -406,6 +416,10 @@ async function saveCurrent() {
   // Manual save: flush the current page immediately (single-flight safe).
   const page = state.pages.get(state.currentPageId);
   if (!page) return;
+  if (!page.contentLoaded && !page._localOnly) {
+    setSaveState("Content not loaded yet — retry", false);
+    return;
+  }
   if (page.conflictServer) {
     setSaveState("Resolve conflict first");
     showConflictBar(page);
@@ -957,6 +971,8 @@ async function openPage(id) {
   try { await window.notifications.saveState("lastPageId", id); } catch {}
   page.mountEpoch = (page.epoch || 0);
   // Mount cached copy instantly, locked until verified (stale-cache guard).
+  const hadContent = page.blocks != null;
+  page.contentLoaded = page.contentLoaded || hadContent;
   if (!page.blocks) page.blocks = [{type:"paragraph"}];
   $("#pageTitle").value = page.title || "Untitled";
   await mountEditor(page.blocks);
@@ -977,6 +993,7 @@ async function openPage(id) {
   setSaveState("Loading...", false);
   // Local-only pages need no verification.
   if (page._localOnly && page.baseRev == null) {
+    page.contentLoaded = true;
     setLocked(page, false);
     hideSyncBanner();
     setSaveState("New page — editing locally", false);
@@ -997,6 +1014,7 @@ async function openPage(id) {
     if (page.dirty || editedDuringVerify) {
       // NEVER overwrite local edits with a late fetch. Update base tracking
       // only; if server is also newer this is a real conflict.
+      page.contentLoaded = true; // editor holds intentional local content
       if (serverNewer && serverHash !== pageContentHash(page)) {
         page.conflictServer = data;
         await writeDraft(page);
@@ -1023,6 +1041,7 @@ async function openPage(id) {
         page.baseTitle = page.title;
         page.baseHash = hashContent(serverBlocks);
         page.updatedAt = Date.now();
+        page.contentLoaded = true;
         await writeDraft(page);
         if (state.currentPageId === id) {
           $("#pageTitle").value = page.title || "Untitled";
@@ -1039,16 +1058,26 @@ async function openPage(id) {
         page.baseUpdatedAt = page.baseUpdatedAt ?? data.updated_at;
         page.baseTitle = page.baseTitle ?? page.title;
         page.baseHash = page.baseHash ?? hashContent(page.blocks);
+        if (page.blocks != null) page.contentLoaded = true;
       }
       setLocked(page, false);
     }
   } catch (err) {
     console.warn("Verify failed, staying on local copy:", err);
     if (state.currentPageId !== id) { state.isOpeningPage = false; return; }
-    // Offline escape: unlock for local editing, edits queue in drafts.
-    setLocked(page, false);
-    showSyncBanner("Offline — editing local copy, will sync later", true);
-    setSaveState("Offline — editing locally", false);
+    if (!page.contentLoaded) {
+      // Content was never loaded (no draft, fetch failed): keep the editor
+      // locked on the empty placeholder. Unlocking here would let a keystroke
+      // queue a near-blank doc over the real server content — the exact
+      // blank-overwrite path. Click the page to retry once online.
+      setLocked(page, true, "Couldn't load content — check connection, then click this page to retry");
+      setSaveState("Content not loaded — retry", false);
+    } else {
+      // Offline escape: unlock for local editing, edits queue in drafts.
+      setLocked(page, false);
+      showSyncBanner("Offline — editing local copy, will sync later", true);
+      setSaveState("Offline — editing locally", false);
+    }
   }
   state.isOpeningPage = false;
 }
@@ -1622,6 +1651,9 @@ function upsertPageMeta(row, { fromServer=false }={}) {
       epoch: 0, mountEpoch: 0, retryCount: 0, conflictServer: null,
       isPublic: Boolean(row.is_public ?? row.isPublic),
       _localOnly: fromServer ? false : !!row._localOnly,
+      // Server-meta rows carry titles only; real blocks arrive via verify
+      // fetch or drafts. false = never push this page until content loads.
+      contentLoaded: fromServer ? false : !!row.blocks,
     });
     return;
   }
@@ -1684,6 +1716,7 @@ async function initialize() {
         epoch: 0, mountEpoch: 0, retryCount: 0, conflictServer: null,
         isPublic: Boolean(d.isPublic),
         _localOnly: (d.baseRev == null && !!d.dirty),
+        contentLoaded: !!(d.blocks),
       });
     }
     if (drafts && drafts.length) renderTree();
