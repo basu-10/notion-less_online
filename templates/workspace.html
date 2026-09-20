@@ -3,9 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#d85b45">
-  <meta name="description" content="A lightweight, block-based note-taking workspace powered by NotionLess Cloud.">
-  <title>NotionLess Cloud</title>
+  <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <meta name="description" content="NotionLess — a quiet, fast place to write.">
+  <title>NotionLess</title>
 
   <link rel="preconnect" href="https://esm.sh">
   <link rel="stylesheet" href="https://esm.sh/@blocknote/core@0.51.3/style.css">
@@ -30,17 +31,17 @@
     <aside class="sidebar" aria-label="Sidebar navigation">
       <div class="brandbar">
         <a href="/" class="brand" aria-label="NotionLess home">
-          <div class="brand-mark" aria-hidden="true">NL</div>
+          <div class="brand-mark" aria-hidden="true">N</div>
           <span>NotionLess</span>
         </a>
       </div>
 
       <nav class="sidebar-section" aria-label="Pages section">
-        <span>Your Pages</span>
+        <span>Library</span>
         <div class="section-actions" aria-label="Page actions">
-          <button class="section-action" id="sortOrderBtn" title="Toggle sort order" aria-label="Sort by modified or alphabetical">⇅</button>
-          <button class="section-action" id="newPageBtn" title="New page" aria-label="Create new page">+</button>
-          <button class="section-action" id="collapseAll" title="Show all" aria-label="Show all pages">▸</button>
+          <button class="section-action" id="sortOrderBtn" title="Sort" aria-label="Sort by modified or alphabetical">↕</button>
+          <button class="section-action" id="newPageBtn" title="New note" aria-label="Create new page">+</button>
+          <button class="section-action" id="collapseAll" title="Show all" aria-label="Show all pages">›</button>
         </div>
       </nav>
 
@@ -105,14 +106,17 @@
       <header class="topbar" aria-label="Top toolbar">
         <nav class="breadcrumbs" id="breadcrumbs" aria-label="Breadcrumb navigation"></nav>
         <div class="top-actions" aria-label="Workspace actions">
-          <button class="icon-btn mobile-menu-btn" id="mobileMenuBtn" title="Menu" aria-label="Open sidebar menu" aria-expanded="false" aria-controls="sidebar">☰</button>
+          <button class="icon-btn mobile-menu-btn" id="mobileMenuBtn" title="Menu" aria-label="Open sidebar menu" aria-expanded="false" aria-controls="sidebar"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
           <button class="top-action" id="publicToggleBtn" title="Toggle public" aria-label="Toggle public" style="display:none;">
-            <span id="publicIcon">🔒</span>
+            <span id="publicIcon" aria-hidden="true"></span>
             <span id="publicLabel">Private</span>
           </button>
           <button class="top-action primary" id="saveBtn" style="display:none;" aria-label="Save current page">Save</button>
-          <button class="icon-btn" id="undoBtn" title="Undo (Ctrl+Z)" aria-label="Undo">↩</button>
-          <button class="icon-btn" id="redoBtn" title="Redo (Ctrl+Shift+Z)" aria-label="Redo">↪</button>
+          <span class="top-divider" aria-hidden="true"></span>
+          <div class="history-group" role="group" aria-label="Undo and redo">
+            <button class="icon-btn" id="undoBtn" title="Undo (Ctrl+Z)" aria-label="Undo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+            <button class="icon-btn" id="redoBtn" title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
+          </div>
         </div>
       </header>
 

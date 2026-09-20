@@ -579,7 +579,7 @@ function renderTree() {
 
       const publicIndicator = document.createElement("span");
       publicIndicator.className = "page-public-indicator";
-      publicIndicator.textContent = page.isPublic ? "🌐" : "";
+      publicIndicator.innerHTML = page.isPublic ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.9 5.7 3.9 9s-1.4 6.4-3.9 9c-2.5-2.6-3.9-5.7-3.9-9S9.5 5.6 12 3Z"/></svg>' : "";
       publicIndicator.title = page.isPublic ? "Public (includes subpages)" : "Private";
       publicIndicator.style.fontSize = "10px";
       publicIndicator.style.color = "var(--accent)";
@@ -906,7 +906,8 @@ function renderBreadcrumbs() {
     el.appendChild(s);
     if (i < crumbs.length - 1) {
       const sep = document.createElement("span");
-      sep.textContent = "/";
+      sep.className = "crumb-sep";
+      sep.textContent = "›";
       el.appendChild(sep);
     }
   });
@@ -1807,7 +1808,7 @@ async function initialize() {
       { type: "bulletListItem", content: "Press / in the editor to open the block command menu" },
       { type: "bulletListItem", content: "Use Tab / Shift+Tab to nest or unnest blocks" },
       { type: "bulletListItem", content: "Press Ctrl+S to save, or just keep typing — auto-save has you covered" },
-      { type: "bulletListItem", content: "Click 🔒/🌐 to toggle page visibility" }
+      { type: "bulletListItem", content: "Click Private in the toolbar to share a page publicly" }
     ]});
 
     const firstSteps = makePage({ id: "first-steps", title: "✨ First Steps", emoji: "", parentId: gettingStarted.id, blocks: [
@@ -1969,7 +1970,7 @@ async function initialize() {
       { type: "heading", props: { level: 1 }, content: "Sharing & Collaboration" },
       { type: "paragraph", content: "NotionLess makes it easy to share your knowledge with the world, or copy useful pages from others." },
       { type: "heading", props: { level: 2 }, content: "Making Pages Public" },
-      { type: "bulletListItem", content: "Click the 🔒/🌐 button next to the page title" },
+      { type: "bulletListItem", content: "Click Private in the top toolbar to make the open page public" },
       { type: "bulletListItem", content: "The page becomes visible to anyone with the link" },
       { type: "bulletListItem", content: "Making a page public also makes all its subpages public" },
       { type: "bulletListItem", content: "Making a subpage public does NOT make its parent public" },
@@ -2183,12 +2184,12 @@ function updatePublicToggleUI() {
   if (!btn || !page) return;
   btn.style.display = 'inline-flex';
   if (page.isPublic) {
-    icon.textContent = '🌐';
+    icon.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.9 5.7 3.9 9s-1.4 6.4-3.9 9c-2.5-2.6-3.9-5.7-3.9-9S9.5 5.6 12 3Z"/></svg>';
     label.textContent = 'Public';
     btn.classList.add('public');
     btn.title = 'Page is public — subpages are public too';
   } else {
-    icon.textContent = '🔒';
+    icon.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>';
     label.textContent = 'Private';
     btn.classList.remove('public');
     btn.title = 'Make page public (includes subpages)';
@@ -2204,11 +2205,11 @@ $("#collapseAll").addEventListener("click", () => {
   const collapsed = state.expanded.size === 1 && state.expanded.has(ROOT);
   if (collapsed) {
     state.expanded = new Set(allIds);
-    $("#collapseAll").textContent = "▾";
+    $("#collapseAll").textContent = "⌄";
     $("#collapseAll").title = "Collapse all";
   } else {
     state.expanded = new Set([ROOT]);
-    $("#collapseAll").textContent = "▸";
+    $("#collapseAll").textContent = "›";
     $("#collapseAll").title = "Show all";
   }
   renderTree();
@@ -2317,7 +2318,7 @@ function updateSortBtn() {
   const btn = $("#sortOrderBtn");
   if (!btn) return;
   if (state.sortOrder === "alpha") {
-    btn.textContent = "A↓";
+    btn.textContent = "AZ";
     btn.title = "Sorted alphabetically (click for modified)";
   } else {
     btn.textContent = "⇅";
@@ -2625,7 +2626,9 @@ function renderAutoToc() {
     container.innerHTML = "";
     return;
   }
-  container.innerHTML = "";
+  // Preserve the hovered .toc-list across re-renders: touch only the dots.
+  container.querySelectorAll(".toc-bar").forEach(b => b.remove());
+  const list = container.querySelector(".toc-list");
   headings.forEach((h, i) => {
     const bar = document.createElement("div");
     const level = h.props.level || 2;
@@ -2635,7 +2638,8 @@ function renderAutoToc() {
     bar.addEventListener("click", () => {
       scrollToHeading(i, headings);
     });
-    container.appendChild(bar);
+    if (list) container.insertBefore(bar, list);
+    else container.appendChild(bar);
   });
 
   if (!container.querySelector(".toc-list")) {
@@ -2668,8 +2672,10 @@ function renderAutoToc() {
         items[i].title = text;
       }
     });
-    while (items.length > headings.length) {
-      items[items.length - 1].remove();
+    let extra = list.querySelectorAll(".toc-item");
+    while (extra.length > headings.length) {
+      extra[extra.length - 1].remove();
+      extra = list.querySelectorAll(".toc-item");
     }
     for (let i = items.length; i < headings.length; i++) {
       const h = headings[i];
@@ -2836,9 +2842,10 @@ function openEmojiPicker() {
   const picker = $("#emojiPicker");
   picker.classList.add("open");
   $("#emojiSearch").value = "";
-  renderEmojiGrid("recent");
-  currentEmojiTab = "recent";
-  document.querySelectorAll(".emoji-tab").forEach(t => t.classList.toggle("active", t.dataset.tab === "recent"));
+  const startTab = getEmojiStorage("recent").length ? "recent" : "smileys";
+  renderEmojiGrid(startTab);
+  currentEmojiTab = startTab;
+  document.querySelectorAll(".emoji-tab").forEach(t => t.classList.toggle("active", t.dataset.tab === startTab));
 }
 
 function closeEmojiPicker() {
