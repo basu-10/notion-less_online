@@ -322,44 +322,39 @@
         const bio = initial.bio || '';
         const avatarUrl = initial.avatar_url || '';
 
-        function renderNestedPages(nodes, depth = 0) {
+        function topLevelPages() {
+          // Wall lists ONLY top-level pages. Subpages are reachable solely
+          // via their parent's public page (nesting).
+          if (data.nested_pages && data.nested_pages.length) return data.nested_pages;
+          const all = data.pages || [];
+          const ids = new Set(all.map(p => p.id));
+          return all.filter(p => !p.parent_id || p.parent_id === 'root' || !ids.has(p.parent_id));
+        }
+
+        function renderTopLevelPages(nodes) {
           if (!nodes || !nodes.length) return '';
-          const indent = depth * 20;
-          return nodes.map(page => `
-            <a href="/p/${username}/${page.id}" class="wall-page-card" style="padding-left:${16 + indent}px;">
+          return nodes.map(page => {
+            const count = page.subpage_count || (page.children ? page.children.length : 0);
+            const sub = count > 0 ? ` · ${count} subpage${count === 1 ? '' : 's'}` : '';
+            return `
+            <a href="/p/${username}/${page.id}" class="wall-page-card">
               <div class="wall-page-icon">📄</div>
               <div class="wall-page-info">
                 <h3>${escapeHtml(page.title || 'Untitled')}</h3>
-                <span class="meta">Updated ${formatDate(page.updated_at)}</span>
+                <span class="meta">Updated ${formatDate(page.updated_at)}${sub}</span>
               </div>
               <span class="wall-page-arrow">→</span>
-            </a>
-            ${page.children && page.children.length ? renderNestedPages(page.children, depth + 1) : ''}
-          `).join('');
+            </a>`;
+          }).join('');
         }
 
         let pagesHtml = '';
-        if (data.nested_pages && data.nested_pages.length > 0) {
+        const topPages = topLevelPages();
+        if (topPages.length > 0) {
           pagesHtml = `
             <p class="wall-section-title" id="public-pages">Public Pages</p>
             <div class="wall-pages">
-              ${renderNestedPages(data.nested_pages)}
-            </div>
-          `;
-        } else if (data.pages && data.pages.length > 0) {
-          pagesHtml = `
-            <p class="wall-section-title" id="public-pages">Public Pages</p>
-            <div class="wall-pages">
-              ${data.pages.map(page => `
-                <a href="/p/${username}/${page.id}" class="wall-page-card">
-                  <div class="wall-page-icon">📄</div>
-                  <div class="wall-page-info">
-                    <h3>${escapeHtml(page.title || 'Untitled')}</h3>
-                    <span class="meta">Updated ${formatDate(page.updated_at)}</span>
-                  </div>
-                  <span class="wall-page-arrow">→</span>
-                </a>
-              `).join('')}
+              ${renderTopLevelPages(topPages)}
             </div>
           `;
         } else {
@@ -381,7 +376,6 @@
                 <h1>${escapeHtml(displayName)}</h1>
                 <p class="username">@${username}</p>
                 ${bio ? `<p class="bio">${escapeHtml(bio)}</p>` : ''}
-                <a href="#public-pages" class="hero-cta" style="margin-top: 12px;">Browse articles →</a>
               </div>
             </div>
           </header>

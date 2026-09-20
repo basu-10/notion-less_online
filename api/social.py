@@ -33,16 +33,37 @@ def get_user_wall(username):
         page_dict = dict(row)
         page_dict['is_public'] = bool(page_dict['is_public'])
         pages.append(page_dict)
-    # Build nested tree from flat list for nesting preservation
-    def build_tree(parent_id):
-        result = []
-        for p in pages:
-            if p.get('parent_id') == parent_id:
-                node = dict(p)
-                node['children'] = build_tree(p['id'])
-                result.append(node)
-        return result
-    nested_pages = build_tree('root')
+    # Build nested tree. Wall lists ONLY top-level pages — subpages are
+    # reachable solely via their parent's public page (nesting).
+    # A public subpage whose parent is private/missing has no public parent
+    # available, so it is promoted to top-level to stay reachable.
+    public_ids = {p['id'] for p in pages}
+    pages.sort(key=lambda p: (p.get('created_at') or 0, p.get('title') or ''))
+
+    def count_descendants(node_id, children_map):
+        total = 0
+        for child in children_map.get(node_id, []):
+            total += 1 + count_descendants(child['id'], children_map)
+        return total
+
+    children_map = {}
+    for p in pages:
+        children_map.setdefault(p.get('parent_id'), []).append(p)
+    for child_list in children_map.values():
+        child_list.sort(key=lambda p: (p.get('created_at') or 0, p.get('title') or ''))
+
+    def build_subtree(page):
+        node = dict(page)
+        kids = [build_subtree(c) for c in children_map.get(page['id'], [])]
+        node['children'] = kids
+        node['subpage_count'] = sum(1 + k.get('subpage_count', 0) for k in kids)
+        return node
+
+    nested_pages = []
+    for p in pages:
+        pid = p.get('parent_id')
+        if pid == 'root' or not pid or pid not in public_ids:
+            nested_pages.append(build_subtree(p))
     return jsonify({
         'profile': profile,
         'pages': pages,
@@ -78,10 +99,15 @@ def get_public_page(username, page_id):
     page['author'] = username
     page['author_profile'] = User.get_profile(username)
     other_articles = []
+    public_ids_all = {dict(r)['id'] for r in other_rows} | {page['id']}
     for r in other_rows:
         d = dict(r)
         d['is_public'] = bool(d['is_public'])
-        other_articles.append(d)
+        # Only top-level articles here: subpages with a public parent are
+        # reachable solely via nesting, not via flat recommendation cards.
+        pid = d.get('parent_id')
+        if pid == 'root' or not pid or pid not in public_ids_all:
+            other_articles.append(d)
     random.shuffle(other_articles)
     page['other_articles'] = other_articles[:3]
     # Include nested subpages to preserve nesting in shared pages
