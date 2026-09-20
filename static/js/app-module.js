@@ -47,6 +47,20 @@ let editorWired = false;
 
 const $ = (sel) => document.querySelector(sel);
 
+// IndexedDB is shared per browser profile, not per account. Every cached key
+// and draft is therefore stamped/scoped with the logged-in username from
+// <body data-username>, so a fresh account never inherits another user's
+// sidebar, drafts, or last-opened page (which previously blocked demo
+// seeding and left pages stuck on "Couldn't load content").
+function currentUsername() {
+  try { return document.body.dataset.username || ""; } catch { return ""; }
+}
+
+function scopedKey(key) {
+  const u = currentUsername();
+  return u ? key + ":" + u : key;
+}
+
 function applyTheme(mode) {
   const html = document.documentElement;
   html.removeAttribute("data-theme");
@@ -163,6 +177,7 @@ async function writeDraft(page) {
       blocks: null,
       parentId: page.parentId,
       emoji: page.emoji || "",
+      owner: currentUsername() || null,
       updatedAt: page.updatedAt,
       rev: page.rev || 1,
       baseRev: page.baseRev ?? null,
@@ -459,6 +474,17 @@ async function flushQueue() {
     renderTree();
   } catch (err) {
     console.error("Save failed:", err);
+    if (err && err.status === 404 && !page._localOnly) {
+      // Page missing server-side (deleted on another device, or a stale
+      // stub from a previous account on this browser): flip to local-only so
+      // the next flush recreates it instead of retrying a PATCH that can
+      // never succeed.
+      page._localOnly = true;
+      page.baseRev = null;
+      page.baseUpdatedAt = null;
+      await writeDraft(page);
+      if (page.id === state.currentPageId) setSaveState("Recreating page...", false);
+    }
     if (err && (err.status === 409 || err.server)) {
       const server = err.server || (err.data && err.data.server);
       page.conflictServer = server || null;
@@ -1138,7 +1164,7 @@ async function openPage(id) {
   const page = state.pages.get(id);
   if (!page) { state.isOpeningPage = false; return; }
   state.currentPageId = id;
-  try { await idbOrFallback(window.notifications.saveState("lastPageId", id).catch(() => {}), 2000, null); } catch {}
+  try { await idbOrFallback(window.notifications.saveState(scopedKey("lastPageId"), id).catch(() => {}), 2000, null); } catch {}
   page.mountEpoch = (page.epoch || 0);
   // Mount cached copy instantly, locked until verified (stale-cache guard).
   const hadContent = page.blocks != null;
@@ -1243,6 +1269,37 @@ async function openPage(id) {
   } catch (err) {
     console.warn("Verify failed, staying on local copy:", err);
     if (state.currentPageId !== id) { state.isOpeningPage = false; return; }
+    if (err && err.status === 404 && !page.dirty && !page._localOnly) {
+      // Stale stub: cached from another account or deleted on the server.
+      // Evict it instead of locking the editor forever on "Couldn't load
+      // content" — then fall through to a surviving page, or a blank
+      // Welcome when nothing remains (initialize() seeds demos on boot).
+      try { window.notifications.deleteDraft(id).catch(() => {}); } catch {}
+      state.pages.delete(id);
+      renderTree();
+      renderBreadcrumbs();
+      const fallback = childrenOf(ROOT)[0] || null;
+      if (fallback && fallback.id !== id) {
+        state.isOpeningPage = false;
+        await openPage(fallback.id);
+        return;
+      }
+      const welcome = makePage({ id: "welcome", title: "Welcome", parentId: ROOT, emoji: "👋" });
+      welcome._localOnly = true; welcome.dirty = true;
+      state.pages.set(welcome.id, welcome);
+      await writeDraft(welcome);
+      try {
+        await window.api.createPage({
+          id: welcome.id,
+          title: welcome.title,
+          content: JSON.stringify(welcome.blocks),
+          parent_id: welcome.parentId
+        });
+      } catch {}
+      state.isOpeningPage = false;
+      await openPage(welcome.id);
+      return;
+    }
     if (!page.contentLoaded) {
       // Content was never loaded (no draft, fetch failed): keep the editor
       // locked on the empty placeholder. Unlocking here would let a keystroke
@@ -1896,7 +1953,12 @@ async function initialize() {
   try {
     const drafts = await idbOrFallback(
       window.notifications.getAllDrafts().catch(() => []), 4000, []);
+    const me = currentUsername();
     for (const d of drafts || []) {
+      // Skip drafts owned by a different account on this browser. Ownerless
+      // drafts predate per-user stamping; load them and let the server-list
+      // reconciliation below evict anything that isn't actually ours.
+      if (me && d.owner && d.owner !== me) continue;
       state.pages.set(d.id, {
         id: d.id,
         title: d.title || "Untitled",
@@ -1925,7 +1987,11 @@ async function initialize() {
   let cachedMeta = null;
   // Same blocked-IDB guard as drafts: every IndexedDB await on the boot path
   // must time out, otherwise one wedged connection hangs the whole workspace.
-  try { cachedMeta = await idbOrFallback(window.notifications.getState("pageListMeta").catch(() => null), 4000, null); } catch {}
+  // The meta cache is per-account; legacy unscoped entries are ignored and
+  // neutralized so a previous account's sidebar can never leak in.
+  try { cachedMeta = await idbOrFallback(window.notifications.getState(scopedKey("pageListMeta")).catch(() => null), 4000, null); } catch {}
+  try { await idbOrFallback(window.notifications.saveState("pageListMeta", null).catch(() => {}), 2000, null); } catch {}
+  try { await idbOrFallback(window.notifications.saveState("lastPageId", null).catch(() => {}), 2000, null); } catch {}
 
   if (cachedMeta && Array.isArray(cachedMeta)) {
     for (const p of cachedMeta) {
@@ -1948,16 +2014,19 @@ async function initialize() {
     const rows = await window.api.listPagesMeta();
     for (const p of rows || []) upsertPageMeta(p, { fromServer: true });
     // Drop deleted-on-server stubs that are clean (keep dirty/local-only).
+    // No baseRev requirement: title-only cached stubs from another account
+    // carry no base tracking and must be evicted too, otherwise they pin
+    // state.pages non-empty, block demo seeding, and 404 on every open.
     const serverIds = new Set((rows || []).map(r => r.id));
     for (const [id, pg] of [...state.pages]) {
       if (id === ROOT) continue;
-      if (!serverIds.has(id) && !pg.dirty && !pg._localOnly && pg.baseRev != null) {
+      if (!serverIds.has(id) && !pg.dirty && !pg._localOnly) {
         state.pages.delete(id);
         // Fire-and-forget: must never stall boot on a wedged IndexedDB.
         try { window.notifications.deleteDraft(id).catch(() => {}); } catch {}
       }
     }
-    try { await idbOrFallback(window.notifications.saveState("pageListMeta", rows).catch(() => {}), 4000, null); } catch {}
+    try { await idbOrFallback(window.notifications.saveState(scopedKey("pageListMeta"), rows).catch(() => {}), 4000, null); } catch {}
     state.metaReady = true;
     refreshGlobalDirty();
     renderTree();
@@ -2202,7 +2271,7 @@ async function initialize() {
   applyTheme(getTheme());
   initRootDropZone();
   let lastPageId = null;
-  try { lastPageId = await idbOrFallback(window.notifications.getState("lastPageId").catch(() => null), 2000, null); } catch {}
+  try { lastPageId = await idbOrFallback(window.notifications.getState(scopedKey("lastPageId")).catch(() => null), 2000, null); } catch {}
   const lastPage = lastPageId && state.pages.has(lastPageId) ? state.pages.get(lastPageId) : null;
   const first = lastPage || state.pages.get("welcome") || childrenOf(ROOT)[0];
   if (first) await openPage(first.id);
@@ -2256,7 +2325,7 @@ async function toggleCurrentPagePublic() {
             }
           } else upsertPageMeta(sp, { fromServer: true });
         }
-        try { await idbOrFallback(window.notifications.saveState("pageListMeta", syncPages).catch(() => {}), 2000, null); } catch {}
+        try { await idbOrFallback(window.notifications.saveState(scopedKey("pageListMeta"), syncPages).catch(() => {}), 2000, null); } catch {}
       } catch {}
       setSaveState('Made private');
     }
