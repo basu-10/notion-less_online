@@ -2,7 +2,6 @@ import os
 import re
 import sqlite3
 import time
-import random
 import secrets
 import hashlib
 from config import DATA_DIR, BASE_DIR
@@ -10,7 +9,17 @@ from services.db import get_user_db, init_user_db, get_main_db, init_main_db
 from services.auth import hash_password, check_password
 
 USERNAME_PATTERN = re.compile(r'^[a-zA-Z0-9_-]{3,32}$')
-PROFILE_AVATARS = [f'/static/images/profiles/avatar-{i}.png' for i in range(1, 13)]
+# Prefix for the retired generated ring-avatar set. Stored URLs with this
+# prefix are treated as unset so profiles fall back to letter avatars.
+LEGACY_AVATAR_PREFIX = '/static/images/profiles/avatar-'
+
+
+def _normalize_avatar_url(url):
+    if not url:
+        return ''
+    if url.startswith(LEGACY_AVATAR_PREFIX):
+        return ''
+    return url
 
 class User:
     def __init__(self, username):
@@ -84,10 +93,9 @@ class User:
         ).fetchone()
         conn.close()
         if not row:
-            return {'username': username, 'display_name': username, 'bio': '', 'avatar_url': random.choice(PROFILE_AVATARS)}
+            return {'username': username, 'display_name': username, 'bio': '', 'avatar_url': ''}
         result = dict(row)
-        if not result.get('avatar_url'):
-            result['avatar_url'] = random.choice(PROFILE_AVATARS)
+        result['avatar_url'] = _normalize_avatar_url(result.get('avatar_url'))
         return result
 
     @staticmethod
@@ -118,7 +126,7 @@ class User:
         else:
             conn.execute(
                 'INSERT INTO user_profiles (username, display_name, bio, created_at, avatar_url) VALUES (?, ?, ?, ?, ?)',
-                (username, display_name or username, bio or '', now, avatar_url or random.choice(PROFILE_AVATARS))
+                (username, display_name or username, bio or '', now, avatar_url or '')
             )
         conn.commit()
         conn.close()
@@ -144,7 +152,7 @@ class User:
         main_conn = get_main_db()
         main_conn.execute(
             'INSERT OR IGNORE INTO user_profiles (username, display_name, bio, created_at, avatar_url) VALUES (?, ?, ?, ?, ?)',
-            (username, username, '', time.time(), random.choice(PROFILE_AVATARS))
+            (username, username, '', time.time(), '')
         )
         main_conn.commit()
         main_conn.close()

@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#d85b45">
-  <title>Loading... — NotionLess Cloud</title>
+  <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <title>Loading... — NotionLess</title>
   <link rel="preconnect" href="https://esm.sh">
   <link rel="stylesheet" href="https://esm.sh/@blocknote/core@0.51.3/style.css">
   <link rel="stylesheet" href="https://esm.sh/@blocknote/core@0.51.3/fonts/inter.css">
@@ -23,25 +24,37 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg: #fafaf8;
+      --bg: #f5f5f7;
       --surface: #ffffff;
-      --border: #e8e5df;
-      --text: #1a1a18;
-      --muted: #8a8780;
-      --hover: #f0efed;
-      --accent: #d85b45;
-      --accent-light: #e87a6a;
+      --border: rgba(0, 0, 0, 0.08);
+      --border-subtle: rgba(0, 0, 0, 0.04);
+      --text: #1d1d1f;
+      --text-secondary: #515154;
+      --muted: #86868b;
+      --hover: rgba(0, 0, 0, 0.04);
+      --accent: #0071e3;
+      --accent-deep: #0068d1;
+      --accent-soft: rgba(0, 113, 227, 0.08);
+      --accent-wash: rgba(0, 113, 227, 0.14);
+      --danger: #d70015;
     }
     [data-theme="dark"] {
-      --bg: #18181b;
-      --surface: #1c1c21;
-      --border: #2a2a2f;
-      --text: #e8e8ef;
-      --muted: #a7a7a3;
-      --hover: #2a2a30;
+      --bg: #000000;
+      --surface: #1d1d1f;
+      --border: rgba(255, 255, 255, 0.12);
+      --border-subtle: rgba(255, 255, 255, 0.06);
+      --text: #f5f5f7;
+      --text-secondary: #a1a1a6;
+      --muted: #86868b;
+      --hover: rgba(255, 255, 255, 0.06);
+      --accent: #0a84ff;
+      --accent-deep: #409cff;
+      --accent-soft: rgba(10, 132, 255, 0.14);
+      --accent-wash: rgba(10, 132, 255, 0.22);
+      --danger: #ff453a;
     }
     body {
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Helvetica, Inter, "Segoe UI", sans-serif;
       background: var(--bg);
       color: var(--text);
       line-height: 1.6;
@@ -80,15 +93,18 @@
       overflow: hidden;
     }
     .hero-cover {
-      height: 160px;
-      background: linear-gradient(135deg, var(--accent) 0%, #e87a6a 60%, #f4e4c0 100%);
+      height: 148px;
+      background: linear-gradient(180deg, #e4e4e9 0%, var(--bg) 100%);
       position: relative;
+    }
+    [data-theme="dark"] .hero-cover {
+      background: linear-gradient(180deg, #2c2c2e 0%, var(--bg) 100%);
     }
     .hero-cover::after {
       content: '';
       position: absolute;
       inset: 0;
-      background: radial-gradient(circle at 30% 40%, rgba(255,255,255,0.25) 0%, transparent 60%);
+      background: none;
     }
     .hero-body {
       display: flex;
@@ -104,22 +120,26 @@
       height: 120px;
       border-radius: 50%;
       border: 4px solid var(--surface);
-      box-shadow: 0 12px 40px rgba(216,91,69,0.35), 0 4px 16px rgba(0,0,0,0.08);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
       object-fit: cover;
       flex-shrink: 0;
-      background: linear-gradient(135deg, var(--accent), var(--accent-light));
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      background: linear-gradient(180deg, #6e6e73 0%, #48484a 100%);
+      display: grid;
+      place-items: center;
+      font-size: 44px;
+      font-weight: 600;
+      color: #fff;
     }
-    .hero-avatar:hover { transform: scale(1.03); box-shadow: 0 16px 50px rgba(216,91,69,0.45); }
     .hero-author-block { flex: 1; min-width: 0; }
     .hero-badge {
       display: inline-flex; align-items: center; gap: 6px;
-      padding: 5px 12px; border-radius: 20px; border: 1.5px solid var(--accent);
-      color: var(--accent); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em;
-      text-transform: uppercase; margin-bottom: 12px; background: rgba(216,91,69,0.06);
+      padding: 4px 11px; border-radius: 980px; border: none;
+      background: var(--accent-soft);
+      color: var(--accent); font-size: 12px; font-weight: 600; letter-spacing: 0.02em;
+      text-transform: none; margin-bottom: 10px;
     }
     .hero-author-name {
-      font-size: 1.6rem; font-weight: 800; letter-spacing: -0.035em; line-height: 1.1; margin: 0 0 6px;
+      font-size: 24px; font-weight: 700; letter-spacing: -0.022em; line-height: 1.15; margin: 0 0 4px;
     }
     .hero-author-name a { color: inherit; text-decoration: none; }
     .hero-author-name a:hover { color: var(--accent); }
@@ -128,12 +148,13 @@
     }
     .hero-cta {
       display: inline-flex; align-items: center; gap: 6px;
-      padding: 8px 18px; border-radius: 22px; border: 1.5px solid var(--accent);
-      color: var(--accent); text-decoration: none; font-size: 0.85rem; font-weight: 700;
-      transition: background 0.2s ease, color 0.2s ease;
-      margin-top: 10px;
+      padding: 7px 16px; border-radius: 980px; border: none;
+      background: var(--accent-soft);
+      color: var(--accent); text-decoration: none; font-size: 13px; font-weight: 500;
+      transition: background 0.12s ease;
+      margin-top: 12px;
     }
-    .hero-cta:hover { background: var(--accent); color: white; }
+    .hero-cta:hover { background: var(--accent-wash); }
     .page-card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -154,12 +175,12 @@
       width: 36px;
       height: 36px;
       border-radius: 50%;
-      background: linear-gradient(135deg, var(--accent), var(--accent-light));
+      background: linear-gradient(180deg, #6e6e73 0%, #48484a 100%);
       display: grid;
       place-items: center;
       font-size: 14px;
-      font-weight: 700;
-      color: white;
+      font-weight: 600;
+      color: #fff;
     }
     .page-author-info {
       font-size: 0.9rem;
@@ -200,20 +221,19 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      padding: 10px 20px;
+      padding: 9px 20px;
       background: var(--accent);
-      color: white;
+      color: #fff;
       border: none;
-      border-radius: 8px;
-      font-size: 0.9rem;
+      border-radius: 980px;
+      font-size: 14px;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: background 0.12s ease;
       font-family: inherit;
     }
     .copy-btn:hover {
-      background: var(--accent-light);
-      transform: translateY(-1px);
+      background: var(--accent-deep);
     }
     .copy-btn:disabled {
       opacity: 0.6;
@@ -237,7 +257,10 @@
       padding: 48px;
     }
     .error h2 {
-      color: var(--accent);
+      color: var(--text);
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
       margin-bottom: 8px;
     }
     .error p {
@@ -285,8 +308,8 @@
     .subpage-icon { font-size: 14px; opacity: 0.6; }
     .subpage-empty { color: var(--muted); font-size: 0.85rem; }
     .article-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; padding: 0 32px 28px; }
-    .article-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; text-decoration: none; color: inherit; transition: all 0.2s ease; }
-    .article-card:hover { border-color: var(--accent); box-shadow: 0 6px 20px rgba(216,91,69,0.1); transform: translateY(-2px); }
+    .article-card { background: var(--surface); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 18px; text-decoration: none; color: inherit; transition: box-shadow 0.12s ease; }
+    .article-card:hover { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06); }
     .article-card h4 { font-size: 0.95rem; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 8px; line-height: 1.2; }
     .article-card .meta { font-size: 0.75rem; color: var(--muted); }
     .nested-indent { padding-left: 18px; }
@@ -305,17 +328,17 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 8px 16px;
+      padding: 8px 18px;
       background: var(--accent);
-      color: white;
+      color: #fff;
       text-decoration: none;
-      border-radius: 6px;
-      font-size: 0.9rem;
+      border-radius: 980px;
+      font-size: 14px;
       font-weight: 600;
-      transition: background 0.2s;
+      transition: background 0.12s ease;
     }
     .login-prompt a:hover {
-      background: var(--accent-light);
+      background: var(--accent-deep);
     }
   </style>
 </head>
@@ -326,7 +349,7 @@
         <span>←</span> Home
       </a>
       <a href="#" id="wallLink">
-        <span>👤</span> <span id="wallUser"></span>'s wall
+        <span>←</span> <span id="wallUser"></span>'s wall
       </a>
     </nav>
 
@@ -343,7 +366,7 @@
 
     document.getElementById('wallLink').href = `/wall/${username}`;
     document.getElementById('wallUser').textContent = username;
-    document.title = 'Loading... — NotionLess Cloud';
+    document.title = 'Loading... — NotionLess';
 
     async function loadPage() {
       try {
@@ -351,7 +374,7 @@
         if (!res.ok) throw new Error('Page not found');
         const page = await res.json();
 
-        document.title = `${page.title || 'Untitled'} — NotionLess Cloud`;
+        document.title = `${page.title || 'Untitled'} — NotionLess`;
         const profileData = page.author_profile || {};
         const avatarUrl = profileData.avatar_url || '';
         const displayName = page.author ? page.author.charAt(0).toUpperCase() + page.author.slice(1) : username;
@@ -438,7 +461,7 @@
             ${subpagesHtml}
             <div class="page-actions">
               <button class="copy-btn" id="copyBtn">
-                📋 Copy to my profile
+                Copy to my profile
               </button>
               <span class="copy-success" id="copySuccess" style="display:none;">Copied!</span>
             </div>
@@ -501,7 +524,7 @@
         setTimeout(() => { success.textContent = 'Page copied! Go to your workspace to view it.'; }, 1500);
       } catch (err) {
         btn.disabled = false;
-        btn.textContent = '📋 Copy to my profile';
+        btn.textContent = 'Copy to my profile';
         alert('Failed to copy page. Please try again.');
       }
     }
