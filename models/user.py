@@ -5,7 +5,7 @@ import time
 import secrets
 import hashlib
 from config import DATA_DIR, BASE_DIR
-from services.db import get_user_db, init_user_db, get_main_db, init_main_db
+from services.db import get_user_db, init_user_db, get_main_db, init_main_db, is_valid_username, MAIN_DB_FILENAME
 from services.auth import hash_password, check_password
 
 USERNAME_PATTERN = re.compile(r'^[a-zA-Z0-9_-]{3,32}$')
@@ -54,8 +54,16 @@ class User:
         except Exception as e:
             print(f"[DEBUG get_all_users] Error listing DATA_DIR: {e}")
         for filename in os.listdir(DATA_DIR):
-            if filename.endswith('.db'):
-                users.append(filename[:-3])
+            if not filename.endswith('.db'):
+                continue
+            if filename == MAIN_DB_FILENAME:
+                continue
+            name = filename[:-3]
+            # Skip anything that could never be a real account (legacy junk,
+            # temp files). Existing accounts all match the pattern.
+            if not USERNAME_PATTERN.match(name):
+                continue
+            users.append(name)
         print(f"[DEBUG get_all_users] found users: {users}")
         return users
 
@@ -161,6 +169,8 @@ class User:
 
     @staticmethod
     def get(username):
+        if not is_valid_username(username):
+            return None
         db_path = os.path.join(DATA_DIR, f'{username}.db')
         if not os.path.exists(db_path):
             return None
@@ -170,7 +180,10 @@ class User:
     def authenticate(username, password):
         if not User.exists(username):
             return None
-        conn = get_user_db(username)
+        try:
+            conn = get_user_db(username)
+        except ValueError:
+            return None
         try:
             row = conn.execute(
                 'SELECT password_hash FROM auth WHERE username = ?',
@@ -186,6 +199,8 @@ class User:
 
     @staticmethod
     def exists(username):
+        if not is_valid_username(username):
+            return False
         db_path = os.path.join(DATA_DIR, f'{username}.db')
         return os.path.exists(db_path)
 
@@ -207,7 +222,12 @@ class User:
 
     @staticmethod
     def get_api_key_hash(username):
-        conn = get_user_db(username)
+        if not is_valid_username(username):
+            return None
+        try:
+            conn = get_user_db(username)
+        except ValueError:
+            return None
         try:
             row = conn.execute('SELECT api_key_hash FROM user_settings LIMIT 1').fetchone()
         except sqlite3.OperationalError:
@@ -235,7 +255,10 @@ class User:
         all_users = User.get_all_users()
         print(f"[DEBUG get_username_from_api_key] All users: {all_users}")
         for username in all_users:
-            conn = get_user_db(username)
+            try:
+                conn = get_user_db(username)
+            except ValueError:
+                continue
             try:
                 row = conn.execute('SELECT api_key_hash FROM user_settings LIMIT 1').fetchone()
                 stored_hash = row['api_key_hash'] if row else None
@@ -243,7 +266,6 @@ class User:
                 if stored_hash:
                     try:
                         if secrets.compare_digest(stored_hash, api_key_hash):
-                            conn.close()
                             print(f"[DEBUG get_username_from_api_key] MATCH found for {username}")
                             return username
                     except Exception as e:
@@ -251,6 +273,10 @@ class User:
             except sqlite3.OperationalError as e:
                 print(f"[DEBUG get_username_from_api_key] Error for {username}: {e}")
                 pass
-            conn.close()
+            finally:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
         print("[DEBUG get_username_from_api_key] No match found")
         return None

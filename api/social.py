@@ -122,34 +122,46 @@ def get_public_page(username, page_id):
 @login_required
 def toggle_public(page_id):
     conn = get_user_db(current_user.username)
-    row = conn.execute('SELECT id, is_public, parent_id, rev, updated_at FROM pages WHERE id = ?', (page_id,)).fetchone()
-    if not row:
-        conn.close()
-        return jsonify({'error': 'Page not found'}), 404
-    is_public = bool(row['is_public'])
-    new_public = not is_public
-    now = time.time()
     try:
-        cur_rev = int(row['rev']) if 'rev' in row.keys() and row['rev'] is not None else 1
-    except Exception:
-        cur_rev = 1
-    conn.execute('UPDATE pages SET is_public = ?, rev = ?, updated_at = ? WHERE id = ?', (1 if new_public else 0, cur_rev + 1, now, page_id))
-    if new_public:
-        def cascade_public(parent_id):
-            children = conn.execute('SELECT id, rev FROM pages WHERE parent_id = ?', (parent_id,)).fetchall()
-            for child in children:
-                try:
-                    r = int(child['rev']) if 'rev' in child.keys() and child['rev'] is not None else 1
-                except Exception:
-                    r = 1
-                conn.execute('UPDATE pages SET is_public = 1, rev = ?, updated_at = ? WHERE id = ?', (r + 1, now, child['id']))
-                cascade_public(child['id'])
-        cascade_public(page_id)
-        conn.execute('INSERT OR REPLACE INTO authors (page_id, username, role, created_at) VALUES (?, ?, ?, ?)',
-                    (page_id, current_user.username, 'author', now))
-    conn.commit()
-    updated = conn.execute('SELECT rev, updated_at FROM pages WHERE id = ?', (page_id,)).fetchone()
-    conn.close()
+        row = conn.execute('SELECT id, is_public, parent_id, rev, updated_at FROM pages WHERE id = ?', (page_id,)).fetchone()
+        if not row:
+            return jsonify({'error': 'Page not found'}), 404
+        is_public = bool(row['is_public'])
+        new_public = not is_public
+        now = time.time()
+        try:
+            cur_rev = int(row['rev']) if 'rev' in row.keys() and row['rev'] is not None else 1
+        except Exception:
+            cur_rev = 1
+        affected = []
+        conn.execute('BEGIN IMMEDIATE')
+        try:
+            conn.execute('UPDATE pages SET is_public = ?, rev = ?, updated_at = ? WHERE id = ?', (1 if new_public else 0, cur_rev + 1, now, page_id))
+            affected.append({'id': page_id, 'rev': cur_rev + 1, 'updated_at': now})
+            if new_public:
+                def cascade_public(parent_id):
+                    children = conn.execute('SELECT id, rev FROM pages WHERE parent_id = ?', (parent_id,)).fetchall()
+                    for child in children:
+                        try:
+                            r = int(child['rev']) if 'rev' in child.keys() and child['rev'] is not None else 1
+                        except Exception:
+                            r = 1
+                        conn.execute('UPDATE pages SET is_public = 1, rev = ?, updated_at = ? WHERE id = ?', (r + 1, now, child['id']))
+                        affected.append({'id': child['id'], 'rev': r + 1, 'updated_at': now})
+                        cascade_public(child['id'])
+                cascade_public(page_id)
+                conn.execute('INSERT OR REPLACE INTO authors (page_id, username, role, created_at) VALUES (?, ?, ?, ?)',
+                            (page_id, current_user.username, 'author', now))
+            conn.commit()
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            raise
+        updated = conn.execute('SELECT rev, updated_at FROM pages WHERE id = ?', (page_id,)).fetchone()
+    finally:
+        conn.close()
     try:
         out_rev = int(updated['rev']) if updated and updated['rev'] is not None else cur_rev + 1
     except Exception:
@@ -158,7 +170,10 @@ def toggle_public(page_id):
         out_updated = float(updated['updated_at']) if updated and updated['updated_at'] else now
     except Exception:
         out_updated = now
-    return jsonify({'is_public': new_public, 'rev': out_rev, 'updated_at': out_updated})
+    # `affected` lets the client refresh baseRev/baseUpdatedAt for every
+    # cascaded subpage; without it the next edit sends a stale base_rev and
+    # trips a false 409.
+    return jsonify({'is_public': new_public, 'rev': out_rev, 'updated_at': out_updated, 'affected': affected})
 
 @social_bp.route('/pages/<page_id>/copy', methods=['POST'])
 @login_required
@@ -168,37 +183,99 @@ def copy_page(page_id):
     if not source_username or not User.exists(source_username):
         return jsonify({'error': 'Source user not found'}), 404
     source_conn = get_user_db(source_username)
-    source_row = source_conn.execute(
-        'SELECT id, title, content, parent_id, is_public, created_at, updated_at FROM pages WHERE id = ?',
-        (page_id,)
-    ).fetchone()
-    if not source_row:
+    try:
+        source_row = source_conn.execute(
+            'SELECT id, title, content, html_snapshot, parent_id, is_public, created_at, updated_at FROM pages WHERE id = ?',
+            (page_id,)
+        ).fetchone()
+        if not source_row:
+            return jsonify({'error': 'Page not found'}), 404
+        source_page = dict(source_row)
+        # Privacy gate: only public pages may be copied. Same 404 as missing
+        # so private page ids can't be probed.
+        if not source_page.get('is_public'):
+            return jsonify({'error': 'Page not found'}), 404
+        # Collect the full subtree (public cascade means children are public,
+        # but copy the whole hierarchy regardless so the copy isn't partial).
+        # BFS with cycle guard; cap at 500 to bound one request.
+        subtree = [source_page]
+        queue = [source_page['id']]
+        seen = {source_page['id']}
+        while queue and len(subtree) < 500:
+            cur = queue.pop(0)
+            try:
+                children = source_conn.execute(
+                    'SELECT id, title, content, html_snapshot, parent_id, is_public, created_at, updated_at FROM pages WHERE parent_id = ?',
+                    (cur,)
+                ).fetchall()
+            except Exception:
+                children = []
+            for child in children:
+                cid = child['id']
+                if cid in seen:
+                    continue
+                seen.add(cid)
+                queue.append(cid)
+                subtree.append(dict(child))
+        try:
+            source_authors = source_conn.execute(
+                'SELECT username, role FROM authors WHERE page_id = ?', (page_id,)
+            ).fetchall()
+            source_authors = [dict(a) for a in source_authors]
+        except Exception:
+            source_authors = []
+    finally:
         source_conn.close()
-        return jsonify({'error': 'Page not found'}), 404
-    source_page = dict(source_row)
-    source_conn.close()
     now = time.time()
-    new_id = str(uuid.uuid4())
     dest_conn = get_user_db(current_user.username)
-    dest_conn.execute(
-        '''INSERT INTO pages (id, title, content, parent_id, is_public, rev, created_at, updated_at)
-           VALUES (?, ?, ?, ?, 0, 1, ?, ?)''',
-        (new_id, source_page['title'], source_page['content'], 'root', now, now)
-    )
-    authors = dest_conn.execute('SELECT username FROM authors WHERE page_id = ?', (page_id,)).fetchall()
-    for author in authors:
-        dest_conn.execute(
-            'INSERT OR REPLACE INTO authors (page_id, username, role, created_at) VALUES (?, ?, ?, ?)',
-            (new_id, author['username'], 'author', now)
-        )
-    if not any(a['username'] == source_username for a in authors):
-        dest_conn.execute(
-            'INSERT OR REPLACE INTO authors (page_id, username, role, created_at) VALUES (?, ?, ?, ?)',
-            (new_id, source_username, 'original_author', now)
-        )
-    dest_conn.commit()
-    dest_conn.close()
-    return jsonify({'id': new_id, 'title': source_page['title'], 'copied': True})
+    try:
+        id_map = {p['id']: str(uuid.uuid4()) for p in subtree}
+        new_root_id = id_map[source_page['id']]
+        conn_existing = {r['id'] for r in dest_conn.execute('SELECT id FROM pages').fetchall()}
+        for old, new in list(id_map.items()):
+            while new in conn_existing:
+                new = str(uuid.uuid4())
+                id_map[old] = new
+            conn_existing.add(new)
+        dest_conn.execute('BEGIN IMMEDIATE')
+        try:
+            for src in subtree:
+                new_id = id_map[src['id']]
+                if src['id'] == source_page['id']:
+                    new_parent = 'root'
+                else:
+                    new_parent = id_map.get(src.get('parent_id'), 'root')
+                    if new_parent not in id_map.values():
+                        new_parent = new_root_id
+                dest_conn.execute(
+                    '''INSERT INTO pages (id, title, content, html_snapshot, parent_id, is_public, rev, created_at, updated_at)
+                       VALUES (?, ?, ?, ?, ?, 0, 1, ?, ?)''',
+                    (new_id, src.get('title', ''), src.get('content', ''),
+                     src.get('html_snapshot'), new_parent, now, now)
+                )
+                for author in source_authors:
+                    try:
+                        dest_conn.execute(
+                            'INSERT OR REPLACE INTO authors (page_id, username, role, created_at) VALUES (?, ?, ?, ?)',
+                            (new_id, author['username'], author.get('role') or 'author', now)
+                        )
+                    except Exception:
+                        pass
+                if not any(a.get('username') == source_username for a in source_authors):
+                    dest_conn.execute(
+                        'INSERT OR REPLACE INTO authors (page_id, username, role, created_at) VALUES (?, ?, ?, ?)',
+                        (new_id, source_username, 'original_author', now)
+                    )
+            dest_conn.commit()
+        except Exception:
+            try:
+                dest_conn.rollback()
+            except Exception:
+                pass
+            raise
+    finally:
+        dest_conn.close()
+    return jsonify({'id': new_root_id, 'title': source_page['title'], 'copied': True, 'copied_pages': len(subtree)})
 
 @social_bp.route('/pages/<page_id>/authors', methods=['GET'])
 def get_authors(page_id):

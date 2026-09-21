@@ -1578,7 +1578,12 @@ async function duplicatePage(pageId) {
   }
   for (const p of allPages) {
     const newId = idMap.get(p.id);
-    const newParentId = p.parentId === pageId ? page.parentId : idMap.get(p.parentId);
+    // Root of the duplicated subtree becomes a sibling of the original;
+    // descendants keep their relative parents via the id map. The old
+    // `p.parentId === pageId` check inverted this: it orphaned the root
+    // (idMap has no entry for its outside parent) and flattened children
+    // onto the grandparent.
+    const newParentId = p.id === pageId ? page.parentId : (idMap.get(p.parentId) || page.parentId);
     const newPage = makePage({
       id: newId,
       title: p.title + " (copy)",
@@ -2387,11 +2392,19 @@ async function toggleCurrentPagePublic() {
     if (data.rev != null) { page.rev = data.rev; page.baseRev = data.rev; }
     if (data.updated_at != null) page.baseUpdatedAt = data.updated_at;
     await writeDraft(page);
+    // Apply server revs for every cascaded subpage so the next edit carries
+    // a fresh base_rev instead of tripping a false 409.
+    const affectedById = new Map((data.affected || []).map(a => [a.id, a]));
     // Cascade to subpages in UI state so flow is clear
     function updateSubpages(parentId, isPublic) {
       const children = childrenOf(parentId);
       for (const child of children) {
         child.isPublic = isPublic;
+        const a = affectedById.get(child.id);
+        if (a) {
+          if (a.rev != null) { child.rev = a.rev; child.baseRev = a.rev; }
+          if (a.updated_at != null) child.baseUpdatedAt = a.updated_at;
+        }
         writeDraft(child);
         updateSubpages(child.id, isPublic);
       }

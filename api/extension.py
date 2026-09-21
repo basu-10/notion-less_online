@@ -1,4 +1,5 @@
 import uuid
+import json
 import time
 import traceback
 from flask import Blueprint, request, jsonify, make_response
@@ -171,12 +172,38 @@ def save_clip(username):
     page_id = str(uuid.uuid4())
     print(f"[DEBUG save_clip] Generated page_id={page_id}, timestamp={now}")
 
+    # Normalize content to a JSON string: str(dict) emits Python repr
+    # (single quotes) which the frontend JSON parser rejects, wiping the clip
+    # to a blank paragraph. Preserve html_snapshot/parent sanity too.
+    if isinstance(content, str):
+        content_str = content
+    else:
+        try:
+            content_str = json.dumps(content)
+        except Exception:
+            content_str = str(content)
+    if not isinstance(title, str):
+        title = str(title or 'Untitled')
+    if not isinstance(html_snapshot, str):
+        try:
+            html_snapshot = str(html_snapshot or '')
+        except Exception:
+            html_snapshot = ''
+    if not isinstance(parent_id, str) or not parent_id:
+        parent_id = 'root'
     try:
         conn = get_user_db(username)
         print(f"[DEBUG save_clip] DB connection open for {username}")
+        if parent_id != 'root':
+            try:
+                ok = conn.execute('SELECT 1 FROM pages WHERE id = ?', (parent_id,)).fetchone()
+                if not ok:
+                    parent_id = 'root'
+            except Exception:
+                parent_id = 'root'
         conn.execute(
-            'INSERT INTO pages (id, title, content, html_snapshot, parent_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            (page_id, title, str(content), html_snapshot, parent_id, now, now)
+            'INSERT INTO pages (id, title, content, html_snapshot, parent_id, is_public, rev, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, 1, ?, ?)',
+            (page_id, title, content_str, html_snapshot, parent_id, now, now)
         )
         print(f"[DEBUG save_clip] Inserted page into pages table")
         conn.execute(

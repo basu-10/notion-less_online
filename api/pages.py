@@ -1,11 +1,42 @@
 import uuid
 import time
 import os
+import json
 import hashlib
 from flask import Blueprint, request, jsonify, send_from_directory, make_response
 from flask_login import current_user, login_required
 from services.db import get_user_db
 from config import UPLOADS_DIR
+
+# Payload keys that constitute a real content change. A PATCH/beacon carrying
+# none of these (e.g. an empty pagehide flush) must be a no-op: previously it
+# still bumped rev + updated_at, silently invalidating other devices' bases
+# and manufacturing false 409s.
+WRITABLE_FIELDS = ('title', 'content', 'html_snapshot', 'parent_id', 'is_public')
+
+
+def _normalize_content(value):
+    """Store content as a JSON string. Accepts str (kept as-is), or
+    list/dict (JSON-encoded). The clipper previously used str(dict), which
+    produces single-quote Python repr that the frontend JSON parser rejects,
+    wiping the clip to a blank paragraph."""
+    if value is None:
+        return value
+    if isinstance(value, str):
+        return value
+    try:
+        return json.dumps(value)
+    except Exception:
+        return str(value)
+
+
+def _parent_exists(conn, parent_id):
+    if not parent_id or parent_id == 'root':
+        return True
+    try:
+        return conn.execute('SELECT 1 FROM pages WHERE id = ?', (parent_id,)).fetchone() is not None
+    except Exception:
+        return False
 
 pages_bp = Blueprint('pages', __name__)
 
@@ -50,19 +81,43 @@ def _is_stale(existing, data):
     return False
 
 def _apply_write(conn, page_id, data):
-    """Partial, conflict-checked write. Returns (row, status)."""
+    """Partial, conflict-checked write. Returns (row, status).
+
+    Empty payloads are a no-op (status 200, no rev bump) so keepalive beacons
+    with no data can never clobber newer server content or invalidate bases.
+    """
     existing = _get_page(conn, page_id)
     if not existing:
         return None, 404
     if _is_stale(existing, data):
         return existing, 409
+    if not isinstance(data, dict) or not any(k in data for k in WRITABLE_FIELDS):
+        return existing, 200
     prev = dict(existing)
     now = time.time()
     # Partial update: only overwrite fields present in payload (legacy PUT with
     # missing keys previously wiped title/content/parent_id — no longer).
     title = data.get('title', prev.get('title', ''))
-    content = data.get('content', prev.get('content', ''))
+    content = _normalize_content(data.get('content', prev.get('content', '')))
     parent_id = data.get('parent_id', prev.get('parent_id', 'root')) or 'root'
+    # Never create an instant orphan from a stale client move: unknown parents
+    # fall back to root (visible) instead of a dangling id (invisible).
+    if 'parent_id' in data and not _parent_exists(conn, parent_id):
+        parent_id = 'root'
+    # Refuse to reparent under one of our own descendants (cycle would detach
+    # the subtree from the ROOT walk and hide it).
+    if 'parent_id' in data and parent_id != 'root' and parent_id != prev.get('parent_id'):
+        cursor, seen = parent_id, set()
+        while cursor and cursor != 'root' and cursor not in seen:
+            if cursor == page_id:
+                parent_id = prev.get('parent_id', 'root') or 'root'
+                break
+            seen.add(cursor)
+            try:
+                prow = conn.execute('SELECT parent_id FROM pages WHERE id = ?', (cursor,)).fetchone()
+            except Exception:
+                break
+            cursor = prow['parent_id'] if prow else None
     html_snapshot = data.get('html_snapshot', prev.get('html_snapshot'))
     is_public = prev.get('is_public', 0)
     if 'is_public' in data:
@@ -112,7 +167,7 @@ def create_page():
     page = {
         'id': data.get('id') or str(uuid.uuid4()),
         'title': data.get('title', ''),
-        'content': data.get('content', ''),
+        'content': _normalize_content(data.get('content', '')),
         'html_snapshot': data.get('html_snapshot'),
         'parent_id': data.get('parent_id') or 'root',
         'rev': 1,
@@ -120,16 +175,19 @@ def create_page():
         'updated_at': now
     }
     conn = get_user_db(current_user.username)
-    existing = _get_page(conn, page['id'])
-    if existing:
+    try:
+        existing = _get_page(conn, page['id'])
+        if existing:
+            return jsonify(_row_to_dict(existing)), 200
+        if not _parent_exists(conn, page['parent_id']):
+            page['parent_id'] = 'root'
+        conn.execute(
+            'INSERT INTO pages (id, title, content, html_snapshot, parent_id, is_public, rev, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)',
+            (page['id'], page['title'], page['content'], page['html_snapshot'], page['parent_id'], page['rev'], page['created_at'], page['updated_at'])
+        )
+        conn.commit()
+    finally:
         conn.close()
-        return jsonify(_row_to_dict(existing)), 200
-    conn.execute(
-        'INSERT INTO pages (id, title, content, html_snapshot, parent_id, is_public, rev, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)',
-        (page['id'], page['title'], page['content'], page['html_snapshot'], page['parent_id'], page['rev'], page['created_at'], page['updated_at'])
-    )
-    conn.commit()
-    conn.close()
     return jsonify(page), 201
 
 @pages_bp.route('/pages/<page_id>', methods=['GET'])
@@ -168,7 +226,12 @@ def update_page(page_id):
 @pages_bp.route('/pages/<page_id>/save-beacon', methods=['POST'])
 @login_required
 def save_beacon(page_id):
-    """Beacon/keepalive target for pagehide: POST-only alias of conditional write."""
+    """Beacon/keepalive target for pagehide: POST-only alias of conditional write.
+
+    Crucially, an empty beacon (no writable fields, no base) is a pure
+    keepalive: it returns the current row WITHOUT bumping rev, so a stale
+    pagehide flush can never overwrite newer server content.
+    """
     data = request.json or {}
     # sendBeacon posts FormData or text; accept both.
     if not data and request.form:
@@ -177,6 +240,14 @@ def save_beacon(page_id):
         except Exception:
             data = {}
     conn = get_user_db(current_user.username)
+    if not isinstance(data, dict) or not any(k in data for k in WRITABLE_FIELDS):
+        row = _get_page(conn, page_id)
+        if not row:
+            conn.close()
+            return jsonify({'error': 'Not found'}), 404
+        payload = _row_to_dict(row)
+        conn.close()
+        return jsonify(payload)
     row, status = _apply_write(conn, page_id, data if isinstance(data, dict) else {})
     if status == 404:
         conn.close()
@@ -190,13 +261,54 @@ def save_beacon(page_id):
     conn.close()
     return jsonify(payload)
 
+def _collect_subtree_ids(conn, root_id):
+    """All page ids in the subtree rooted at root_id (inclusive), BFS."""
+    ids, queue, seen = [], [root_id], {root_id}
+    existing = conn.execute('SELECT id FROM pages WHERE id = ?', (root_id,)).fetchone()
+    if not existing:
+        return []
+    while queue:
+        cur = queue.pop(0)
+        ids.append(cur)
+        try:
+            children = conn.execute('SELECT id FROM pages WHERE parent_id = ?', (cur,)).fetchall()
+        except Exception:
+            continue
+        for child in children:
+            cid = child['id']
+            if cid not in seen:
+                seen.add(cid)
+                queue.append(cid)
+    return ids
+
+
 @pages_bp.route('/pages/<page_id>', methods=['DELETE'])
 @login_required
 def delete_page(page_id):
     conn = get_user_db(current_user.username)
-    conn.execute('DELETE FROM pages WHERE id = ?', (page_id,))
-    conn.commit()
-    conn.close()
+    try:
+        ids = _collect_subtree_ids(conn, page_id)
+        if not ids:
+            return '', 204
+        placeholders = ','.join('?' for _ in ids)
+        # One transaction: pages + their author rows vanish together. The old
+        # single-row DELETE left children pointing at a missing parent, which
+        # hid them from the ROOT tree walk while still syncing (phantom loss).
+        conn.execute('BEGIN IMMEDIATE')
+        try:
+            conn.execute(f'DELETE FROM authors WHERE page_id IN ({placeholders})', ids)
+        except Exception:
+            pass
+        conn.execute(f'DELETE FROM pages WHERE id IN ({placeholders})', ids)
+        conn.commit()
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        raise
+    finally:
+        conn.close()
     return '', 204
 
 @pages_bp.route('/upload', methods=['POST'])
