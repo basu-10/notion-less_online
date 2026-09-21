@@ -55,6 +55,11 @@
         </div>
       </nav>
 
+      <div class="sidebar-filter-wrap">
+        <input id="pageFilter" class="sidebar-filter" type="search" placeholder="Filter pages..." autocomplete="off" aria-label="Filter pages">
+        <button class="sidebar-filter-clear" id="pageFilterClear" title="Clear filter" aria-label="Clear page filter" hidden>✕</button>
+      </div>
+
       <div id="pageTree" aria-label="Page tree"></div>
 
       <footer class="sidebar-footer" aria-label="User menu and status">
@@ -148,7 +153,7 @@
             <input id="pageTitle" class="page-title" placeholder="Untitled" autocomplete="off" spellcheck="true" aria-label="Page title">
           </header>
           <div id="editor" aria-label="BlockNote editor"></div>
-          <p class="hint" aria-label="Editor hint">Type <strong>/</strong> for blocks. Press <kbd>Tab</kbd> / <kbd>Shift+Tab</kbd> to nest or unnest blocks.</p>
+          <p class="hint" aria-label="Editor hint"><span id="docMeta" class="doc-meta"></span><span>Type <strong>/</strong> for blocks. Press <kbd>Tab</kbd> / <kbd>Shift+Tab</kbd> to nest or unnest blocks.</span></p>
         </article>
       </div>
     </main>

@@ -1221,6 +1221,64 @@ html[data-theme="dark"] .sync-banner.is-offline,
 /* ---------- Selection bar: wrap-friendly ---------- */
 .selection-bar { flex-wrap: wrap; row-gap: 6px; }
 
+/* ---------- Easy wins: filter / doc meta / quick-switch create / touch ---------- */
+.sidebar-filter-wrap {
+  position: relative;
+  padding: 6px 12px 8px 14px;
+  flex-shrink: 0;
+}
+.sidebar-filter {
+  width: 100%;
+  padding: 7px 28px 7px 10px;
+  border-radius: 8px;
+  border: none;
+  background: var(--hover);
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+}
+.sidebar-filter:focus { box-shadow: 0 0 0 3px var(--accent-wash); }
+.sidebar-filter::placeholder { color: var(--muted); }
+.sidebar-filter-clear {
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-60%);
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 10px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.sidebar-filter-clear:hover { background: var(--active); color: var(--text); }
+.tree-filter-empty { padding: 18px 14px; text-align: center; color: var(--muted); font-size: 13px; }
+.tree-filter-count { padding: 2px 14px 6px; font-size: 11px; color: var(--muted); }
+
+.doc-meta {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.quick-switch-group { padding: 6px 10px 2px; font-size: 11px; font-weight: 600; color: var(--muted); }
+.quick-switch-create {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 9px 10px; border-radius: 8px;
+  border: none; background: transparent;
+  text-align: left; cursor: pointer;
+  font-size: 13px; color: var(--accent); font-weight: 500;
+}
+.quick-switch-create:hover { background: var(--accent); color: #fff; }
+
+/* Touch: hover-only actions are unreachable — always show them, bigger. */
+@media (hover: none), (pointer: coarse) {
+  .page-more, .page-add { opacity: 1; min-width: 32px; min-height: 32px; }
+  .tree-row { min-height: 38px; }
+  .twisty { width: 28px; height: 28px; flex-basis: 28px; }
+  .tree-checkbox { opacity: 1; width: 20px; height: 20px; flex-basis: 20px; }
+}
+
 /* ---------- Responsive: dialogs / pickers / bars ---------- */
 @media (max-width: 768px) {
   #contextMenu.move-picker {

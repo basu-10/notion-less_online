@@ -35,7 +35,8 @@ const state = {
   flushTimer: null,
   flushing: false,
   flushQueued: false,
-  sortOrder: (() => { try { return localStorage.getItem("notion-sort-order") || "modified"; } catch { return "modified"; } })()
+  sortOrder: (() => { try { return localStorage.getItem("notion-sort-order") || "modified"; } catch { return "modified"; } })(),
+  pageFilter: "",
 };
 
 // Tunables chosen for PythonAnywhere free tier: few, small requests.
@@ -307,6 +308,17 @@ async function setSaveState(text, persist=true) {
       const t = (text || "").toLowerCase();
       trig.dataset.status = /conflict|offline|unsynced|attention|retry|resolve|not loaded|couldn|fail|error/.test(t) ? "bad"
         : /saving|unsaved|will sync|syncing|loading|recreating|retrying/.test(t) ? "busy" : "ok";
+      // Polish: full timestamp + plain-words hint so the pill explains itself.
+      const when = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      let tip = text || "Ready";
+      if (/^saved/.test(text || "")) tip = text + " — all changes are safe. Click to see history.";
+      else if (/^ready|^all pages saved/.test(t)) tip = "Ready — everything is saved (" + when + "). Click to see history.";
+      else if (/unsaved|will sync/.test(t)) tip = "Unsaved changes — will sync automatically. Click to see history.";
+      else if (/saving|syncing|loading|retrying|recreating/.test(t)) tip = text + " (" + when + "). Click to see history.";
+      else if (/offline/.test(t)) tip = text + " — editing locally, will retry. Click to see history.";
+      else if (/conflict/.test(t)) tip = text + " — pick Keep mine / Load server / Keep both. Click to see history.";
+      trig.title = tip;
+      trig.setAttribute("aria-label", "Sync status: " + tip);
     }
   } catch {}
   // Don't spam IndexedDB with transient states; persist only meaningful ones.
@@ -482,6 +494,7 @@ function markDirty() {
   if (btn) btn.classList.remove("visible");
   writeDraft(page);
   renderTree();
+  try { updateDocMeta(); } catch {}
   scheduleFlush(SAVE_DEBOUNCE_MS);
 }
 
@@ -739,6 +752,45 @@ function childrenOf(parentId) {
 function renderTree() {
   const root = $("#pageTree");
   root.innerHTML = "";
+  // Filter mode: flat match list so a buried page is one click away.
+  const q = (state.pageFilter || "").trim().toLowerCase();
+  if (q) {
+    const matches = [...state.pages.values()]
+      .filter(p => p.id !== ROOT && (p.title || "Untitled").toLowerCase().includes(q))
+      .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+      .slice(0, 50);
+    const count = document.createElement("div");
+    count.className = "tree-filter-count";
+    count.textContent = matches.length ? matches.length + " match" + (matches.length === 1 ? "" : "es") : "";
+    root.appendChild(count);
+    if (!matches.length) {
+      const empty = document.createElement("div");
+      empty.className = "tree-filter-empty";
+      empty.textContent = "No pages match — press Enter to create it";
+      root.appendChild(empty);
+      return;
+    }
+    for (const page of matches) {
+      const row = document.createElement("div");
+      row.className = "tree-row" + (page.id === state.currentPageId ? " active" : "");
+      row.dataset.id = page.id;
+      const emoji = document.createElement("span");
+      emoji.className = "page-emoji";
+      emoji.textContent = page.emoji || "";
+      const link = document.createElement("div");
+      link.className = "page-link";
+      link.textContent = page.title || "Untitled";
+      link.title = page.title || "Untitled";
+      link.addEventListener("click", () => openPage(page.id));
+      const parentTitle = page.parentId && page.parentId !== ROOT ? (state.pages.get(page.parentId)?.title || "") : "";
+      const parent = document.createElement("span");
+      parent.style.cssText = "font-size:11px;color:var(--muted);flex-shrink:0;max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
+      parent.textContent = parentTitle;
+      row.append(emoji, link, parent);
+      root.appendChild(row);
+    }
+    return;
+  }
   const walk = (parentId, depth) => {
     for (const page of childrenOf(parentId)) {
       const children = childrenOf(page.id);
@@ -1209,6 +1261,7 @@ function renderBreadcrumbs() {
       el.appendChild(sep);
     }
   });
+  try { updateDocMeta(); } catch {}
 }
 
 async function mountEditor(blocks) {
@@ -1235,8 +1288,10 @@ async function mountEditor(blocks) {
   state.editor.onChange(() => {
     if (state.currentPageId) markDirty();
     renderAutoToc();
+    try { updateDocMeta(); } catch {}
   });
   wireEditorInteractions();
+  try { updateDocMeta(); } catch {}
 }
 
 function parseBlocks(content) {
@@ -1699,6 +1754,33 @@ function currentBlockText(block) {
   if (typeof block.content === "string") return block.content;
   if (Array.isArray(block.content)) return block.content.map(x => typeof x === "string" ? x : (x?.text || "")).join("");
   return "";
+}
+
+function updateDocMeta() {
+  const el = $("#docMeta");
+  if (!el) return;
+  const page = state.pages.get(state.currentPageId);
+  if (!page) { el.textContent = ""; return; }
+  let words = 0;
+  try {
+    const docs = (state.currentPageId && state.editor) ? state.editor.document : (page.blocks || []);
+    const title = ($("#pageTitle")?.value || page.title || "");
+    const all = title + "\n" + (docs || []).map(b => currentBlockText(b)).join("\n");
+    words = (all.trim().match(/\S+/g) || []).length;
+  } catch { words = 0; }
+  let edited = "";
+  try {
+    const ts = page.updatedAt || (page.baseUpdatedAt ? page.baseUpdatedAt * 1000 : 0);
+    if (ts) {
+      const d = new Date(ts);
+      const today = new Date();
+      const sameDay = d.toDateString() === today.toDateString();
+      edited = sameDay
+        ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+        : d.toLocaleDateString([], { month: "short", day: "numeric" }) + " " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+  } catch {}
+  el.textContent = words + (words === 1 ? " word" : " words") + (edited ? " · Edited " + edited : "");
 }
 
 function filteredCommands() {
@@ -2799,18 +2881,21 @@ function closeQuickSwitch() {
 function renderQuickSwitch(filterText) {
   const listEl = $("#quickSwitchList");
   const allPages = [...state.pages.values()].filter(p => p.id !== ROOT);
-  const filter = filterText ? filterText.toLowerCase() : "";
+  const filter = (filterText || "").trim().toLowerCase();
+  const raw = filter ? (filterText || "").trim() : "";
   const filtered = filter ? allPages.filter(p => {
     const title = (p.title || "Untitled").toLowerCase();
     return title.includes(filter);
   }) : allPages;
   const sorted = filtered.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)).slice(0, 30);
+  const groupLabel = filter ? "Matches" : "Recent pages";
 
   if (!sorted.length) {
-    listEl.innerHTML = '<div class="quick-switch-empty">No pages found</div>';
+    listEl.innerHTML = '<div class="quick-switch-empty">No pages found</div>'
+      + (raw ? `<button class="quick-switch-create" data-create="${escapeHtml(raw)}">⊕ Create "${escapeHtml(raw)}" ↵</button>` : "");
     return;
   }
-  listEl.innerHTML = sorted.map((p, i) => {
+  listEl.innerHTML = `<div class="quick-switch-group">${groupLabel}</div>` + sorted.map((p, i) => {
     const activeClass = i === 0 ? " selected" : "";
     const parentTitle = p.parentId !== ROOT ? (state.pages.get(p.parentId)?.title || "Root") : null;
     return `<button class="quick-switch-item${activeClass}" data-id="${escapeHtml(p.id)}" data-idx="${i}">
@@ -2818,7 +2903,26 @@ function renderQuickSwitch(filterText) {
       <span class="qs-title">${escapeHtml(p.title || "Untitled")}</span>
       ${parentTitle ? `<span class="qs-parent">${escapeHtml(parentTitle)}</span>` : ""}
     </button>`;
-  }).join("");
+  }).join("")
+  + (raw ? `<button class="quick-switch-create" data-create="${escapeHtml(raw)}">⊕ Create "${escapeHtml(raw)}" ↵</button>` : "");
+}
+
+async function quickSwitchCreate(title) {
+  closeQuickSwitch();
+  // Reuse createPage then rename — keeps offline queue + sync logic intact.
+  const clean = (title || "").trim() || "Untitled";
+  await createPage(ROOT);
+  try {
+    const page = state.pages.get(state.currentPageId);
+    if (page) {
+      $("#pageTitle").value = clean;
+      page.title = clean;
+      page.baseTitle = page.baseTitle === "Untitled" ? page.baseTitle : page.baseTitle;
+      markDirty();
+      renderTree();
+      renderBreadcrumbs();
+    }
+  } catch {}
 }
 
 function handleQuickSwitchKey(e) {
@@ -2844,11 +2948,25 @@ function handleQuickSwitchKey(e) {
   }
   if (e.key === "Enter") {
     e.preventDefault();
+    const createBtn = listEl.querySelector(".quick-switch-create");
     const selected = listEl.querySelector(".quick-switch-item.selected");
+    // If user typed a fresh name, Enter creates it (even when matches exist,
+    // the top match stays selected — create row is reachable by click or
+    // by typing an exact new name with no matches).
+    if (createBtn && !selected) {
+      quickSwitchCreate(createBtn.dataset.create || $("#quickSwitchInput").value);
+      return true;
+    }
+    if (selected?.classList?.contains("quick-switch-create") || selected?.dataset?.create) {
+      quickSwitchCreate(selected.dataset.create || $("#quickSwitchInput").value);
+      return true;
+    }
     if (selected) {
       const id = selected.dataset.id;
       closeQuickSwitch();
       if (id) openPage(id);
+    } else if (createBtn) {
+      quickSwitchCreate(createBtn.dataset.create || $("#quickSwitchInput").value);
     }
     return true;
   }
@@ -2858,12 +2976,62 @@ function handleQuickSwitchKey(e) {
 const listEl = $("#quickSwitchList");
 $("#quickSwitchInput").addEventListener("input", (e) => renderQuickSwitch(e.target.value));
 listEl.addEventListener("click", (e) => {
+  const create = e.target.closest(".quick-switch-create");
+  if (create) { quickSwitchCreate(create.dataset.create || $("#quickSwitchInput").value); return; }
   const btn = e.target.closest(".quick-switch-item");
   if (!btn) return;
   const id = btn.dataset.id;
   closeQuickSwitch();
   if (id) openPage(id);
 });
+
+// Sidebar filter: instant local filtering + Enter-to-create.
+function initPageFilter() {
+  const input = $("#pageFilter");
+  const clear = $("#pageFilterClear");
+  if (!input) return;
+  const syncClear = () => { if (clear) clear.hidden = !input.value; };
+  input.addEventListener("input", () => {
+    state.pageFilter = input.value || "";
+    syncClear();
+    renderTree();
+  });
+  input.addEventListener("keydown", async (e) => {
+    if (e.key === "Escape" && input.value) {
+      e.stopPropagation();
+      input.value = "";
+      state.pageFilter = "";
+      syncClear();
+      renderTree();
+      return;
+    }
+    if (e.key === "Enter" && (state.pageFilter || "").trim()) {
+      e.preventDefault();
+      const existing = [...state.pages.values()].find(p => p.id !== ROOT && (p.title || "").toLowerCase() === state.pageFilter.trim().toLowerCase());
+      if (existing) { openPage(existing.id); return; }
+      const title = state.pageFilter.trim();
+      input.value = "";
+      state.pageFilter = "";
+      syncClear();
+      renderTree();
+      await createPage(ROOT);
+      try {
+        $("#pageTitle").value = title;
+        const page = state.pages.get(state.currentPageId);
+        if (page) { page.title = title; markDirty(); renderTree(); renderBreadcrumbs(); }
+      } catch {}
+    }
+  });
+  if (clear) clear.addEventListener("click", () => {
+    input.value = "";
+    state.pageFilter = "";
+    syncClear();
+    renderTree();
+    input.focus();
+  });
+  syncClear();
+}
+initPageFilter();
 
 document.addEventListener("keydown", (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
