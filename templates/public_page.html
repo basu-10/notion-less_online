@@ -218,6 +218,14 @@
     .page-content .bn-editor {
       min-height: 200px;
     }
+    /* Highlights in dark mode: pastel bg + white text is illegible, so force dark text. */
+    html[data-theme="dark"] .bn-editor [data-background-color],
+    html[data-theme="dark"] .bn-editor [data-style-type="backgroundColor"] {
+      color: #1d1d1f !important;
+    }
+    html[data-theme="dark"] .bn-editor [data-background-color] a {
+      color: #1d1d1f !important;
+    }
     .page-actions {
       display: flex;
       align-items: center;

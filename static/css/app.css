@@ -588,6 +588,22 @@ html[data-theme="dark"] .format-btn.active,
 html[data-theme="dark"] .hl-dot { border-color: rgba(255,255,255,0.25); }
 .hl-clear { color: var(--muted); }
 
+/* Highlights in dark mode: pastel bg + white text is illegible, so force dark text.
+   Light mode untouched (text is already dark). Covers all BlockNote bg colors. */
+html[data-theme="dark"] .bn-editor [data-background-color],
+:root[data-theme="dark"] .bn-editor [data-background-color],
+[data-theme="dark"] .bn-editor [data-background-color],
+html[data-theme="dark"] .bn-editor [data-style-type="backgroundColor"],
+:root[data-theme="dark"] .bn-editor [data-style-type="backgroundColor"],
+[data-theme="dark"] .bn-editor [data-style-type="backgroundColor"] {
+  color: #1d1d1f !important;
+}
+html[data-theme="dark"] .bn-editor [data-background-color] a,
+:root[data-theme="dark"] .bn-editor [data-background-color] a,
+[data-theme="dark"] .bn-editor [data-background-color] a {
+  color: #1d1d1f !important;
+}
+
 /* ---------- Selection bar ---------- */
 .selection-bar {
   display: none; align-items: center; gap: 8px; padding: 8px 16px;
