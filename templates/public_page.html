@@ -127,6 +127,10 @@
       background: linear-gradient(180deg, #6e6e73 0%, #48484a 100%);
       display: grid;
       place-items: center;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      line-height: 1;
       font-size: 44px;
       font-weight: 600;
       color: #fff;
@@ -179,6 +183,10 @@
       background: linear-gradient(180deg, #6e6e73 0%, #48484a 100%);
       display: grid;
       place-items: center;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      line-height: 1;
       font-size: 14px;
       font-weight: 600;
       color: #fff;
@@ -472,7 +480,7 @@
             <header class="hero">
               <div class="hero-cover"></div>
               <div class="hero-body">
-                <img src="${escapeHtml(avatarUrl)}" class="hero-avatar" alt="${escapeHtml(displayName)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';this.nextElementSibling.innerHTML='<span style=font-size:2rem;color:#fff;font-weight:800;text-align:center;width:100%;line-height:120px;>${avatar}</span>';">
+                <img src="${escapeHtml(avatarUrl)}" class="hero-avatar" alt="${escapeHtml(displayName)}" onerror="this.style.display='none';this.nextElementSibling.style.display='grid';">
                 <div class="hero-avatar" style="display:none;">${avatar}</div>
                 <div class="hero-author-block">
                   <div class="hero-badge">Public</div>

@@ -73,8 +73,8 @@
   flex-shrink: 0;
 }
 html[data-theme="dark"] .brand-mark,
-:root[data-theme="dark"] .brand-mark { background: #f5f5f7; color: #b89400; }
-[data-theme="dark"] .brand-mark { background: #f5f5f7; color: #b89400; }
+:root[data-theme="dark"] .brand-mark { background: #1d1d1f; color: #d9a400; }
+[data-theme="dark"] .brand-mark { background: #1d1d1f; color: #d9a400; }
 
 /* Sidebar sections: Apple small caps */
 .sidebar-section {

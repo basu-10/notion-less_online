@@ -347,7 +347,7 @@ html[data-theme="dark"], html[data-theme="dark"] body {
   --text: #e8e8ef; --muted: #a7a7a3; --hover: #2a2a30; --active: #32323a;
   --shadow: 0 12px 40px rgba(0,0,0,.25);
 }
-html[data-theme="dark"] .brand-mark { background: #f5f5f7; border-color: rgba(0,0,0,0.06); color: #b89400; }
+html[data-theme="dark"] .brand-mark { background: #1d1d1f; border-color: rgba(255,255,255,0.06); color: #d9a400; }
 html[data-theme="dark"] .new-page { color: #ddd; }
 html[data-theme="dark"] .sidebar-section { color: #9e9e99; }
 html[data-theme="dark"] .page-title { color: var(--text); }

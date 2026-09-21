@@ -1668,9 +1668,30 @@ function positionSlashMenu() {
     }
   }
   if (!r) return;
-  const left = Math.min(Math.max(12, r.left), window.innerWidth - 312);
-  const top = Math.min(Math.max(12, r.bottom + 8), window.innerHeight - 350);
+  const GAP = 8;
+  const MARGIN = 8;
+  const vw = window.innerWidth || document.documentElement.clientWidth || 800;
+  const vh = window.innerHeight || document.documentElement.clientHeight || 600;
+  // Constrain height so the menu can never be taller than the viewport.
+  const maxAllowedH = Math.max(120, vh - MARGIN * 2);
+  menu.style.maxHeight = Math.min(380, maxAllowedH) + "px";
+  const menuH = menu.offsetHeight || Math.min(380, maxAllowedH);
+  const menuW = menu.offsetWidth || 320;
+  // Horizontal: clamp into viewport, fall back to margin on tiny screens.
+  let left = Math.max(MARGIN, Math.min(r.left, vw - menuW - MARGIN));
+  if (vw - menuW - MARGIN < MARGIN) left = MARGIN;
   menu.style.left = left + "px";
+  // Vertical: prefer below the caret, flip above when there is no room.
+  const spaceBelow = vh - r.bottom - GAP;
+  const spaceAbove = r.top - GAP;
+  let top;
+  if (spaceBelow >= menuH || spaceBelow >= spaceAbove) {
+    top = r.bottom + GAP;
+    if (top + menuH > vh - MARGIN) top = Math.max(MARGIN, vh - menuH - MARGIN);
+  } else {
+    top = r.top - menuH - GAP;
+    if (top < MARGIN) top = Math.max(MARGIN, vh - menuH - MARGIN);
+  }
   menu.style.top = top + "px";
 }
 
@@ -1702,7 +1723,15 @@ function renderSlashMenu() {
   positionSlashMenu();
   requestAnimationFrame(() => {
     const selected = menu.querySelector(".slash-item.selected");
-    if (selected) selected.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    if (selected) {
+      // Keep scrolling inside the menu so the page doesn't jump.
+      const st = menu.scrollTop;
+      const sh = menu.clientHeight;
+      const ot = selected.offsetTop;
+      const oh = selected.offsetHeight;
+      if (ot < st) menu.scrollTop = ot - 6;
+      else if (ot + oh > st + sh) menu.scrollTop = ot + oh - sh + 6;
+    }
   });
 }
 
@@ -2698,6 +2727,12 @@ updateSortBtn();
 
 const sidebarMenuBtn = $("#sidebarMenuBtn");
 const sidebarUserMenu = $("#sidebarUserMenu");
+// Sidebar avatar shows the logged-in user's initial (not a hardcoded "U").
+try {
+  const _av = $("#userAvatar");
+  const _un = (document.body.dataset.username || "").trim();
+  if (_av && _un) _av.textContent = _un.charAt(0).toUpperCase();
+} catch {}
 sidebarMenuBtn.addEventListener("click", () => {
   const isOpen = sidebarUserMenu.classList.contains("open");
   sidebarUserMenu.classList.toggle("open");
