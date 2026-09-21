@@ -300,6 +300,15 @@ async function persistNotification(text) {
 async function setSaveState(text, persist=true) {
   const el = $("#saveState");
   if (el) el.textContent = text;
+  // Drive the status dot: ok (saved/ready) · busy (syncing) · bad (conflict/offline).
+  try {
+    const trig = $("#notificationTrigger");
+    if (trig) {
+      const t = (text || "").toLowerCase();
+      trig.dataset.status = /conflict|offline|unsynced|attention|retry|resolve|not loaded|couldn|fail|error/.test(t) ? "bad"
+        : /saving|unsaved|will sync|syncing|loading|recreating|retrying/.test(t) ? "busy" : "ok";
+    }
+  } catch {}
   // Don't spam IndexedDB with transient states; persist only meaningful ones.
   if (!persist) return;
   await persistNotification(text);
@@ -307,11 +316,14 @@ async function setSaveState(text, persist=true) {
 
 async function toggleNotificationPanel() {
   const panel = $("#notificationPanel");
+  const trig = $("#notificationTrigger");
   const isOpen = panel.classList.contains("open");
   if (isOpen) {
     panel.classList.remove("open");
+    if (trig) trig.setAttribute("aria-expanded", "false");
   } else {
     panel.classList.add("open");
+    if (trig) trig.setAttribute("aria-expanded", "true");
     await renderNotificationList();
   }
 }
@@ -2895,6 +2907,7 @@ document.addEventListener("mousedown", (e) => {
   }
   if (notifPanel.classList.contains("open") && !notifPanel.contains(e.target) && !$("#notificationTrigger").contains(e.target)) {
     notifPanel.classList.remove("open");
+    $("#notificationTrigger")?.setAttribute("aria-expanded", "false");
   }
 });
 

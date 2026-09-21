@@ -61,7 +61,7 @@
         <button class="sidebar-menu-btn" id="sidebarMenuBtn" aria-label="Open user menu" aria-expanded="false" aria-haspopup="true">
           <span class="user-avatar" id="userAvatar" aria-hidden="true">{{ username[0]|upper if username else 'U' }}</span>
           <span class="user-name" id="userName">{{ username }}</span>
-          <span class="user-menu-arrow" aria-hidden="true">▾</span>
+          <span class="user-menu-arrow" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span>
         </button>
 
         <div class="sidebar-user-menu" id="sidebarUserMenu" role="menu" aria-label="User options" aria-hidden="true">
@@ -94,7 +94,8 @@
         </div>
 
         <div class="sidebar-save-state" aria-label="Save status">
-          <button class="notification-trigger" id="notificationTrigger" aria-label="View notifications" aria-haspopup="true" aria-expanded="false">
+          <button class="notification-trigger" id="notificationTrigger" data-status="ok" aria-label="Sync status — view notifications" aria-haspopup="true" aria-expanded="false" title="Sync status">
+            <span class="status-dot" aria-hidden="true"></span>
             <span id="saveState">Ready</span>
           </button>
           <div id="notificationPanel" class="notification-panel" role="dialog" aria-label="Notifications" aria-modal="true" aria-hidden="true">
