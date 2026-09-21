@@ -838,15 +838,25 @@ function renderTree() {
         movePage(draggedId, page.id);
       });
 
+      const add = document.createElement("button");
+      add.className = "page-add";
+      add.textContent = "+";
+      add.title = "New sub-page";
+      add.setAttribute("aria-label", "New sub-page inside " + (page.title || "Untitled"));
+      add.addEventListener("click", (e) => {
+        e.stopPropagation();
+        createPage(page.id);
+      });
       const more = document.createElement("button");
       more.className = "page-more";
       more.textContent = "•••";
       more.title = "Page actions";
+      more.setAttribute("aria-label", "Page actions for " + (page.title || "Untitled"));
       more.addEventListener("click", (e) => {
         e.stopPropagation();
         openContextMenu(e.clientX, e.clientY, page.id);
       });
-      const parts = [indent, checkbox, twisty, link, publicIndicator, more];
+      const parts = [indent, checkbox, twisty, link, publicIndicator, add, more];
       if (page.emoji) parts.splice(3, 0, emoji);
       // If page is public, keep indicator visible; otherwise it stays empty string
       row.append(...parts);
@@ -2710,10 +2720,40 @@ document.addEventListener("keydown", (e) => {
   }
   // Dialog handles its own Escape (capture phase); only close menus here.
   if (e.key === "Escape" && $("#contextMenu")?.classList.contains("open")) {
+    e.preventDefault();
     closeContextMenu();
     return;
   }
   if (handleQuickSwitchKey(e)) return;
+  if (e.key === "Escape" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    // Already handled by a focused overlay on this same press: editor slash
+    // menu calls preventDefault() when it closes, so don't also wipe selection.
+    if (e.defaultPrevented) return;
+    if ($("#nlDialogOverlay")?.classList.contains("open")) return;
+    if ($("#emojiPicker")?.classList.contains("open")) return;
+    if ($("#slashMenu")?.classList.contains("open")) {
+      e.preventDefault();
+      closeSlashMenu();
+      return;
+    }
+    if ($("#blockMenu")?.classList.contains("open")) {
+      e.preventDefault();
+      $("#blockMenu").classList.remove("open");
+      return;
+    }
+    if ($("#formatToolbar")?.classList.contains("open")) {
+      e.preventDefault();
+      $("#formatToolbar").classList.remove("open");
+      return;
+    }
+    if (state.selected.size) {
+      e.preventDefault();
+      state.selected.clear();
+      renderTree();
+      renderSelectionBar();
+      return;
+    }
+  }
 });
 
 function updateSortBtn() {

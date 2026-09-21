@@ -174,7 +174,8 @@ html[data-theme="dark"] .brand-mark,
   letter-spacing: -0.008em;
 }
 
-.page-more {
+.page-more,
+.page-add {
   opacity: 0;
   width: 24px; height: 24px;
   border-radius: 6px;
@@ -185,8 +186,11 @@ html[data-theme="dark"] .brand-mark,
   font-size: 12px;
   transition: opacity .12s ease, background .12s ease;
 }
-.tree-row:hover .page-more, .tree-row.active .page-more { opacity: 1; }
-.page-more:hover { background: rgba(120,120,128,0.2); color: var(--text); }
+.page-add { font-size: 15px; font-weight: 400; }
+.tree-row:hover .page-more, .tree-row.active .page-more,
+.tree-row:hover .page-add, .tree-row.active .page-add,
+.tree-row:focus-within .page-more, .tree-row:focus-within .page-add { opacity: 1; }
+.page-more:hover, .page-add:hover { background: rgba(120,120,128,0.2); color: var(--text); }
 
 .tree-checkbox {
   width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(120,120,128,0.5);
