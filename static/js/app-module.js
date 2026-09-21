@@ -1889,12 +1889,85 @@ function createBlockMenuDivider() {
   return div;
 }
 
+function bnToggleStyles(styles) {
+  const ed = state.editor;
+  try {
+    if (ed && typeof ed.toggleStyles === "function") {
+      ed.toggleStyles(styles);
+      try { ed.focus(); } catch {}
+      return true;
+    }
+  } catch (e) { console.warn("toggleStyles failed", e); }
+  return false;
+}
+
+function getActiveBnStyles() {
+  try {
+    if (state.editor && typeof state.editor.getActiveStyles === "function") {
+      return state.editor.getActiveStyles() || {};
+    }
+  } catch {}
+  return {};
+}
+
+function toggleBasicStyle(styleKey, execCmd) {
+  if (bnToggleStyles({ [styleKey]: true })) return;
+  try { document.execCommand(execCmd); } catch {}
+}
+
+function applyHighlight(colorName) {
+  // colorName: BlockNote backgroundColor name, or null/"default" to clear.
+  if (!colorName || colorName === "default") {
+    try {
+      const active = getActiveBnStyles();
+      if (state.editor && typeof state.editor.removeStyles === "function" && active.backgroundColor) {
+        state.editor.removeStyles({ backgroundColor: active.backgroundColor });
+        try { state.editor.focus(); } catch {}
+        return;
+      }
+    } catch {}
+    if (bnToggleStyles({ backgroundColor: "default" })) return;
+    try { document.execCommand("hiliteColor", false, "transparent"); } catch {}
+    try { document.execCommand("backColor", false, "transparent"); } catch {}
+    return;
+  }
+  if (bnToggleStyles({ backgroundColor: colorName })) return;
+  try { document.execCommand("hiliteColor", false, colorName); } catch {}
+  try { document.execCommand("backColor", false, colorName); } catch {}
+}
+
 const FORMAT_BUTTONS = [
-  { label: "B", title: "Bold", shortcut: "Ctrl+B", action: () => document.execCommand("bold") },
-  { label: "I", title: "Italic", shortcut: "Ctrl+I", action: () => document.execCommand("italic") },
-  { label: "U", title: "Underline", shortcut: "Ctrl+U", action: () => document.execCommand("underline") },
-  { label: "S", title: "Strikethrough", shortcut: "Ctrl+Shift+S", action: () => document.execCommand("strikeThrough") },
+  { label: "B", title: "Bold", shortcut: "Ctrl+B", style: "bold", execCmd: "bold", styleLabel: "bold" },
+  { label: "I", title: "Italic", shortcut: "Ctrl+I", style: "italic", execCmd: "italic", styleLabel: "italic" },
+  { label: "U", title: "Underline", shortcut: "Ctrl+U", style: "underline", execCmd: "underline", styleLabel: "underline" },
+  { label: "S", title: "Strikethrough", shortcut: "Ctrl+Shift+S", style: "strike", execCmd: "strikeThrough", styleLabel: "line-through" },
 ];
+
+// BlockNote default backgroundColor names. `css` is only the swatch preview;
+// the editor itself resolves the name to its themed highlight color.
+const HIGHLIGHT_COLORS = [
+  { name: "yellow", title: "Yellow highlight", css: "#fef08a" },
+  { name: "green", title: "Green highlight", css: "#bbf7d0" },
+  { name: "blue", title: "Blue highlight", css: "#bfdbfe" },
+  { name: "pink", title: "Pink highlight", css: "#fecdd3" },
+  { name: "orange", title: "Orange highlight", css: "#fed7aa" },
+];
+const HIGHLIGHT_DEFAULT = "yellow";
+
+function refreshFormatToolbarActive() {
+  const toolbar = $("#formatToolbar");
+  if (!toolbar || !toolbar.classList.contains("open")) return;
+  const active = getActiveBnStyles();
+  toolbar.querySelectorAll(".format-btn[data-style]").forEach((btn) => {
+    const key = btn.getAttribute("data-style");
+    btn.classList.toggle("active", Boolean(key && active[key]));
+  });
+  toolbar.querySelectorAll(".hl-swatch[data-color]").forEach((sw) => {
+    sw.classList.toggle("active", active.backgroundColor === sw.getAttribute("data-color"));
+  });
+  const clearBtn = toolbar.querySelector(".hl-clear");
+  if (clearBtn) clearBtn.classList.toggle("active", !active.backgroundColor);
+}
 
 function showFormatToolbar() {
   const toolbar = $("#formatToolbar");
@@ -1903,13 +1976,20 @@ function showFormatToolbar() {
   FORMAT_BUTTONS.forEach((btn, i) => {
     const button = document.createElement("button");
     button.className = "format-btn";
+    button.dataset.style = btn.style;
     button.textContent = btn.label;
+    if (btn.styleLabel) button.style.fontWeight = btn.style === "bold" ? "700" : "500";
+    if (btn.style === "italic") button.style.fontStyle = "italic";
+    if (btn.style === "underline") button.style.textDecoration = "underline";
+    if (btn.style === "strike") button.style.textDecoration = "line-through";
     button.title = `${btn.title} (${btn.shortcut})`;
+    button.setAttribute("aria-label", `${btn.title} (${btn.shortcut})`);
     button.addEventListener("mousedown", (e) => {
       e.preventDefault();
     });
     button.addEventListener("click", () => {
-      btn.action();
+      toggleBasicStyle(btn.style, btn.execCmd);
+      setTimeout(refreshFormatToolbarActive, 0);
     });
     toolbar.appendChild(button);
 
@@ -1920,13 +2000,50 @@ function showFormatToolbar() {
     }
   });
 
+  // Highlight swatches live in the same toolbar, right after B/I/U/S.
+  const activeStyles = getActiveBnStyles();
+  HIGHLIGHT_COLORS.forEach((hl) => {
+    const sw = document.createElement("button");
+    sw.className = "hl-swatch" + (activeStyles.backgroundColor === hl.name ? " active" : "");
+    sw.dataset.color = hl.name;
+    sw.title = `${hl.title} (Ctrl+H for yellow)`;
+    sw.setAttribute("aria-label", hl.title);
+    sw.style.setProperty("--hl", hl.css);
+    sw.innerHTML = `<span class="hl-dot" aria-hidden="true"></span>`;
+    sw.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+    });
+    sw.addEventListener("click", () => {
+      applyHighlight(hl.name);
+      setTimeout(refreshFormatToolbarActive, 0);
+    });
+    toolbar.appendChild(sw);
+  });
+
+  const clearBtn = document.createElement("button");
+  clearBtn.className = "format-btn hl-clear" + (!activeStyles.backgroundColor ? " active" : "");
+  clearBtn.textContent = "∅";
+  clearBtn.title = "Remove highlight";
+  clearBtn.setAttribute("aria-label", "Remove highlight");
+  clearBtn.addEventListener("mousedown", (e) => {
+    e.preventDefault();
+  });
+  clearBtn.addEventListener("click", () => {
+    applyHighlight(null);
+    setTimeout(refreshFormatToolbarActive, 0);
+  });
+  toolbar.appendChild(clearBtn);
+
+  // Mark B/I/U/S active state on open.
+  refreshFormatToolbarActive();
+
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0) return;
 
   const range = sel.getRangeAt(0);
   const rect = range.getBoundingClientRect();
 
-  const left = Math.max(8, Math.min(rect.left + (rect.width / 2) - 100, window.innerWidth - 220));
+  const left = Math.max(8, Math.min(rect.left + (rect.width / 2) - 170, window.innerWidth - 360));
   const top = rect.top - 45 + window.scrollY;
 
   toolbar.style.left = left + "px";
@@ -1945,6 +2062,13 @@ function onEditorKeydown(e) {
       return;
     }
     saveCurrent();
+    return;
+  }
+
+  if ((e.ctrlKey || e.metaKey) && (e.key === "h" || e.key === "H")) {
+    e.preventDefault();
+    applyHighlight(HIGHLIGHT_DEFAULT);
+    setTimeout(refreshFormatToolbarActive, 0);
     return;
   }
 

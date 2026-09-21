@@ -557,7 +557,7 @@ html[data-theme="dark"] .workspace,
 .format-toolbar {
   position: fixed; display: none; align-items: center; gap: 1px;
   padding: 4px; border-radius: 10px;
-  z-index: 1000;
+  z-index: 1000; max-width: calc(100vw - 16px); flex-wrap: nowrap;
 }
 .format-toolbar.open { display: flex; }
 .format-btn {
@@ -570,7 +570,23 @@ html[data-theme="dark"] .workspace,
 .format-btn.active { background: var(--text); color: var(--surface); }
 html[data-theme="dark"] .format-btn.active,
 :root[data-theme="dark"] .format-btn.active { background: #f5f5f7; color: #000; }
-.format-divider { width: 1px; height: 18px; background: var(--border-subtle); margin: 0 3px; }
+.format-divider { width: 1px; height: 18px; background: var(--border-subtle); margin: 0 3px; flex-shrink: 0; }
+.hl-swatch {
+  width: 28px; height: 28px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 6px; cursor: pointer;
+  background: transparent; border: 2px solid transparent; flex-shrink: 0;
+}
+.hl-swatch:hover { background: var(--hover); }
+.hl-swatch.active { border-color: var(--text); background: var(--hover); }
+.hl-dot {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--hl, #fef08a);
+  border: 1px solid rgba(0,0,0,0.18);
+  display: block;
+}
+html[data-theme="dark"] .hl-dot { border-color: rgba(255,255,255,0.25); }
+.hl-clear { color: var(--muted); }
 
 /* ---------- Selection bar ---------- */
 .selection-bar {
