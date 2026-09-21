@@ -1256,6 +1256,35 @@ function fetchWithTimeout(promise, ms) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
+function revealPage(id) {
+  // Expand every ancestor so the row is actually visible in the sidebar.
+  // renderTree only walks into children of expanded pages, so opening a
+  // nested page without this leaves it mounted but invisible.
+  const visited = new Set();
+  let cursor = state.pages.get(id);
+  while (cursor && !visited.has(cursor.id)) {
+    visited.add(cursor.id);
+    const pid = cursor.parentId;
+    if (!pid || pid === ROOT) break;
+    state.expanded.add(pid);
+    cursor = state.pages.get(pid);
+  }
+}
+
+function scrollTreeRowIntoView(id) {
+  try {
+    requestAnimationFrame(() => {
+      const row = document.querySelector(".tree-row[data-id='" + CSS.escape(id) + "']");
+      if (row) row.scrollIntoView({ block: "nearest" });
+    });
+  } catch {
+    try {
+      const row = document.querySelector(".tree-row[data-id='" + id + "']");
+      if (row) row.scrollIntoView({ block: "nearest" });
+    } catch {}
+  }
+}
+
 async function openPage(id) {
   // Queue current page snapshot locally (fast switch, no server wait).
   // NOTE: no updatedAt bump here — the previous page already got its
@@ -1284,9 +1313,11 @@ async function openPage(id) {
   await mountEditor(page.blocks);
   setTimeout(() => renderAutoToc(), 80);
   state.expanded.add(page.id);
+  revealPage(page.id);
   renderTree();
   renderBreadcrumbs();
   updatePublicToggleUI();
+  scrollTreeRowIntoView(page.id);
   $("#workspace").scrollTop = 0;
   if (page.conflictServer) {
     setLocked(page, false);
@@ -1360,9 +1391,11 @@ async function openPage(id) {
           $("#pageTitle").value = page.title || "Untitled";
           await mountEditor(page.blocks);
           setTimeout(() => renderAutoToc(), 80);
+          revealPage(page.id);
           renderTree();
           renderBreadcrumbs();
           updatePublicToggleUI();
+          scrollTreeRowIntoView(page.id);
         }
         setSaveState(hadContent ? "Updated to latest" : "Ready", false);
       } else {
