@@ -34,6 +34,7 @@
       --accent: #d9a400;
       --accent-light: #eab800;
       --accent-deep: #b89400;
+      --accent-ink: #7a5c00;
       --accent-soft: rgba(217, 164, 0, 0.08);
       --accent-wash: rgba(217, 164, 0, 0.12);
       --danger: #d70015;
@@ -51,6 +52,7 @@
       --accent: #d9a400;
       --accent-light: #eab800;
       --accent-deep: #b89400;
+      --accent-ink: #eab800;
       --accent-soft: rgba(217, 164, 0, 0.14);
       --accent-wash: rgba(217, 164, 0, 0.22);
       --danger: #ff453a;
@@ -72,11 +74,11 @@
     header .container { display: flex; align-items: center; gap: 16px; height: 52px; max-width: 980px; margin: 0 auto; padding: 0 20px; }
     .header-nav { display: flex; align-items: center; gap: 20px; margin-left: 8px; }
     .header-nav a { color: var(--text-secondary); text-decoration: none; font-size: 13px; font-weight: 400; transition: color 0.12s ease; }
-    .header-nav a:hover { color: var(--accent); }
+    .header-nav a:hover { color: var(--accent-ink); }
     .btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 18px; border-radius: 980px; font-size: 13px; font-weight: 500; text-decoration: none; transition: background 0.12s ease; cursor: pointer; border: none; }
     .btn-primary { background: var(--accent); color: #1a1a18; }
     .btn-primary:hover { background: var(--accent-light); }
-    .btn-secondary { background: var(--hover); color: var(--accent); }
+    .btn-secondary { background: var(--hover); color: var(--accent-ink); }
     .btn-secondary:hover { background: var(--accent-soft); }
 
     .header-theme-wrapper { position: relative; margin-left: auto; }
@@ -86,7 +88,7 @@
     .header-theme-menu.open { opacity: 1; pointer-events: auto; transform: translateY(0); }
     .header-theme-menu button { width: 100%; text-align: left; padding: 7px 10px; border-radius: 7px; border: none; background: transparent; color: var(--text); font-family: inherit; font-size: 13px; cursor: pointer; }
     .header-theme-menu button:hover { background: var(--hover); }
-    .header-theme-menu button.active { color: var(--accent); font-weight: 600; }
+    .header-theme-menu button.active { color: var(--accent-ink); font-weight: 600; }
     .mobile-nav-toggle { display: none; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
     .mobile-nav-toggle:hover { background: var(--hover); }
     .mobile-nav-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 200; opacity: 0; transition: opacity .25s ease; }
@@ -99,7 +101,7 @@
     .mobile-nav-divider { height: 1px; background: var(--border); margin: 8px 0; }
     .mobile-nav-panel .nav-link { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 8px; color: var(--text); text-decoration: none; font-weight: 500; transition: background .15s; }
     .mobile-nav-panel .nav-link:hover { background: var(--hover); }
-    .mobile-nav-panel .nav-link.active { color: var(--accent); }
+    .mobile-nav-panel .nav-link.active { color: var(--accent-ink); }
     .mobile-nav-panel .btn { margin-top: 12px; }
     @media (max-width: 768px) {
       .header-theme-label { display: none; }
@@ -158,7 +160,7 @@
       display: inline-flex; align-items: center; gap: 6px;
       padding: 7px 16px; border-radius: 980px; border: none;
       background: var(--accent-soft);
-      color: var(--accent); text-decoration: none; font-size: 13px; font-weight: 500;
+      color: var(--accent-ink); text-decoration: none; font-size: 13px; font-weight: 500;
       transition: background 0.12s ease;
       margin-top: 12px;
     }
@@ -284,7 +286,7 @@
       transition: color 0.2s;
     }
     .wall-nav a:hover {
-      color: var(--accent);
+      color: var(--accent-ink);
     }
     .loading {
       display: flex;
@@ -300,7 +302,7 @@
     }
     .error h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 8px; }
     .error p { color: var(--muted); }
-    .error a { color: var(--accent); text-decoration: none; }
+    .error a { color: var(--accent-ink); text-decoration: none; }
     .error a:hover { text-decoration: underline; }
   </style>
 </head>

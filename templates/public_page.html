@@ -35,6 +35,7 @@
       --accent: #d9a400;
       --accent-light: #eab800;
       --accent-deep: #b89400;
+      --accent-ink: #7a5c00;
       --accent-soft: rgba(217, 164, 0, 0.08);
       --accent-wash: rgba(217, 164, 0, 0.12);
       --danger: #d70015;
@@ -51,6 +52,7 @@
       --accent: #d9a400;
       --accent-light: #eab800;
       --accent-deep: #b89400;
+      --accent-ink: #eab800;
       --accent-soft: rgba(217, 164, 0, 0.14);
       --accent-wash: rgba(217, 164, 0, 0.22);
       --danger: #ff453a;
@@ -86,7 +88,7 @@
       transition: color 0.2s;
     }
     .page-nav a:hover {
-      color: var(--accent);
+      color: var(--accent-ink);
     }
     .hero {
       position: relative;
@@ -141,14 +143,14 @@
       display: inline-flex; align-items: center; gap: 6px;
       padding: 4px 11px; border-radius: 980px; border: none;
       background: var(--accent-soft);
-      color: var(--accent); font-size: 12px; font-weight: 600; letter-spacing: 0.02em;
+      color: var(--accent-ink); font-size: 12px; font-weight: 600; letter-spacing: 0.02em;
       text-transform: none; margin-bottom: 10px;
     }
     .hero-author-name {
       font-size: 24px; font-weight: 700; letter-spacing: -0.022em; line-height: 1.15; margin: 0 0 4px;
     }
     .hero-author-name a { color: inherit; text-decoration: none; }
-    .hero-author-name a:hover { color: var(--accent); }
+    .hero-author-name a:hover { color: var(--accent-ink); }
     .hero-bio {
       color: var(--muted); font-size: 0.95rem; max-width: 440px; line-height: 1.5; margin: 0;
     }
@@ -156,7 +158,7 @@
       display: inline-flex; align-items: center; gap: 6px;
       padding: 7px 16px; border-radius: 980px; border: none;
       background: var(--accent-soft);
-      color: var(--accent); text-decoration: none; font-size: 13px; font-weight: 500;
+      color: var(--accent-ink); text-decoration: none; font-size: 13px; font-weight: 500;
       transition: background 0.12s ease;
       margin-top: 12px;
     }
@@ -196,7 +198,7 @@
       font-size: 0.9rem;
     }
     .page-author-info a {
-      color: var(--accent);
+      color: var(--accent-ink);
       text-decoration: none;
       font-weight: 600;
     }
@@ -259,7 +261,7 @@
       transform: none;
     }
     .copy-success {
-      color: var(--accent);
+      color: var(--accent-ink);
       font-size: 0.9rem;
       font-weight: 500;
     }
@@ -288,7 +290,7 @@
       margin-top: 24px;
     }
     .error-nav a {
-      color: var(--accent);
+      color: var(--accent-ink);
       text-decoration: none;
     }
     .error-nav a:hover {
@@ -502,7 +504,7 @@
             </header>
 
             <div style="padding: 32px 32px 0;">
-              <p style="color: var(--muted); font-size: 0.85rem; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; margin-bottom: 6px;">From the blog of <a href="/wall/${username}" style="color: var(--accent); text-decoration: none;">${escapeHtml(username)}</a></p>
+              <p style="color: var(--muted); font-size: 0.85rem; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; margin-bottom: 6px;">From the blog of <a href="/wall/${username}" style="color: var(--accent-ink); text-decoration: none;">${escapeHtml(username)}</a></p>
               <h1 class="page-title" style="font-size: 2.4rem; letter-spacing: -0.035em; line-height: 1.1; margin-bottom: 8px;">${escapeHtml(page.title || 'Untitled')}</h1>
               <div class="page-author-info" style="margin-bottom: 24px; color: var(--muted); font-size: 0.85rem;">
                 Updated ${date ? date : 'recently'} · ${page.subpages ? page.subpages.length : 0} subpage${page.subpages && page.subpages.length === 1 ? '' : 's'}
