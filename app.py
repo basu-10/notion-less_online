@@ -56,6 +56,10 @@ def create_app():
     def search():
         return render_template('search.html')
 
+    @app.route('/feed')
+    def feed():
+        return render_template('feed.html')
+
     @app.route('/wall/<username>')
     def wall(username):
         if not User.exists(username):

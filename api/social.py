@@ -51,6 +51,203 @@ def _copy_uploads_for_content(content, src_username, dst_username):
     except Exception:
         return content
 
+def _feed_block_text(blocks, out, limit=600):
+    """Collect plain text from BlockNote blocks (recursive)."""
+    if out is None:
+        out = []
+    try:
+        current_len = sum(len(s) for s in out)
+    except Exception:
+        current_len = 0
+    if current_len >= limit or not isinstance(blocks, list):
+        return out
+    for b in blocks:
+        if not isinstance(b, dict):
+            continue
+        content = b.get('content')
+        if isinstance(content, str):
+            if content.strip():
+                out.append(content.strip())
+        elif isinstance(content, list):
+            for item in content:
+                if isinstance(item, str):
+                    if item.strip():
+                        out.append(item.strip())
+                elif isinstance(item, dict):
+                    t = item.get('text')
+                    if isinstance(t, str) and t.strip():
+                        out.append(t.strip())
+        children = b.get('children')
+        if isinstance(children, list) and children:
+            _feed_block_text(children, out, limit)
+        try:
+            if sum(len(s) for s in out) >= limit:
+                break
+        except Exception:
+            break
+    return out
+
+
+def _feed_first_image(blocks):
+    """Find the first image URL in BlockNote blocks (recursive)."""
+    if not isinstance(blocks, list):
+        return None
+    for b in blocks:
+        if not isinstance(b, dict):
+            continue
+        try:
+            props = b.get('props') or {}
+            if b.get('type') == 'image' and isinstance(props, dict):
+                for key in ('url', 'src'):
+                    url = props.get(key)
+                    if isinstance(url, str) and url:
+                        return url
+        except Exception:
+            pass
+        children = b.get('children')
+        if isinstance(children, list) and children:
+            found = _feed_first_image(children)
+            if found:
+                return found
+    return None
+
+
+def _feed_excerpt_and_image(content, max_len=180):
+    """Parse stored page content into a short excerpt + first image URL.
+
+    Content is a JSON string of BlockNote blocks. Never raises: malformed
+    content yields an empty excerpt.
+    """
+    if not content or not isinstance(content, str):
+        return '', None
+    try:
+        blocks = json.loads(content)
+    except Exception:
+        text = content.strip()
+        return (text[:max_len] if len(text) > max_len else text), None
+    if isinstance(blocks, dict):
+        blocks = [blocks]
+    if not isinstance(blocks, list):
+        return '', None
+    parts = _feed_block_text(blocks, [], limit=max_len + 60)
+    text = ' '.join(parts).strip()
+    text = re.sub(r'\s+', ' ', text)
+    if len(text) > max_len:
+        text = text[:max_len].rstrip() + '…'
+    try:
+        image = _feed_first_image(blocks)
+    except Exception:
+        image = None
+    return text, image
+
+
+@social_bp.route('/feed', methods=['GET'])
+def public_feed():
+    """Global public feed: newest public posts first, sorted by publish date.
+
+    Simple algorithm: every top-level public page (subpages stay nested
+    under their parent, same rule as walls) sorted by
+    published_at DESC, falling back to updated_at / created_at for
+    pages published before the column existed.
+    Paginated with ?limit=&offset= (limit clamped to 1..50).
+    """
+    try:
+        limit = int(request.args.get('limit', 20))
+    except Exception:
+        limit = 20
+    try:
+        offset = int(request.args.get('offset', 0))
+    except Exception:
+        offset = 0
+    limit = max(1, min(limit, 50))
+    offset = max(0, offset)
+
+    all_posts = []
+    try:
+        usernames = User.get_all_users()
+    except Exception:
+        usernames = []
+    for username in usernames:
+        try:
+            conn = get_user_db(username)
+        except Exception:
+            continue
+        try:
+            try:
+                rows = conn.execute(
+                    'SELECT id, title, content, parent_id, is_public, created_at, updated_at, published_at FROM pages WHERE is_public = 1'
+                ).fetchall()
+            except Exception:
+                # Extremely old DB where migration somehow didn't apply.
+                rows = conn.execute(
+                    'SELECT id, title, content, parent_id, is_public, created_at, updated_at FROM pages WHERE is_public = 1'
+                ).fetchall()
+            pages = [dict(r) for r in rows]
+        except Exception:
+            try:
+                conn.close()
+            except Exception:
+                pass
+            continue
+        try:
+            conn.close()
+        except Exception:
+            pass
+        if not pages:
+            continue
+        # Top-level only: a publish cascades to subpages, so listing every
+        # subpage would flood the feed with one author's tree.
+        public_ids = {p['id'] for p in pages}
+        children_map = {}
+        for p in pages:
+            children_map.setdefault(p.get('parent_id'), []).append(p)
+
+        def _count_descendants(node_id):
+            total = 0
+            for child in children_map.get(node_id, []):
+                total += 1 + _count_descendants(child['id'])
+            return total
+
+        try:
+            profile = User.get_profile(username)
+        except Exception:
+            profile = {'username': username, 'display_name': username, 'bio': '', 'avatar_url': ''}
+        for p in pages:
+            pid = p.get('parent_id')
+            if pid != 'root' and pid and pid in public_ids:
+                continue
+            excerpt, image = _feed_excerpt_and_image(p.get('content'))
+            published_at = p.get('published_at')
+            try:
+                sort_key = float(published_at) if published_at else float(p.get('updated_at') or p.get('created_at') or 0)
+            except Exception:
+                sort_key = 0
+            all_posts.append({
+                'id': p.get('id'),
+                'title': p.get('title') or 'Untitled',
+                'excerpt': excerpt,
+                'image': image,
+                'author': username,
+                'author_display_name': (profile.get('display_name') or username),
+                'author_avatar_url': (profile.get('avatar_url') or ''),
+                'published_at': published_at,
+                'updated_at': p.get('updated_at'),
+                'created_at': p.get('created_at'),
+                '_sort': sort_key,
+                'subpage_count': _count_descendants(p.get('id')),
+            })
+    all_posts.sort(key=lambda p: (p.pop('_sort', 0), p.get('title') or ''), reverse=True)
+    total = len(all_posts)
+    page = all_posts[offset:offset + limit]
+    return jsonify({
+        'posts': page,
+        'total': total,
+        'limit': limit,
+        'offset': offset,
+        'has_more': offset + limit < total,
+    })
+
+
 @social_bp.route('/users/search', methods=['GET'])
 def search_users():
     query = request.args.get('q', '').strip()
@@ -66,9 +263,14 @@ def get_user_wall(username):
         return jsonify({'error': 'User not found'}), 404
     profile = User.get_profile(username)
     conn = get_user_db(username)
-    rows = conn.execute(
-        'SELECT id, title, parent_id, is_public, created_at, updated_at FROM pages WHERE is_public = 1'
-    ).fetchall()
+    try:
+        rows = conn.execute(
+            'SELECT id, title, parent_id, is_public, created_at, updated_at, published_at FROM pages WHERE is_public = 1'
+        ).fetchall()
+    except Exception:
+        rows = conn.execute(
+            'SELECT id, title, parent_id, is_public, created_at, updated_at FROM pages WHERE is_public = 1'
+        ).fetchall()
     conn.close()
     pages = []
     for row in rows:
@@ -226,7 +428,11 @@ def toggle_public(page_id):
         affected = []
         conn.execute('BEGIN IMMEDIATE')
         try:
-            conn.execute('UPDATE pages SET is_public = ?, rev = ?, updated_at = ? WHERE id = ?', (1 if new_public else 0, cur_rev + 1, now, page_id))
+            if new_public:
+                conn.execute('UPDATE pages SET is_public = 1, rev = ?, updated_at = ?, published_at = ? WHERE id = ?', (cur_rev + 1, now, now, page_id))
+            else:
+                # Unpublishing keeps published_at as history; feed filters is_public=1.
+                conn.execute('UPDATE pages SET is_public = 0, rev = ?, updated_at = ? WHERE id = ?', (cur_rev + 1, now, page_id))
             affected.append({'id': page_id, 'rev': cur_rev + 1, 'updated_at': now})
             if new_public:
                 def cascade_public(parent_id):
@@ -236,7 +442,7 @@ def toggle_public(page_id):
                             r = int(child['rev']) if 'rev' in child.keys() and child['rev'] is not None else 1
                         except Exception:
                             r = 1
-                        conn.execute('UPDATE pages SET is_public = 1, rev = ?, updated_at = ? WHERE id = ?', (r + 1, now, child['id']))
+                        conn.execute('UPDATE pages SET is_public = 1, rev = ?, updated_at = ?, published_at = ? WHERE id = ?', (r + 1, now, now, child['id']))
                         affected.append({'id': child['id'], 'rev': r + 1, 'updated_at': now})
                         cascade_public(child['id'])
                 cascade_public(page_id)

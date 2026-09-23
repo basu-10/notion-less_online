@@ -46,7 +46,7 @@ def _configure_conn(conn):
     return conn
 
 def _ensure_pages_columns(conn):
-    # Base table (includes rev for new DBs). Existing DBs migrate via ALTER below.
+    # Base table (includes rev + published_at for new DBs). Existing DBs migrate via ALTER below.
     conn.execute('''
         CREATE TABLE IF NOT EXISTS pages (
             id TEXT PRIMARY KEY,
@@ -57,13 +57,15 @@ def _ensure_pages_columns(conn):
             is_public INTEGER DEFAULT 0,
             rev INTEGER DEFAULT 1,
             created_at REAL,
-            updated_at REAL
+            updated_at REAL,
+            published_at REAL DEFAULT NULL
         )
     ''')
     for col, ddl in [
         ('is_public', 'ALTER TABLE pages ADD COLUMN is_public INTEGER DEFAULT 0'),
         ('html_snapshot', 'ALTER TABLE pages ADD COLUMN html_snapshot TEXT DEFAULT NULL'),
         ('rev', 'ALTER TABLE pages ADD COLUMN rev INTEGER DEFAULT 1'),
+        ('published_at', 'ALTER TABLE pages ADD COLUMN published_at REAL DEFAULT NULL'),
     ]:
         try:
             conn.execute(f'SELECT {col} FROM pages LIMIT 1')
@@ -78,9 +80,13 @@ def _ensure_pages_columns(conn):
         pass
     # Backfill other NULL-prone columns on old DBs. Additive only: never
     # rewrites existing non-NULL values, so current user data is untouched.
+    # published_at = when the page was made public. Existing public pages
+    # predate the column, so fall back to updated_at (set at publish time by
+    # toggle-public) then created_at. Private pages keep NULL.
     for stmt in [
         'UPDATE pages SET is_public = 0 WHERE is_public IS NULL',
         "UPDATE pages SET parent_id = 'root' WHERE parent_id IS NULL OR parent_id = ''",
+        'UPDATE pages SET published_at = COALESCE(updated_at, created_at) WHERE is_public = 1 AND published_at IS NULL',
     ]:
         try:
             conn.execute(stmt)
@@ -135,7 +141,8 @@ def init_user_db(conn):
             is_public INTEGER DEFAULT 0,
             rev INTEGER DEFAULT 1,
             created_at REAL,
-            updated_at REAL
+            updated_at REAL,
+            published_at REAL DEFAULT NULL
         )
     ''')
     _ensure_pages_columns(conn)
