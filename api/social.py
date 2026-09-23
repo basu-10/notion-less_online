@@ -133,8 +133,11 @@ def get_public_page(username, page_id):
         'SELECT id, title, parent_id, content, is_public, created_at, updated_at FROM pages WHERE id != ? AND is_public = 1',
         (page_id,)
     ).fetchall()
-    conn.close()
     if not row:
+        try:
+            conn.close()
+        except Exception:
+            pass
         return jsonify({'error': 'Page not found or not public'}), 404
     page = dict(row)
     page['is_public'] = bool(page['is_public'])
@@ -158,6 +161,51 @@ def get_public_page(username, page_id):
         sub_dict = dict(sub)
         sub_dict['is_public'] = bool(sub_dict['is_public'])
         page['subpages'].append(sub_dict)
+    # Breadcrumb chain: walk parent_id up while parents are public.
+    # Stops at private/missing parent so visitors can't probe hidden titles.
+    breadcrumbs = []
+    seen_ids = {page['id']}
+    parent_id = page.get('parent_id')
+    parent_info = None
+    try:
+        while parent_id and parent_id != 'root' and parent_id not in seen_ids and len(breadcrumbs) < 20:
+            seen_ids.add(parent_id)
+            prow = conn.execute(
+                'SELECT id, title, parent_id, is_public FROM pages WHERE id = ?',
+                (parent_id,)
+            ).fetchone()
+            if not prow:
+                break
+            pdict = dict(prow)
+            if not pdict.get('is_public'):
+                break
+            breadcrumbs.insert(0, {'id': pdict['id'], 'title': pdict.get('title') or 'Untitled'})
+            if parent_info is None:
+                parent_info = {'id': pdict['id'], 'title': pdict.get('title') or 'Untitled'}
+            parent_id = pdict.get('parent_id')
+    except Exception:
+        pass
+    page['breadcrumbs'] = breadcrumbs
+    page['parent'] = parent_info
+    # Siblings: other public pages sharing the same parent (for in-section nav).
+    siblings = []
+    try:
+        current_parent = page.get('parent_id') or 'root'
+        sib_rows = conn.execute(
+            'SELECT id, title, updated_at FROM pages WHERE parent_id = ? AND id != ? AND is_public = 1 ORDER BY created_at, title',
+            (current_parent, page['id'])
+        ).fetchall()
+        for s in sib_rows:
+            sd = dict(s)
+            siblings.append({'id': sd['id'], 'title': sd.get('title') or 'Untitled',
+                             'updated_at': sd.get('updated_at')})
+    except Exception:
+        siblings = []
+    page['siblings'] = siblings
+    try:
+        conn.close()
+    except Exception:
+        pass
     return jsonify(page)
 
 @social_bp.route('/pages/<page_id>/toggle-public', methods=['POST'])

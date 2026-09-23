@@ -72,24 +72,6 @@
       margin: 0 auto;
       padding: 60px 24px 48px;
     }
-    .page-nav {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      margin-bottom: 32px;
-    }
-    .page-nav a {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      color: var(--muted);
-      text-decoration: none;
-      font-size: 0.9rem;
-      transition: color 0.2s;
-    }
-    .page-nav a:hover {
-      color: var(--accent-ink);
-    }
     .hero {
       position: relative;
       margin-bottom: 40px;
@@ -297,7 +279,7 @@
       text-decoration: underline;
     }
     .page-subpages {
-      margin-top: 28px;
+      margin: 28px 32px 0;
       padding-top: 20px;
       border-top: 1px solid var(--border);
     }
@@ -308,6 +290,28 @@
       color: var(--muted);
       margin-bottom: 14px;
       font-weight: 600;
+    }
+    .crumbs {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+      font-size: 13px; color: var(--muted); margin-bottom: 14px;
+    }
+    .crumbs a {
+      color: var(--accent-ink); text-decoration: none; font-weight: 500;
+      max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .crumbs a:hover { text-decoration: underline; }
+    .crumbs .sep { opacity: 0.5; }
+    .crumbs .current {
+      color: var(--text-secondary); font-weight: 600;
+      max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .page-siblings {
+      margin: 0 32px 8px; padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+    .page-siblings h3 {
+      font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--muted); margin-bottom: 14px; font-weight: 600;
     }
     /* Themed dialog (matches workspace) */
     .nl-dialog-overlay {
@@ -361,6 +365,36 @@
     .article-card h4 { font-size: 0.95rem; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 8px; line-height: 1.2; }
     .article-card .meta { font-size: 0.75rem; color: var(--muted); }
     .nested-indent { padding-left: 18px; }
+    .author-footer {
+      display: flex; align-items: flex-start; gap: 16px;
+      margin: 8px 32px 28px; padding: 20px;
+      background: var(--hover);
+      border: 1px solid var(--border-subtle); border-radius: 12px;
+    }
+    .author-footer-avatar, .author-footer-avatar-fallback {
+      width: 56px; height: 56px; border-radius: 50%; flex-shrink: 0;
+      object-fit: cover;
+    }
+    .author-footer-avatar-fallback {
+      background: linear-gradient(180deg, #6e6e73 0%, #48484a 100%);
+      display: grid; place-items: center;
+      font-size: 22px; font-weight: 600; color: #fff; line-height: 1;
+    }
+    .author-footer-info { flex: 1; min-width: 0; }
+    .author-footer-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--muted); margin-bottom: 4px;
+    }
+    .author-footer-name { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; margin: 0; }
+    .author-footer-name a { color: inherit; text-decoration: none; }
+    .author-footer-name a:hover { color: var(--accent-ink); }
+    .author-footer-username { font-size: 13px; color: var(--muted); margin: 0 0 6px; }
+    .author-footer-bio { font-size: 14px; color: var(--text-secondary); line-height: 1.55; margin: 0 0 10px; }
+    .author-footer-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 13px; font-weight: 600; color: var(--accent-ink); text-decoration: none;
+    }
+    .author-footer-link:hover { text-decoration: underline; }
     .login-prompt {
       text-align: center;
       padding: 24px 32px;
@@ -390,7 +424,6 @@
     }
     @media (max-width: 768px) {
       .page-container { padding: 40px 16px 48px; max-width: 100%; }
-      .page-nav { margin-bottom: 20px; }
       .hero { border-radius: 14px; margin-bottom: 24px; }
       .hero-cover { height: 104px; }
       .hero-body { padding: 0 18px 20px; margin-top: -40px; gap: 14px; }
@@ -404,21 +437,18 @@
       .page-content .bn-editor { padding: 0; }
       .page-actions { padding: 16px 18px; flex-wrap: wrap; }
       .article-cards { padding: 0 18px 22px; grid-template-columns: 1fr; }
+      .page-subpages { margin: 20px 18px 0; }
+      .page-siblings { margin: 0 18px 8px; }
+      .crumbs a { max-width: 120px; }
+      .crumbs .current { max-width: 140px; }
+      .author-footer { margin: 8px 18px 22px; padding: 16px; gap: 12px; }
+      .author-footer-avatar, .author-footer-avatar-fallback { width: 48px; height: 48px; font-size: 19px; }
       .login-prompt { padding: 20px 18px; }
     }
   </style>
 </head>
 <body>
   <div class="page-container">
-    <nav class="page-nav">
-      <a href="/">
-        <span>←</span> Home
-      </a>
-      <a href="#" id="wallLink">
-        <span>←</span> <span id="wallUser"></span>'s wall
-      </a>
-    </nav>
-
     <div id="pageContent">
       <div class="loading">Loading...</div>
     </div>
@@ -430,8 +460,6 @@
     const username = {{ username | tojson }};
     const pageId = {{ page_id | tojson }};
 
-    document.getElementById('wallLink').href = `/wall/${username}`;
-    document.getElementById('wallUser').textContent = username;
     document.title = 'Loading... — NotionLess';
 
     async function loadPage() {
@@ -443,8 +471,9 @@
         document.title = `${page.title || 'Untitled'} — NotionLess`;
         const profileData = page.author_profile || {};
         const avatarUrl = profileData.avatar_url || '';
-        const displayName = page.author ? page.author.charAt(0).toUpperCase() + page.author.slice(1) : username;
-        const avatar = displayName.charAt(0).toUpperCase();
+        const displayName = profileData.display_name || page.author || username;
+        const avatar = (displayName || username).charAt(0).toUpperCase();
+        const authorBio = profileData.bio || '';
         const date = page.updated_at ? new Date(page.updated_at * 1000).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : '';
 
         let content = '<div id="publicEditor"></div>';
@@ -487,33 +516,70 @@
           </div>
         ` : '';
 
+        const crumbs = Array.isArray(page.breadcrumbs) ? page.breadcrumbs : [];
+        const crumbsHtml = `
+          <nav class="crumbs" aria-label="Breadcrumb">
+            <a href="/wall/${username}">Wall</a>
+            ${crumbs.map(c => `
+              <span class="sep">›</span>
+              <a href="/p/${username}/${c.id}">${escapeHtml(c.title || 'Untitled')}</a>
+            `).join('')}
+            <span class="sep">›</span>
+            <span class="current">${escapeHtml(page.title || 'Untitled')}</span>
+          </nav>
+        `;
+
+        const siblings = Array.isArray(page.siblings) ? page.siblings : [];
+        const parentTitle = (page.parent && page.parent.title) ? page.parent.title : null;
+        const siblingsHtml = (siblings.length > 0) ? `
+          <div class="page-siblings">
+            <h3>${parentTitle ? `Other subpages in ${escapeHtml(parentTitle)}` : 'Sibling pages'}</h3>
+            <ul class="subpage-list">
+              ${siblings.map(sib => `
+                <li class="subpage-item">
+                  <a href="/p/${username}/${sib.id}">
+                    <span class="subpage-icon">📄</span>
+                    <span>${escapeHtml(sib.title || 'Untitled')}</span>
+                  </a>
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+        ` : '';
+
+        const authorFooterHtml = `
+          <div class="author-footer">
+            ${avatarUrl
+              ? `<img src="${escapeHtml(avatarUrl)}" class="author-footer-avatar" alt="${escapeHtml(displayName)}" onerror="this.style.display='none';this.nextElementSibling.style.display='grid';"><div class="author-footer-avatar-fallback" style="display:none;">${avatar}</div>`
+              : `<div class="author-footer-avatar-fallback">${avatar}</div>`}
+            <div class="author-footer-info">
+              <p class="author-footer-label">Written by</p>
+              <p class="author-footer-name"><a href="/wall/${username}">${escapeHtml(displayName)}</a></p>
+              <p class="author-footer-username">@${escapeHtml(username)}</p>
+              ${authorBio ? `<p class="author-footer-bio">${escapeHtml(authorBio)}</p>` : ''}
+              <a href="/wall/${username}" class="author-footer-link">View profile →</a>
+            </div>
+          </div>
+        `;
+
         document.getElementById('pageContent').innerHTML = `
           <article class="page-card">
-            <header class="hero">
-              <div class="hero-cover"></div>
-              <div class="hero-body">
-                <img src="${escapeHtml(avatarUrl)}" class="hero-avatar" alt="${escapeHtml(displayName)}" onerror="this.style.display='none';this.nextElementSibling.style.display='grid';">
-                <div class="hero-avatar" style="display:none;">${avatar}</div>
-                <div class="hero-author-block">
-                  <div class="hero-badge">Public</div>
-                  <h2 class="hero-author-name"><a href="/wall/${username}">${escapeHtml(displayName)}</a></h2>
-                  <p class="hero-bio">${escapeHtml(page.author_profile ? (page.author_profile.bio || '') : '')}</p>
-                  <a href="/wall/${username}" class="hero-cta">View profile →</a>
-                </div>
-              </div>
-            </header>
-
             <div style="padding: 32px 32px 0;">
-              <p style="color: var(--muted); font-size: 0.85rem; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; margin-bottom: 6px;">From the blog of <a href="/wall/${username}" style="color: var(--accent-ink); text-decoration: none;">${escapeHtml(username)}</a></p>
+              ${crumbsHtml}
               <h1 class="page-title" style="font-size: 2.4rem; letter-spacing: -0.035em; line-height: 1.1; margin-bottom: 8px;">${escapeHtml(page.title || 'Untitled')}</h1>
               <div class="page-author-info" style="margin-bottom: 24px; color: var(--muted); font-size: 0.85rem;">
                 Updated ${date ? date : 'recently'} · ${page.subpages ? page.subpages.length : 0} subpage${page.subpages && page.subpages.length === 1 ? '' : 's'}
               </div>
             </div>
 
+            <div class="page-content" style="padding-top: 8px;">${content}</div>
+            ${subpagesHtml}
+            ${siblingsHtml}
+            ${authorFooterHtml}
+
             ${(page.other_articles && page.other_articles.length > 0) ? `
               <div class="article-cards" style="padding: 0 32px 24px;">
-                <h3 style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 700; margin-bottom: 14px;">Other articles from this blog</h3>
+                <h3 style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 700; margin-bottom: 14px;">Other pages from this user</h3>
                 ${page.other_articles.map(art => `
                   <a href="/p/${username}/${art.id}" class="article-card">
                     <h4>${escapeHtml(art.title || 'Untitled')}</h4>
@@ -523,8 +589,6 @@
               </div>
             ` : ''}
 
-            <div class="page-content" style="padding-top: 8px;">${content}</div>
-            ${subpagesHtml}
             <div class="page-actions">
               <button class="copy-btn" id="copyBtn">
                 Copy to my profile
