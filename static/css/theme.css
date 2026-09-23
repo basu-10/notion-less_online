@@ -13,10 +13,11 @@
   --muted: #86868b;
   --hover: rgba(0, 0, 0, 0.04);
   --active: rgba(0, 0, 0, 0.08);
-  --accent: #0071e3;
-  --accent-deep: #0068d1;
-  --accent-soft: rgba(0, 113, 227, 0.08);
-  --accent-wash: rgba(0, 113, 227, 0.12);
+  --accent: #d9a400;
+  --accent-light: #eab800;
+  --accent-deep: #b89400;
+  --accent-soft: rgba(217, 164, 0, 0.08);
+  --accent-wash: rgba(217, 164, 0, 0.12);
   --danger: #d70015;
   --success: #1d8127;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
@@ -51,10 +52,11 @@
   --muted: #86868b;
   --hover: rgba(0, 0, 0, 0.04);
   --active: rgba(0, 0, 0, 0.08);
-  --accent: #0071e3;
-  --accent-deep: #0068d1;
-  --accent-soft: rgba(0, 113, 227, 0.08);
-  --accent-wash: rgba(0, 113, 227, 0.12);
+  --accent: #d9a400;
+  --accent-light: #eab800;
+  --accent-deep: #b89400;
+  --accent-soft: rgba(217, 164, 0, 0.08);
+  --accent-wash: rgba(217, 164, 0, 0.12);
   --danger: #d70015;
   --success: #1d8127;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
@@ -83,10 +85,11 @@
     --muted: #86868b;
     --hover: rgba(255, 255, 255, 0.06);
     --active: rgba(255, 255, 255, 0.1);
-    --accent: #0a84ff;
-    --accent-deep: #409cff;
-    --accent-soft: rgba(10, 132, 255, 0.14);
-    --accent-wash: rgba(10, 132, 255, 0.2);
+    --accent: #d9a400;
+    --accent-light: #eab800;
+    --accent-deep: #b89400;
+    --accent-soft: rgba(217, 164, 0, 0.14);
+    --accent-wash: rgba(217, 164, 0, 0.22);
     --danger: #ff453a;
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
     --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
@@ -111,10 +114,11 @@
   --muted: #86868b;
   --hover: rgba(255, 255, 255, 0.06);
   --active: rgba(255, 255, 255, 0.1);
-  --accent: #0a84ff;
-  --accent-deep: #409cff;
-  --accent-soft: rgba(10, 132, 255, 0.14);
-  --accent-wash: rgba(10, 132, 255, 0.2);
+  --accent: #d9a400;
+  --accent-light: #eab800;
+  --accent-deep: #b89400;
+  --accent-soft: rgba(217, 164, 0, 0.14);
+  --accent-wash: rgba(217, 164, 0, 0.22);
   --danger: #ff453a;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
@@ -153,7 +157,7 @@ body {
 button, input, textarea { font: inherit; }
 button { border: 0; background: none; }
 
-::selection { background: var(--accent); color: #fff; }
+::selection { background: var(--accent); color: #1a1a18; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }

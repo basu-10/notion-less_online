@@ -87,13 +87,13 @@ body {
 .auth-card button[type="submit"] {
   width: 100%; padding: 14px; margin-top: 4px;
   background: linear-gradient(135deg, var(--accent), var(--accent-deep));
-  color: #fff; border: none; border-radius: 10px;
+  color: #1a1a18; border: none; border-radius: 10px;
   font-size: 0.95rem; font-weight: 700; cursor: pointer;
   letter-spacing: 0.02em; transition: all .2s ease;
-  box-shadow: 0 4px 16px rgba(216,91,69,0.25);
+  box-shadow: 0 4px 16px rgba(217,164,0,0.28);
 }
 .auth-card button[type="submit"]:hover {
-  box-shadow: 0 6px 22px rgba(216,91,69,0.35);
+  box-shadow: 0 6px 22px rgba(217,164,0,0.35);
   transform: translateY(-1px);
 }
 .auth-card button[type="submit"]:active { transform: translateY(0); }
@@ -142,7 +142,7 @@ body {
   transition: background .1s ease;
 }
 .theme-toggle-menu button:hover { background: var(--hover); }
-.theme-toggle-menu button.active { background: linear-gradient(135deg, var(--accent), var(--accent-deep)); color: #fff; }
+.theme-toggle-menu button.active { background: linear-gradient(135deg, var(--accent), var(--accent-deep)); color: #1a1a18; }
 
 @keyframes menuFadeIn { from { opacity: 0; transform: scale(0.97) translateY(-4px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 

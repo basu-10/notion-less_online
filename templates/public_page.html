@@ -3,8 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#d9a400">
   <title>Loading... — NotionLess</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="preconnect" href="https://esm.sh">
@@ -33,10 +32,11 @@
       --text-secondary: #515154;
       --muted: #86868b;
       --hover: rgba(0, 0, 0, 0.04);
-      --accent: #0071e3;
-      --accent-deep: #0068d1;
-      --accent-soft: rgba(0, 113, 227, 0.08);
-      --accent-wash: rgba(0, 113, 227, 0.14);
+      --accent: #d9a400;
+      --accent-light: #eab800;
+      --accent-deep: #b89400;
+      --accent-soft: rgba(217, 164, 0, 0.08);
+      --accent-wash: rgba(217, 164, 0, 0.12);
       --danger: #d70015;
     }
     [data-theme="dark"] {
@@ -48,10 +48,11 @@
       --text-secondary: #a1a1a6;
       --muted: #86868b;
       --hover: rgba(255, 255, 255, 0.06);
-      --accent: #0a84ff;
-      --accent-deep: #409cff;
-      --accent-soft: rgba(10, 132, 255, 0.14);
-      --accent-wash: rgba(10, 132, 255, 0.22);
+      --accent: #d9a400;
+      --accent-light: #eab800;
+      --accent-deep: #b89400;
+      --accent-soft: rgba(217, 164, 0, 0.14);
+      --accent-wash: rgba(217, 164, 0, 0.22);
       --danger: #ff453a;
     }
     body {
@@ -240,7 +241,7 @@
       gap: 8px;
       padding: 9px 20px;
       background: var(--accent);
-      color: #fff;
+      color: #1a1a18;
       border: none;
       border-radius: 980px;
       font-size: 14px;
@@ -250,7 +251,7 @@
       font-family: inherit;
     }
     .copy-btn:hover {
-      background: var(--accent-deep);
+      background: var(--accent-light);
     }
     .copy-btn:disabled {
       opacity: 0.6;
@@ -327,7 +328,8 @@
       min-height: 38px; padding: 8px 18px; border-radius: 980px;
       font-size: 14px; font-weight: 600; cursor: pointer; border: none;
     }
-    .nl-dialog-btn.primary { background: var(--accent); color: #fff; }
+    .nl-dialog-btn.primary { background: var(--accent); color: #1a1a18; }
+    .nl-dialog-btn.primary:hover { background: var(--accent-light); }
     @media (max-width: 768px) {
       .nl-dialog { padding: 20px 18px; border-radius: 14px; }
       .nl-dialog-actions { flex-direction: column-reverse; align-items: stretch; }
@@ -374,7 +376,7 @@
       gap: 6px;
       padding: 8px 18px;
       background: var(--accent);
-      color: #fff;
+      color: #1a1a18;
       text-decoration: none;
       border-radius: 980px;
       font-size: 14px;
@@ -382,7 +384,7 @@
       transition: background 0.12s ease;
     }
     .login-prompt a:hover {
-      background: var(--accent-deep);
+      background: var(--accent-light);
     }
     @media (max-width: 768px) {
       .page-container { padding: 40px 16px 48px; max-width: 100%; }
