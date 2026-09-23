@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches web accent #d85b45 -->
+    <color name="accent">#D85B45</color>
+    <color name="surface">#F4F2ED</color>
+    <color name="ink">#2B2620</color>
+</resources>

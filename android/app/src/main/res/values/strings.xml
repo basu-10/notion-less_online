@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NotionLess</string>
+    <string name="error_title">Couldn\'t load NotionLess</string>
+    <string name="error_load">Couldn\'t load page: %1$s</string>
+    <string name="error_load_generic">Check your connection and try again.</string>
+    <string name="retry">Retry</string>
+    <string name="downloading">Downloading…</string>
+    <string name="offline_hint">You are offline — saved pages still open from cache.</string>
+    <string name="no_file_app">No file picker app found</string>
+    <string name="no_browser">No browser app found</string>
+</resources>
