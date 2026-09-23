@@ -51,9 +51,11 @@
     </div>
   </div>
 
+  <a class="auth-back" href="/" aria-label="Back to home">← Home</a>
+
   <div class="auth-container">
     <article class="auth-card" aria-label="Login form">
-      <h1>NotionLess Cloud</h1>
+      <h1><a href="/">NotionLess Cloud</a></h1>
       <h2>Welcome back</h2>
       {% with messages = get_flashed_messages() %}
         {% if messages %}
@@ -77,6 +79,7 @@
         <button type="submit" aria-label="Sign in">Sign in</button>
       </form>
       <p>No account? <a href="/auth/register">Create one</a></p>
+      <p class="auth-home-link"><a href="/">← Back to home</a></p>
     </article>
   </div>
 
