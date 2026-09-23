@@ -8,6 +8,13 @@ from flask_login import current_user, login_required
 from services.db import get_user_db
 from config import UPLOADS_DIR
 
+# Uploaded images are served publicly (see serve_upload): filenames are
+# unguessable UUIDs, so obscurity is the access control — the same model as
+# Notion's public image URLs. This is what lets public pages and copied pages
+# render images for logged-out visitors.
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+ALLOWED_UPLOAD_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+
 # Payload keys that constitute a real content change. A PATCH/beacon carrying
 # none of these (e.g. an empty pagehide flush) must be a no-op: previously it
 # still bumped rev + updated_at, silently invalidating other devices' bases
@@ -320,18 +327,31 @@ def upload_file():
     if not file.filename:
         return jsonify({'error': 'No file selected'}), 400
     ext = os.path.splitext(file.filename)[1].lower()
-    if ext not in ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg']:
-        return jsonify({'error': 'Unsupported file type'}), 400
+    if ext not in ALLOWED_UPLOAD_EXTS:
+        return jsonify({'error': 'Unsupported file type (use JPG, PNG, GIF or WebP)'}), 400
+    # Bound phone photos: read with a cap instead of trusting Content-Length.
+    try:
+        blob = file.read(MAX_UPLOAD_BYTES + 1)
+    except Exception:
+        return jsonify({'error': 'Could not read file'}), 400
+    if len(blob) > MAX_UPLOAD_BYTES:
+        return jsonify({'error': 'File too large (max 10 MB)'}), 413
     user_dir = os.path.join(UPLOADS_DIR, current_user.username)
     os.makedirs(user_dir, exist_ok=True)
     filename = f"{uuid.uuid4()}{ext}"
     filepath = os.path.join(user_dir, filename)
-    file.save(filepath)
+    with open(filepath, 'wb') as f:
+        f.write(blob)
     return jsonify({'url': f'/api/uploads/{current_user.username}/{filename}'})
 
 @pages_bp.route('/uploads/<username>/<filename>')
-@login_required
 def serve_upload(username, filename):
-    if username != current_user.username:
-        return jsonify({'error': 'Forbidden'}), 403
+    # Public: logged-out visitors must see images on public pages, and
+    # copies keep working after the original is deleted. Filenames are
+    # UUIDv4 (unguessable); the username path segment is cosmetic routing.
+    # Traversal guard: only serve a bare filename that exists on disk.
+    if not filename or '/' in filename or '\\' in filename or '..' in filename:
+        return jsonify({'error': 'Not found'}), 404
+    if os.path.basename(filename) != filename:
+        return jsonify({'error': 'Not found'}), 404
     return send_from_directory(os.path.join(UPLOADS_DIR, username), filename)

@@ -124,6 +124,7 @@
         <nav class="breadcrumbs" id="breadcrumbs" aria-label="Breadcrumb navigation"></nav>
         <div class="top-actions" aria-label="Workspace actions">
           <button class="icon-btn mobile-slash-btn" id="mobileSlashBtn" title="Insert block (/)" aria-label="Open block menu">/</button>
+          <button class="icon-btn" id="imageBtn" title="Insert image" aria-label="Insert image"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.5-3.5a1.5 1.5 0 0 0-2 0L6 21"/></svg></button>
           <button class="icon-btn" id="docWidthBtn" title="Content width: Wide (click to change)" aria-label="Toggle content width"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><path d="M8 3v18M16 3v18" opacity="0.55"/></svg></button>
           <button class="top-action" id="publicToggleBtn" title="Toggle public" aria-label="Toggle public" style="display:none;">
             <span id="publicIcon" aria-hidden="true"></span>
@@ -249,6 +250,7 @@
 
   <script src="/static/js/api-client.js"></script>
   <script src="/static/js/notifications.js"></script>
+  <input type="file" id="imageUploadInput" accept="image/*" style="display:none;" aria-hidden="true" tabindex="-1" />
   <script type="module" src="/static/js/app-module.js"></script>
 </body>
 </html>

@@ -1,3 +1,6 @@
+import os
+import re
+import shutil
 import uuid
 import time
 import json
@@ -6,8 +9,47 @@ from flask import Blueprint, request, jsonify
 from flask_login import current_user, login_required
 from models.user import User
 from services.db import get_user_db
+from config import UPLOADS_DIR
 
 social_bp = Blueprint('social', __name__)
+
+def _copy_uploads_for_content(content, src_username, dst_username):
+    """Give copied pages their own file bytes + URLs.
+
+    Without this, a copy keeps pointing at /api/uploads/<src>/... — which
+    still renders now that uploads are public, but breaks the moment the
+    original author deletes the file. Copy-on-write keeps copies independent.
+    """
+    if not content or not isinstance(content, str):
+        return content
+    marker = f'/api/uploads/{src_username}/'
+    if marker not in content:
+        return content
+    try:
+        src_dir = os.path.join(UPLOADS_DIR, src_username)
+        dst_dir = os.path.join(UPLOADS_DIR, dst_username)
+        os.makedirs(dst_dir, exist_ok=True)
+
+        def _repl(m):
+            fname = m.group(1)
+            if '/' in fname or '\\' in fname or '..' in fname:
+                return m.group(0)
+            src_path = os.path.join(src_dir, fname)
+            if not os.path.isfile(src_path):
+                return m.group(0)
+            ext = os.path.splitext(fname)[1].lower()
+            new_name = f"{uuid.uuid4()}{ext}"
+            try:
+                shutil.copyfile(src_path, os.path.join(dst_dir, new_name))
+            except Exception:
+                return m.group(0)
+            return f'/api/uploads/{dst_username}/{new_name}'
+
+        return re.sub(
+            r'/api/uploads/' + re.escape(src_username) + r'/([A-Za-z0-9_.\-]+)',
+            _repl, content)
+    except Exception:
+        return content
 
 @social_bp.route('/users/search', methods=['GET'])
 def search_users():
@@ -247,11 +289,15 @@ def copy_page(page_id):
                     new_parent = id_map.get(src.get('parent_id'), 'root')
                     if new_parent not in id_map.values():
                         new_parent = new_root_id
+                new_content = _copy_uploads_for_content(
+                    src.get('content', ''), source_username, current_user.username)
+                new_snapshot = _copy_uploads_for_content(
+                    src.get('html_snapshot'), source_username, current_user.username)
                 dest_conn.execute(
                     '''INSERT INTO pages (id, title, content, html_snapshot, parent_id, is_public, rev, created_at, updated_at)
                        VALUES (?, ?, ?, ?, ?, 0, 1, ?, ?)''',
-                    (new_id, src.get('title', ''), src.get('content', ''),
-                     src.get('html_snapshot'), new_parent, now, now)
+                    (new_id, src.get('title', ''), new_content,
+                     new_snapshot, new_parent, now, now)
                 )
                 for author in source_authors:
                     try:

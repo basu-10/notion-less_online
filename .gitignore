@@ -3,6 +3,7 @@
 .kilo/
 .playwright-mcp/
 .idea/
+AGENTS.md
 
 # Logs
 *.log

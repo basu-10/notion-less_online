@@ -14,6 +14,7 @@ const BLOCKS = [
   { key: "todo",   icon: "☐", label: "To-do",       desc: "Task with checkbox", type: "checkListItem" },
   { key: "quote",  icon: "“", label: "Quote",       desc: "Quoted text", type: "quote" },
   { key: "code",   icon: "</>", label: "Code",      desc: "Monospace code block", type: "codeBlock" },
+  { key: "image",  icon: "🖼", label: "Image",       desc: "Upload or embed image/GIF", type: "image" },
 ];
 
 const state = {
@@ -2013,6 +2014,14 @@ async function chooseSlash(command) {
     await createPage(state.currentPageId);
     return;
   }
+  if (command.type === "image") {
+    // Images need a file or URL first — a bare type-switch would leave an
+    // empty block. Strip the "/filter" trigger, then run the shared chooser
+    // (same flow as the 📷 topbar button, desktop and mobile).
+    closeSlashMenu();
+    await openImageChooser();
+    return;
+  }
   const block = getCurrentBlock();
   if (!block) return closeSlashMenu();
   try {
@@ -2022,6 +2031,158 @@ async function chooseSlash(command) {
     console.warn("Could not apply slash command", err);
   }
   closeSlashMenu();
+}
+
+// ---------- Images: one shared flow for slash, button, block menu ----------
+// Desktop paste / drag-drop is handled natively by BlockNote via uploadFile.
+// Mobile has no file-paste, so every entry point lands here: pick a file
+// (system picker = camera roll on phones) or embed a link (GIFs included).
+const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+
+function insertImageWithUrl(url, caption="") {
+  try {
+    if (!state.editor || !url) return false;
+    const props = { url };
+    if (caption) props.caption = caption;
+    const ref = getCurrentBlock();
+    // Convert an empty paragraph in place so "/image" leaves no residue.
+    try {
+      if (ref && isEmptyBlockText(currentBlockText(ref))) {
+        state.editor.updateBlock(ref, { type: "image", props });
+        try { state.editor.focus(); } catch {}
+        return true;
+      }
+    } catch {}
+    try {
+      if (ref && typeof state.editor.insertBlocks === "function") {
+        state.editor.insertBlocks([{ type: "image", props }], ref, "after");
+        try { state.editor.focus(); } catch {}
+        return true;
+      }
+    } catch {}
+    try {
+      if (typeof state.editor.insertBlocks === "function") {
+        state.editor.insertBlocks([{ type: "image", props }]);
+        return true;
+      }
+    } catch {}
+  } catch (e) { console.warn("insert image failed", e); }
+  return false;
+}
+
+function insertEmptyImageBlock() {
+  // Fallback when no file picker is available: BlockNote's own file panel
+  // (upload tab + URL tab) takes over from the empty image block.
+  try {
+    const ref = getCurrentBlock();
+    if (ref && isEmptyBlockText(currentBlockText(ref))) {
+      try { state.editor.updateBlock(ref, { type: "image", props: {} }); return; } catch {}
+    }
+    if (ref && typeof state.editor.insertBlocks === "function") {
+      try { state.editor.insertBlocks([{ type: "image" }], ref, "after"); return; } catch {}
+    }
+    if (typeof state.editor.insertBlocks === "function") state.editor.insertBlocks([{ type: "image" }]);
+  } catch {}
+}
+
+async function uploadImageFile(file) {
+  if (!file) return;
+  if (file.type && !file.type.startsWith("image/")) {
+    alertDialog({ title: "Not an image", message: "Please choose an image file (JPG, PNG, GIF or WebP)." });
+    return;
+  }
+  if (file.size && file.size > IMAGE_MAX_BYTES) {
+    alertDialog({ title: "File too large", message: "Images must be 10 MB or smaller." });
+    return;
+  }
+  setSaveState("Uploading image...", false);
+  try {
+    const { url } = await window.api.uploadFile(file);
+    insertImageWithUrl(url);
+    setSaveState("Image added", false);
+  } catch (e) {
+    console.warn("image upload failed", e);
+    alertDialog({ title: "Upload failed", message: (e && e.message) || "Could not upload the image. Please try again." });
+    setSaveState("Upload failed", false);
+  }
+}
+
+async function openImageChooser() {
+  if (!state.editor) return;
+  const pick = await showDialog({
+    title: "Add image",
+    message: "Upload from this device (camera roll on mobile) or embed a link — GIFs play inline.",
+    actions: [
+      { label: "Cancel", kind: "ghost", value: "cancel" },
+      { label: "From link", kind: "ghost", value: "url" },
+      { label: "Upload file", kind: "primary", value: "upload" },
+    ],
+  });
+  if (pick === "upload") {
+    const inp = document.getElementById("imageUploadInput");
+    if (inp) { inp.value = ""; inp.click(); }
+    else insertEmptyImageBlock();
+  } else if (pick === "url") {
+    const url = await promptImageUrl();
+    if (!url) return;
+    if (!/^https?:\/\//i.test(url)) {
+      alertDialog({ title: "Invalid link", message: "Image links must start with http:// or https://." });
+      return;
+    }
+    insertImageWithUrl(url);
+  }
+}
+
+function promptImageUrl() {
+  // Themed URL input reusing the nl-dialog overlay (never native prompt).
+  return new Promise((resolve) => {
+    const overlay = document.getElementById("nlDialogOverlay");
+    if (!overlay) { try { resolve(window.prompt("Image URL:") || null); } catch { resolve(null); } return; }
+    if (_dialogResolve) { const r = _dialogResolve; _dialogResolve = null; try { r(false); } catch {} }
+    document.getElementById("nlDialogTitle").textContent = "Embed image link";
+    const msg = document.getElementById("nlDialogMessage");
+    msg.textContent = "";
+    const input = document.createElement("input");
+    input.type = "url";
+    input.placeholder = "https://… (.jpg, .png, .gif, .webp)";
+    input.setAttribute("aria-label", "Image URL");
+    input.autocomplete = "off";
+    input.spellcheck = false;
+    input.className = "nl-dialog-input";
+    input.style.cssText = "width:100%;min-height:44px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;";
+    msg.appendChild(input);
+    const box = document.getElementById("nlDialogActions");
+    box.innerHTML = "";
+    let done = false;
+    const finish = (val) => {
+      if (done) return;
+      done = true;
+      const v = (val === true) ? (input.value || "").trim() : null;
+      overlay.classList.remove("open");
+      overlay.setAttribute("aria-hidden", "true");
+      document.removeEventListener("keydown", _dialogEsc, true);
+      overlay.onclick = null;
+      _dialogResolve = null;
+      resolve(v || null);
+    };
+    _dialogResolve = finish;
+    [["Cancel", "ghost", false], ["Add image", "primary", true]].forEach(([label, kind, val]) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "nl-dialog-btn " + kind;
+      btn.textContent = label;
+      btn.addEventListener("click", () => finish(val));
+      box.appendChild(btn);
+    });
+    overlay.classList.add("open");
+    overlay.setAttribute("aria-hidden", "false");
+    document.addEventListener("keydown", _dialogEsc, true);
+    overlay.onclick = (e) => { if (e.target === overlay) finish(false); };
+    setTimeout(() => { try { input.focus({ preventScroll: true }); } catch { try { input.focus(); } catch {} } }, 40);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); finish(true); }
+    });
+  });
 }
 
 function isEmptyBlockText(txt) {
@@ -2237,6 +2398,18 @@ function showBlockMenu(blockId, x, y) {
     });
     menu.appendChild(item);
   });
+
+  menu.appendChild(createBlockMenuDivider());
+
+  const imageBtn = document.createElement("button");
+  imageBtn.className = "block-menu-item";
+  imageBtn.innerHTML = `<span class="block-menu-icon">🖼</span>Insert image below`;
+  imageBtn.addEventListener("click", () => {
+    menu.classList.remove("open");
+    try { focusBlockById(blockId, "end"); } catch {}
+    setTimeout(() => { try { openImageChooser(); } catch (e) { console.warn(e); } }, 30);
+  });
+  menu.appendChild(imageBtn);
 
   menu.appendChild(createBlockMenuDivider());
 
@@ -3619,6 +3792,18 @@ function toggleSidebar(force) {
 $("#mobileMenuBtn").addEventListener("click", () => toggleSidebar());
 $("#mobileBackdrop").addEventListener("click", () => toggleSidebar(false));
 $("#mobileSlashBtn")?.addEventListener("click", openSlashFromButton);
+$("#imageBtn")?.addEventListener("click", () => {
+  try {
+    if (!state.editor) return;
+    try { state.editor.focus(); } catch {}
+    openImageChooser();
+  } catch (e) { console.warn("image button failed", e); }
+});
+document.getElementById("imageUploadInput")?.addEventListener("change", (e) => {
+  const f = e.target.files && e.target.files[0];
+  if (f) uploadImageFile(f);
+  e.target.value = "";
+});
 
 // Dismiss floating bars when the doc scrolls so they never freeze mid-screen.
 document.getElementById("workspace")?.addEventListener("scroll", () => {
