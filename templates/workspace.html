@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
   <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
   <meta name="description" content="NotionLess — a quiet, fast place to write.">
@@ -120,9 +120,10 @@
 
     <main class="main" aria-label="Main workspace">
       <header class="topbar" aria-label="Top toolbar">
+        <button class="icon-btn mobile-menu-btn" id="mobileMenuBtn" title="Menu" aria-label="Open sidebar menu" aria-expanded="false" aria-controls="sidebar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
         <nav class="breadcrumbs" id="breadcrumbs" aria-label="Breadcrumb navigation"></nav>
         <div class="top-actions" aria-label="Workspace actions">
-          <button class="icon-btn mobile-menu-btn" id="mobileMenuBtn" title="Menu" aria-label="Open sidebar menu" aria-expanded="false" aria-controls="sidebar"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+          <button class="icon-btn mobile-slash-btn" id="mobileSlashBtn" title="Insert block (/)" aria-label="Open block menu">/</button>
           <button class="icon-btn" id="docWidthBtn" title="Content width: Wide (click to change)" aria-label="Toggle content width"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><path d="M8 3v18M16 3v18" opacity="0.55"/></svg></button>
           <button class="top-action" id="publicToggleBtn" title="Toggle public" aria-label="Toggle public" style="display:none;">
             <span id="publicIcon" aria-hidden="true"></span>
@@ -138,6 +139,7 @@
       </header>
 
       <div class="workspace" id="workspace" aria-label="Document workspace">
+        <div id="ptrIndicator" class="ptr-indicator" aria-hidden="true"><span class="ptr-spinner"></span><span id="ptrLabel">Pull to refresh</span></div>
         <aside id="autoToc" class="auto-toc" aria-label="Table of contents"></aside>
         <article class="document" aria-label="Document editor">
           <div id="syncBanner" class="sync-banner" role="status" aria-live="polite" style="display:none;"></div>

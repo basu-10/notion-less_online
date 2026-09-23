@@ -1289,6 +1289,9 @@ async function mountEditor(blocks) {
     if (state.currentPageId) markDirty();
     renderAutoToc();
     try { updateDocMeta(); } catch {}
+    // IME path (mobile): no reliable "/" keydown, so sync from text.
+    try { maybeSyncSlashFromText(); } catch {}
+    try { keepCaretVisible(); } catch {}
   });
   wireEditorInteractions();
   try { updateDocMeta(); } catch {}
@@ -1374,6 +1377,8 @@ async function openPage(id) {
   updatePublicToggleUI();
   scrollTreeRowIntoView(page.id);
   $("#workspace").scrollTop = 0;
+  // On phones the sidebar is an overlay — always get it out of the way.
+  try { if (isMobileLayout()) toggleSidebar(false); } catch {}
   if (page.conflictServer) {
     setLocked(page, false);
     showConflictBar(page);
@@ -1788,8 +1793,57 @@ function filteredCommands() {
   return BLOCKS.filter(b => !f || (b.label + " " + b.desc).toLowerCase().includes(f));
 }
 
+function isMobileLayout() {
+  try { return window.matchMedia && window.matchMedia("(max-width: 768px)").matches; } catch { return false; }
+}
+
+function isCoarsePointer() {
+  try { return window.matchMedia && window.matchMedia("(hover: none), (pointer: coarse)").matches; } catch { return false; }
+}
+
+// IME-friendly slash trigger: mobile keyboards (Gboard/Samsung/iOS) often
+// deliver keydown as key=229/"Unidentified", so the "/" keydown path never
+// fires. Derive the trigger from block text instead: a "/" starting the
+// block or following whitespace, with the filter being whatever trails it.
+function slashTriggerFromText(text) {
+  const t = text || "";
+  const m = /(?:^|\s)\/([A-Za-z0-9_-]*)$/.exec(t);
+  if (m) return m[1] ?? "";
+  return null;
+}
+
+let _slashSyncQueued = false;
+function maybeSyncSlashFromText() {
+  if (!state.editor || state.isOpeningPage) return;
+  if (_slashSyncQueued) return;
+  _slashSyncQueued = true;
+  requestAnimationFrame(() => {
+    _slashSyncQueued = false;
+    try {
+      const block = getCurrentBlock();
+      if (!block) return;
+      const text = currentBlockText(block);
+      const filter = slashTriggerFromText(text);
+      const menuOpen = $("#slashMenu").classList.contains("open");
+      if (filter != null) {
+        state.slashFilter = filter;
+        state.slashIndex = 0;
+        renderSlashMenu();
+      } else if (menuOpen && !(text || "").includes("/")) {
+        closeSlashMenu({ keepText: true });
+      }
+    } catch {}
+  });
+}
+
 function positionSlashMenu() {
   const menu = $("#slashMenu");
+  // Mobile uses the bottom-sheet CSS (above the keyboard). Inline caret
+  // coordinates would strand it off-screen, so don't set them there.
+  if (isMobileLayout()) {
+    menu.style.maxHeight = "";
+    return;
+  }
   let r = null;
   const sel = window.getSelection();
   if (sel && sel.rangeCount) {
@@ -1854,6 +1908,12 @@ function renderSlashMenu() {
       e.preventDefault();
       chooseSlash(cmd);
     });
+    // Touch (mobile) doesn't always deliver mousedown before the tap ends.
+    item.addEventListener("click", (e) => {
+      try {
+        if (isMobileLayout() || isCoarsePointer()) { e.preventDefault(); chooseSlash(cmd); }
+      } catch {}
+    });
     menu.appendChild(item);
   });
   menu.classList.add("open");
@@ -1872,22 +1932,78 @@ function renderSlashMenu() {
   });
 }
 
-function closeSlashMenu() {
+function closeSlashMenu({ keepText=false }={}) {
   const menu = $("#slashMenu");
-  if (!menu.classList.contains("open")) return;
+  if (!menu.classList.contains("open")) { state.slashFilter = ""; state.slashIndex = 0; return; }
   menu.classList.remove("open");
-  try {
-    const block = getCurrentBlock();
-    if (block) {
-      const txt = currentBlockText(block);
-      if (txt) {
-        state.editor.updateBlock(block, { content: "" });
-        state.editor.setTextCursorPosition(block.id, "start");
+  // Dismissing the menu should only strip the "/filter" trigger text, never
+  // wipe the block. (The old code cleared the whole block content.)
+  if (!keepText) {
+    try {
+      const block = getCurrentBlock();
+      if (block) {
+        const txt = currentBlockText(block);
+        const m = /(?:^|\s)\/[A-Za-z0-9_-]*$/.exec(txt || "");
+        if (m) {
+          const stripped = (txt || "").slice(0, (txt || "").length - m[0].length + (m[0].startsWith(" ") || m[0].startsWith("\n") ? 1 : 0));
+          state.editor.updateBlock(block, { content: stripped });
+          try { state.editor.setTextCursorPosition(block.id, "end"); } catch {}
+        }
       }
-    }
-  } catch {}
+    } catch {}
+  }
   state.slashFilter = "";
   state.slashIndex = 0;
+}
+
+// Keep the caret inside the .workspace scroller with room for the keyboard,
+// without ever scrolling the window (which is what used to push the topbar
+// + title row out of view until a manual refresh).
+let _caretScrollQueued = false;
+function keepCaretVisible() {
+  if (_caretScrollQueued) return;
+  _caretScrollQueued = true;
+  requestAnimationFrame(() => {
+    _caretScrollQueued = false;
+    try {
+      const ws = $("#workspace");
+      if (!ws) return;
+      const sel = window.getSelection();
+      if (!sel || !sel.rangeCount) return;
+      const r = sel.getRangeAt(0).getBoundingClientRect();
+      if (!r || (r.width === 0 && r.height === 0)) return;
+      const wsRect = ws.getBoundingClientRect();
+      const kbPad = 140;
+      if (r.bottom > wsRect.bottom - kbPad) {
+        ws.scrollTop += (r.bottom - (wsRect.bottom - kbPad)) + 12;
+      } else if (r.top < wsRect.top + 8) {
+        ws.scrollTop -= (wsRect.top + 8 - r.top) + 12;
+      }
+    } catch {}
+  });
+}
+
+// Mobile "/" button: focus the editor and open the block menu at the caret.
+// Works even when the keyboard never emits a "/" key event.
+function openSlashFromButton() {
+  try {
+    if (!state.editor) return;
+    try { state.editor.focus(); } catch {}
+    const block = getCurrentBlock();
+    if (!block) { state.slashFilter = ""; state.slashIndex = 0; renderSlashMenu(); return; }
+    const text = currentBlockText(block);
+    // If the block doesn't already carry a trigger, arm one so IME text
+    // sync and choose/close stripping stay consistent.
+    if (slashTriggerFromText(text) == null && (text || "").trim() === "") {
+      try {
+        state.editor.updateBlock(block, { content: "/" });
+        try { state.editor.setTextCursorPosition(block.id, "end"); } catch {}
+      } catch {}
+    }
+    state.slashFilter = slashTriggerFromText(currentBlockText(getCurrentBlock())) ?? "";
+    state.slashIndex = 0;
+    renderSlashMenu();
+  } catch (e) { console.warn("slash button failed", e); }
 }
 
 async function chooseSlash(command) {
@@ -1914,6 +2030,9 @@ function wireEditorInteractions() {
   const root = $("#editor");
   root.addEventListener("keydown", onEditorKeydown, true);
   root.addEventListener("keyup", onEditorKeyup, true);
+  // Composition/input path: covers Gboard/Samsung/iOS where keydown is 229.
+  root.addEventListener("input", () => { try { maybeSyncSlashFromText(); } catch {} }, true);
+  root.addEventListener("compositionend", () => { try { maybeSyncSlashFromText(); } catch {} }, true);
   root.addEventListener("input", () => {
     const hint = document.querySelector(".hint");
     if (hint) hint.style.opacity = "0";
@@ -2152,14 +2271,34 @@ function showFormatToolbar() {
   // Mark B/I/U/S active state on open.
   refreshFormatToolbarActive();
 
+  // Touch layouts dock the toolbar above the keyboard (see CSS bottom
+  // sheet). Caret-anchored math goes stale under the keyboard and painted
+  // the old "thick bar at the screen bottom".
+  if (isMobileLayout() || isCoarsePointer()) {
+    toolbar.style.left = "";
+    toolbar.style.top = "";
+    toolbar.style.bottom = "";
+    toolbar.classList.add("open");
+    refreshFormatToolbarActive();
+    return;
+  }
+
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0) return;
 
   const range = sel.getRangeAt(0);
   const rect = range.getBoundingClientRect();
 
-  const left = Math.max(8, Math.min(rect.left + (rect.width / 2) - 170, window.innerWidth - 360));
-  const top = rect.top - 45 + window.scrollY;
+  // position:fixed is viewport-relative — never add window.scrollY (the old
+  // code did, pushing the bar far down inside our internal .workspace
+  // scroller). Clamp against the visual viewport so the keyboard can't
+  // strand it off-screen.
+  const vw = (window.visualViewport && window.visualViewport.width) || window.innerWidth;
+  const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+  const menuW = Math.min(360, vw - 16);
+  const left = Math.max(8, Math.min(rect.left + (rect.width / 2) - menuW / 2, vw - menuW - 8));
+  let top = rect.top - 48;
+  if (top < 8) top = Math.min(rect.bottom + 8, Math.max(8, vh - 60));
 
   toolbar.style.left = left + "px";
   toolbar.style.top = top + "px";
@@ -3193,12 +3332,14 @@ $("#pageTitle").addEventListener("keydown", (e) => {
   }
 });
 
-document.addEventListener("mousedown", (e) => {
+function _outsideTapClosesMenus(e) {
   const slash = $("#slashMenu");
-  if (slash.classList.contains("open") && !slash.contains(e.target)) closeSlashMenu();
+  if (slash.classList.contains("open") && !slash.contains(e.target) && !$("#mobileSlashBtn")?.contains(e.target)) closeSlashMenu({ keepText: true });
   const ctx = $("#contextMenu");
   if (ctx.classList.contains("open") && !ctx.contains(e.target)) closeContextMenu();
-});
+}
+document.addEventListener("mousedown", _outsideTapClosesMenus);
+document.addEventListener("touchstart", _outsideTapClosesMenus, { passive: true });
 window.addEventListener("resize", () => {
   if ($("#slashMenu").classList.contains("open")) positionSlashMenu();
 });
@@ -3336,6 +3477,89 @@ function toggleSidebar(force) {
 }
 $("#mobileMenuBtn").addEventListener("click", () => toggleSidebar());
 $("#mobileBackdrop").addEventListener("click", () => toggleSidebar(false));
+$("#mobileSlashBtn")?.addEventListener("click", openSlashFromButton);
+
+// Dismiss floating bars when the doc scrolls so they never freeze mid-screen.
+document.getElementById("workspace")?.addEventListener("scroll", () => {
+  try {
+    if ($("#formatToolbar")?.classList.contains("open") && (isMobileLayout() || isCoarsePointer())) {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed) $("#formatToolbar").classList.remove("open");
+    }
+  } catch {}
+}, { passive: true });
+
+// Keyboard show/hide (visualViewport) re-pins open menus; without this the
+// keyboard resize strands fixed popovers as bars at the wrong offset.
+try {
+  if (window.visualViewport) {
+    let _vvT = null;
+    window.visualViewport.addEventListener("resize", () => {
+      clearTimeout(_vvT);
+      _vvT = setTimeout(() => {
+        try {
+          if ($("#slashMenu")?.classList.contains("open")) positionSlashMenu();
+          try { keepCaretVisible(); } catch {}
+        } catch {}
+      }, 120);
+    });
+  }
+} catch {}
+
+// Custom pull-to-refresh on the internal .workspace scroller (body scroll is
+// locked, so the native gesture can never fire). Pull past the threshold at
+// scrollTop 0 shows the indicator; release re-verifies the open page.
+(function initPullToRefresh() {
+  const ws = document.getElementById("workspace");
+  const ind = document.getElementById("ptrIndicator");
+  const label = document.getElementById("ptrLabel");
+  if (!ws || !ind) return;
+  let startY = null, pulling = false, ready = false, refreshing = false;
+  const THRESHOLD = 72;
+  ws.addEventListener("touchstart", (e) => {
+    if (refreshing) return;
+    if (ws.scrollTop <= 0 && e.touches && e.touches.length === 1) {
+      startY = e.touches[0].clientY;
+      pulling = false; ready = false;
+    } else startY = null;
+  }, { passive: true });
+  ws.addEventListener("touchmove", (e) => {
+    if (startY == null || refreshing) return;
+    const dy = (e.touches[0]?.clientY ?? 0) - startY;
+    if (dy > 12 && ws.scrollTop <= 0) {
+      pulling = true;
+      ind.classList.add("pulling");
+      ready = dy >= THRESHOLD;
+      ind.classList.toggle("ready", ready);
+      if (label) label.textContent = ready ? "Release to refresh" : "Pull to refresh";
+    } else if (dy <= 0) {
+      pulling = false;
+      ind.classList.remove("pulling", "ready");
+    }
+  }, { passive: true });
+  async function endPull() {
+    if (startY == null) return;
+    const wasReady = ready;
+    startY = null; pulling = false; ready = false;
+    if (!wasReady || refreshing) { ind.classList.remove("pulling", "ready"); return; }
+    refreshing = true;
+    ind.classList.remove("pulling", "ready");
+    ind.classList.add("refreshing");
+    if (label) label.textContent = "Refreshing…";
+    try {
+      if (state.currentPageId) await openPage(state.currentPageId);
+      else window.location.reload();
+    } catch { try { window.location.reload(); } catch {} }
+    refreshing = false;
+    ind.classList.remove("refreshing");
+    if (label) label.textContent = "Pull to refresh";
+  }
+  ws.addEventListener("touchend", endPull, { passive: true });
+  ws.addEventListener("touchcancel", () => {
+    startY = null; pulling = false; ready = false;
+    ind.classList.remove("pulling", "ready");
+  }, { passive: true });
+})();
 
 try {
   const mql = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)");
