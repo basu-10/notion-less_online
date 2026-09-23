@@ -34,8 +34,16 @@ android/
 
 ## Build
 
-Easiest: open the `android/` folder in Android Studio (Hedgehog or newer) and hit Run.
-It will fetch Gradle 8.7 + AGP 8.5.2 + deps automatically.
+Quick way (no Gradle needed — the script fetches Gradle 8.7 itself):
+
+```bash
+cd android
+./build_apk.sh           # build debug APK
+./build_apk.sh --install # build + install to attached device + launch
+./build_apk.sh --release --install  # release flavor
+```
+
+APK lands at `app/build/outputs/apk/debug/app-debug.apk` (5–6 MB).
 
 Command line (needs JDK 17 + Android SDK 34):
 

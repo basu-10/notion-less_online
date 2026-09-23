@@ -1,8 +1,46 @@
-.vscode
+# Editors / local tooling
+.vscode/
+.kilo/
+.playwright-mcp/
+.idea/
+
+# Logs
 *.log
-.kilo
-_headers
-.playwright-mcp
-*.png
-*.pyc
-AGENTS.md
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+dist/
+instance/
+
+# Env / secrets / local data (user DBs live in ../notion-less-data/, but never commit strays)
+.env
+.env.*
+*.db
+*.sqlite
+*.sqlite3
+
+# Dev screenshots at repo root only (keeps static/images/, icons/, extension/icons/ tracked)
+/*.png
+
+# Android / Gradle — build outputs + machine-local SDK path, keep sources + scripts tracked
+.gradle/
+local.properties
+build/
+app/build/
+.externalNativeBuild/
+captures/
+.kotlin/
+*.apk
+*.aab
+*.ap_
+*.iml
