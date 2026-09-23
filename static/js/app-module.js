@@ -2024,6 +2024,97 @@ async function chooseSlash(command) {
   closeSlashMenu();
 }
 
+function isEmptyBlockText(txt) {
+  return !((txt || "").trim());
+}
+
+function focusBlockById(blockId, place="end") {
+  try {
+    if (!blockId || !state.editor) return false;
+    try { state.editor.setTextCursorPosition(blockId, place); } catch {}
+    try { state.editor.focus(); } catch {}
+    return true;
+  } catch { return false; }
+}
+
+function findBlockById(blockId) {
+  try {
+    const docs = state.editor ? state.editor.document : null;
+    if (Array.isArray(docs)) {
+      const hit = docs.find(b => b && b.id === blockId);
+      if (hit) return hit;
+    }
+  } catch {}
+  return null;
+}
+
+function openInsertMenuAt(x, y) {
+  try {
+    if (!state.editor) return;
+    state.slashFilter = "";
+    state.slashIndex = 0;
+    renderSlashMenu();
+    if (isMobileLayout()) return;
+    const menu = $("#slashMenu");
+    if (!menu || typeof x !== "number" || typeof y !== "number") return;
+    const GAP = 8;
+    const MARGIN = 8;
+    const vw = window.innerWidth || document.documentElement.clientWidth || 800;
+    const vh = window.innerHeight || document.documentElement.clientHeight || 600;
+    const menuW = menu.offsetWidth || 320;
+    const menuH = menu.offsetHeight || 300;
+    let left = Math.max(MARGIN, Math.min(x, vw - menuW - MARGIN));
+    if (vw - menuW - MARGIN < MARGIN) left = MARGIN;
+    let top = y + GAP;
+    if (top + menuH > vh - MARGIN) top = Math.max(MARGIN, y - menuH - GAP);
+    menu.style.left = left + "px";
+    menu.style.top = top + "px";
+  } catch {}
+}
+
+// Right-click on an empty line opens the insert menu, on a filled block it
+// opens the block options instead. Shared by mouse contextmenu + mobile
+// long-press so both gestures behave the same.
+function openBlockGestureAt(blockId, x, y) {
+  try {
+    if (blockId) {
+      try {
+        const cur = getCurrentBlock();
+        if (!cur || cur.id !== blockId) focusBlockById(blockId, "end");
+        else try { state.editor.focus(); } catch {}
+      } catch {}
+    }
+    const target = (blockId && findBlockById(blockId)) || getCurrentBlock();
+    if (isEmptyBlockText(currentBlockText(target))) {
+      openInsertMenuAt(x, y);
+    } else if (blockId) {
+      showBlockMenu(blockId, x, y);
+    } else {
+      openInsertMenuAt(x, y);
+    }
+    return true;
+  } catch { return false; }
+}
+
+function resolveBlockIdFromEventTarget(target) {
+  try {
+    const outer = target && target.closest ? target.closest(".bn-block-outer") : null;
+    const id = outer && outer.dataset ? outer.dataset.id : null;
+    if (id) return id;
+  } catch {}
+  try { return getCurrentBlock()?.id || null; } catch { return null; }
+}
+
+let _longPressTimer = null;
+let _longPressFiredAt = 0;
+let _longPressX = 0;
+let _longPressY = 0;
+let _suppressNextEditorClick = false;
+
+function cancelLongPressTimer() {
+  if (_longPressTimer) { clearTimeout(_longPressTimer); _longPressTimer = null; }
+}
+
 function wireEditorInteractions() {
   if (editorWired) return;
   editorWired = true;
@@ -2038,6 +2129,7 @@ function wireEditorInteractions() {
     if (hint) hint.style.opacity = "0";
   }, { once: true });
   root.addEventListener("click", (e) => {
+    if (_suppressNextEditorClick) { _suppressNextEditorClick = false; e.preventDefault(); e.stopPropagation(); return; }
     closeSlashMenu();
     const blockOuter = e.target.closest(".bn-block-outer");
     if (blockOuter && e.target === blockOuter || e.target.closest(".bn-block-handle")) {
@@ -2045,6 +2137,55 @@ function wireEditorInteractions() {
       if (blockId) showBlockMenu(blockId, e.clientX, e.clientY);
     }
   });
+  // Desktop: right-click on a new (empty) line opens the insert menu.
+  root.addEventListener("contextmenu", (e) => {
+    try {
+      if (!root.contains(e.target)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      // Android fires contextmenu right after our long-press timer already
+      // opened the menu: don't open it twice.
+      if (Date.now() - _longPressFiredAt < 900) return;
+      const blockId = resolveBlockIdFromEventTarget(e.target);
+      openBlockGestureAt(blockId, e.clientX, e.clientY);
+    } catch {}
+  });
+  // Mobile: long-press (~550ms, no move) on a new line opens the insert menu.
+  root.addEventListener("touchstart", (e) => {
+    try {
+      if (!e.touches || e.touches.length !== 1) { cancelLongPressTimer(); return; }
+      if ($("#slashMenu")?.classList.contains("open")) return;
+      const t = e.touches[0];
+      _longPressX = t.clientX;
+      _longPressY = t.clientY;
+      const target = e.target;
+      cancelLongPressTimer();
+      _longPressTimer = setTimeout(() => {
+        _longPressTimer = null;
+        try {
+          const el = (document.elementFromPoint(_longPressX, _longPressY) || target);
+          if (!el || !root.contains(el)) return;
+          const blockId = resolveBlockIdFromEventTarget(el);
+          _longPressFiredAt = Date.now();
+          _suppressNextEditorClick = true;
+          setTimeout(() => { _suppressNextEditorClick = false; }, 600);
+          try { if (navigator.vibrate) navigator.vibrate(12); } catch {}
+          openBlockGestureAt(blockId, _longPressX, _longPressY);
+        } catch {}
+      }, 550);
+    } catch {}
+  }, { passive: true });
+  root.addEventListener("touchmove", (e) => {
+    try {
+      if (!_longPressTimer) return;
+      const t = e.touches && e.touches[0];
+      if (!t) { cancelLongPressTimer(); return; }
+      if (Math.hypot(t.clientX - _longPressX, t.clientY - _longPressY) > 12) cancelLongPressTimer();
+    } catch {}
+  }, { passive: true });
+  const _cancelTouch = () => { cancelLongPressTimer(); };
+  root.addEventListener("touchend", _cancelTouch, { passive: true });
+  root.addEventListener("touchcancel", _cancelTouch, { passive: true });
 
   document.addEventListener("mouseup", (e) => {
     if (e.button !== 0) return;
