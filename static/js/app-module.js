@@ -14,6 +14,7 @@ const BLOCKS = [
   { key: "todo",   icon: "☐", label: "To-do",       desc: "Task with checkbox", type: "checkListItem" },
   { key: "quote",  icon: "“", label: "Quote",       desc: "Quoted text", type: "quote" },
   { key: "code",   icon: "</>", label: "Code",      desc: "Monospace code block", type: "codeBlock" },
+  { key: "table",  icon: "▦", label: "Table",     desc: "Insert a table", type: "table" },
   { key: "image",  icon: "🖼", label: "Image",       desc: "Upload or embed image/GIF", type: "image" },
 ];
 
@@ -2038,6 +2039,34 @@ async function chooseSlash(command) {
     // (same flow as the 📷 topbar button, desktop and mobile).
     closeSlashMenu();
     await openImageChooser();
+    return;
+  }
+  if (command.type === "table") {
+    // A table is not a plain type-swap: it needs tableContent, and an empty
+    // string content would make BlockNote reject the node. Match the schema's
+    // own default (3 columns x 2 rows) so it renders its add-row/column UI.
+    const block = getCurrentBlock();
+    if (!block) return closeSlashMenu();
+    try {
+      state.editor.updateBlock(block, {
+        type: "table",
+        props: {},
+        content: {
+          type: "tableContent",
+          columnWidths: [],
+          headerRows: 0,
+          headerCols: 0,
+          rows: [
+            { cells: ["", "", ""] },
+            { cells: ["", "", ""] }
+          ]
+        }
+      });
+      try { state.editor.focus(); } catch {}
+    } catch (err) {
+      console.warn("Could not insert table", err);
+    }
+    closeSlashMenu();
     return;
   }
   const block = getCurrentBlock();
