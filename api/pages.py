@@ -147,7 +147,7 @@ def _apply_write(conn, page_id, data):
 def list_pages_meta():
     conn = get_user_db(current_user.username)
     rows = conn.execute(
-        'SELECT id, title, parent_id, is_public, rev, created_at, updated_at FROM pages'
+        'SELECT id, title, parent_id, is_public, rev, created_at, updated_at, last_opened_at FROM pages'
     ).fetchall()
     conn.close()
     result = [dict(r) for r in rows]
@@ -162,7 +162,7 @@ def list_pages_meta():
 @login_required
 def list_pages():
     conn = get_user_db(current_user.username)
-    rows = conn.execute('SELECT id, title, content, html_snapshot, parent_id, is_public, rev, created_at, updated_at FROM pages').fetchall()
+    rows = conn.execute('SELECT id, title, content, html_snapshot, parent_id, is_public, rev, created_at, updated_at, last_opened_at FROM pages').fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
 
@@ -202,11 +202,25 @@ def create_page():
 def get_page(page_id):
     conn = get_user_db(current_user.username)
     row = conn.execute('SELECT * FROM pages WHERE id = ?', (page_id,)).fetchone()
-    conn.close()
     if not row:
+        conn.close()
         return jsonify({'error': 'Not found'}), 404
+    # Cross-device recents: opening a page stamps last_opened_at. This rides
+    # the verify fetch the client already makes per open — no new requests.
+    # It never touches rev/updated_at, so modified-sort and conflict bases
+    # stay clean.
+    now = time.time()
+    try:
+        conn.execute('UPDATE pages SET last_opened_at = ? WHERE id = ?', (now, page_id))
+        conn.commit()
+    except Exception:
+        pass
+    conn.close()
     data = dict(row)
-    etag = compute_etag(data)
+    data['last_opened_at'] = now
+    # ETag excludes the open-stamp: otherwise every read would invalidate the
+    # client's cache and 304s would never fire for unchanged content.
+    etag = compute_etag({k: v for k, v in data.items() if k != 'last_opened_at'})
     if request.headers.get('If-None-Match') == etag:
         return '', 304
     response = make_response(jsonify(data))

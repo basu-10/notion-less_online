@@ -58,7 +58,8 @@ def _ensure_pages_columns(conn):
             rev INTEGER DEFAULT 1,
             created_at REAL,
             updated_at REAL,
-            published_at REAL DEFAULT NULL
+            published_at REAL DEFAULT NULL,
+            last_opened_at REAL DEFAULT NULL
         )
     ''')
     for col, ddl in [
@@ -66,6 +67,7 @@ def _ensure_pages_columns(conn):
         ('html_snapshot', 'ALTER TABLE pages ADD COLUMN html_snapshot TEXT DEFAULT NULL'),
         ('rev', 'ALTER TABLE pages ADD COLUMN rev INTEGER DEFAULT 1'),
         ('published_at', 'ALTER TABLE pages ADD COLUMN published_at REAL DEFAULT NULL'),
+        ('last_opened_at', 'ALTER TABLE pages ADD COLUMN last_opened_at REAL DEFAULT NULL'),
     ]:
         try:
             conn.execute(f'SELECT {col} FROM pages LIMIT 1')
@@ -142,7 +144,8 @@ def init_user_db(conn):
             rev INTEGER DEFAULT 1,
             created_at REAL,
             updated_at REAL,
-            published_at REAL DEFAULT NULL
+            published_at REAL DEFAULT NULL,
+            last_opened_at REAL DEFAULT NULL
         )
     ''')
     _ensure_pages_columns(conn)

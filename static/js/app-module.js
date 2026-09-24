@@ -193,7 +193,7 @@ function makePage({ id=uid(), title="Untitled", parentId=ROOT, emoji="", blocks=
     rev: 1, baseRev: null, baseUpdatedAt: null, baseTitle: title, baseHash: hashContent(blocks),
     lastSyncedHash: null, dirty: false, verified: false, locked: false,
     epoch: 0, mountEpoch: 0, retryCount: 0, conflictServer: null, isPublic: false,
-    contentLoaded: true,
+    contentLoaded: true, lastOpenedAt: null,
   };
 }
 
@@ -281,6 +281,7 @@ async function writeDraft(page) {
       baseHash: page.baseHash ?? hashContent(page.blocks),
       dirty: !!page.dirty,
       isPublic: !!page.isPublic,
+      lastOpenedAt: page.lastOpenedAt ?? null,
   };
   try { payload.blocks = structuredClone(page.blocks || []); }
   catch { try { payload.blocks = JSON.parse(JSON.stringify(page.blocks || [])); } catch { payload.blocks = []; } }
@@ -841,6 +842,26 @@ async function loadSidebarState() {
     } catch {}
   }
   state.recentIds = ids.filter(id => state.pages.has(id)).slice(0, MAX_RECENTS);
+  // Cross-device backfill: fold server-stamped opens (other devices) into
+  // the list, newest first. Unstamped ids keep their relative order at the
+  // end — they were opened before stamps existed.
+  try {
+    const rank = new Map(state.recentIds.map((id, i) => [id, i]));
+    const missing = [...state.pages.values()]
+      .filter(p => p && p.id !== ROOT && p.lastOpenedAt != null && !rank.has(p.id))
+      .map(p => p.id);
+    if (missing.length) {
+      state.recentIds = [...state.recentIds, ...missing]
+        .sort((a, b) => {
+          const ta = state.pages.get(a)?.lastOpenedAt ?? -1;
+          const tb = state.pages.get(b)?.lastOpenedAt ?? -1;
+          if (tb !== ta) return tb - ta;
+          return (rank.get(a) ?? 1e9) - (rank.get(b) ?? 1e9);
+        })
+        .slice(0, MAX_RECENTS);
+      persistRecents();
+    }
+  } catch {}
 }
 
 function persistRecents() {
@@ -855,9 +876,33 @@ function persistRecents() {
 
 function pushRecent(id, { rerender = true } = {}) {
   if (!id || id === ROOT || !state.pages.has(id)) return;
+  const page = state.pages.get(id);
+  // Optimistic local stamp: orders the just-opened page first instantly.
+  // The server's touch (same open) is shared truth and wins on next sync.
+  if (page) {
+    page.lastOpenedAt = Date.now() / 1000;
+    try { writeDraft(page); } catch {}
+  }
   state.recentIds = [id, ...state.recentIds.filter(x => x !== id)].slice(0, MAX_RECENTS);
   persistRecents();
   if (rerender && getSidebarTab() === "recents" && !(state.pageFilter || "").trim()) renderTree();
+}
+
+// Union of local recents + server-stamped opens from other devices,
+// newest first. Stable for ties, so unstamped locals keep list order.
+function recentPages() {
+  const seen = new Set();
+  const out = [];
+  for (const id of state.recentIds) {
+    const p = state.pages.get(id);
+    if (p && p.id !== ROOT && !seen.has(id)) { seen.add(id); out.push(p); }
+  }
+  for (const p of state.pages.values()) {
+    if (!p || p.id === ROOT || seen.has(p.id)) continue;
+    if (p.lastOpenedAt != null) { seen.add(p.id); out.push(p); }
+  }
+  out.sort((a, b) => (b.lastOpenedAt ?? -1) - (a.lastOpenedAt ?? -1));
+  return out.slice(0, MAX_RECENTS);
 }
 
 function evictRecents(ids) {
@@ -930,9 +975,7 @@ function renderTree() {
   }
   // Recents tab: flat newest-first list of recently opened pages.
   if (getSidebarTab() === "recents") {
-    const recents = state.recentIds
-      .map(id => state.pages.get(id))
-      .filter(p => p && p.id !== ROOT);
+    const recents = recentPages();
     const head = document.createElement("div");
     head.className = "tree-recents-head";
     const label = document.createElement("span");
@@ -1608,6 +1651,9 @@ async function openPage(id) {
     const data = await fetchWithTimeout(window.api.getPage(id), VERIFY_TIMEOUT_MS);
     // Navigated away while verifying: never touch the editor (stale-fetch guard).
     if (state.currentPageId !== id) { state.isOpeningPage = false; return; }
+    // Adopt the server's open-stamp (written by this very fetch): shared
+    // truth for cross-device recents, straight from the source.
+    if (data && data.last_opened_at != null) page.lastOpenedAt = data.last_opened_at;
     const editedDuringVerify = (page.epoch || 0) !== (page.mountEpoch || 0);
     let serverBlocks = parseBlocks(data.content);
     const serverUpdated = parseFloat(data.updated_at || 0);
@@ -2976,9 +3022,12 @@ function upsertPageMeta(row, { fromServer=false }={}) {
       dirty: fromServer ? false : !!row.dirty,
       verified: false,
       locked: false,
-      epoch: 0, mountEpoch: 0, retryCount: 0, conflictServer: null,
+      epoch: 0, mountEpoch: 0, retryCount: 0,       conflictServer: null,
       isPublic: Boolean(row.is_public ?? row.isPublic),
       _localOnly: fromServer ? false : !!row._localOnly,
+      // Cross-device recents stamp (server seconds). Local drafts carry it
+      // under the same camelCase key.
+      lastOpenedAt: row.last_opened_at ?? row.lastOpenedAt ?? null,
       // Server-meta rows carry titles only; real blocks arrive via verify
       // fetch or drafts. false = never push this page until content loads.
       contentLoaded: fromServer ? false : !!row.blocks,
@@ -2986,6 +3035,10 @@ function upsertPageMeta(row, { fromServer=false }={}) {
     return;
   }
   if (fromServer) {
+    // Cross-device recents: the server stamp is shared truth, so it wins
+    // even on dirty pages (it never conflicts with content). This runs
+    // before the dirty early-return below on purpose.
+    if (row.last_opened_at != null) existing.lastOpenedAt = row.last_opened_at;
     // Merge, never clobber: dirty pages and local-only pages keep local truth.
     if (existing.dirty || existing._localOnly) {
       existing.rev = existing.rev ?? row.rev ?? 1;
@@ -3015,6 +3068,8 @@ function upsertPageMeta(row, { fromServer=false }={}) {
   if (row.rev != null) existing.rev = row.rev;
   if (row.isPublic != null) existing.isPublic = Boolean(row.is_public ?? row.isPublic);
   if (row._localOnly) existing._localOnly = true;
+  if (row.lastOpenedAt != null) existing.lastOpenedAt = row.lastOpenedAt;
+  if (row.last_opened_at != null) existing.lastOpenedAt = row.last_opened_at;
 }
 
 async function initialize() {
@@ -3052,6 +3107,7 @@ async function initialize() {
         isPublic: Boolean(d.isPublic),
         _localOnly: (d.baseRev == null && !!d.dirty),
         contentLoaded: !!(d.blocks),
+        lastOpenedAt: d.lastOpenedAt ?? null,
       });
     }
     if (drafts && drafts.length) renderTree();
@@ -3406,6 +3462,9 @@ async function toggleCurrentPagePublic() {
               if (sp.rev != null) { existing.rev = sp.rev; existing.baseRev = sp.rev; }
               if (sp.updated_at != null) existing.baseUpdatedAt = sp.updated_at;
             }
+            // Cross-device recents stamp: shared truth, applies even to
+            // dirty pages (never conflicts with content).
+            if (sp.last_opened_at != null) existing.lastOpenedAt = sp.last_opened_at;
           } else upsertPageMeta(sp, { fromServer: true });
         }
         try { await idbOrFallback(window.notifications.saveState(scopedKey("pageListMeta"), syncPages).catch(() => {}), 2000, null); } catch {}
