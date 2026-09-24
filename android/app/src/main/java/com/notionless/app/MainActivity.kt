@@ -16,6 +16,7 @@ import android.view.View
 import android.webkit.CookieManager
 import android.webkit.DownloadListener
 import android.webkit.GeolocationPermissions
+import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -49,6 +50,71 @@ class MainActivity : AppCompatActivity() {
         /** Change this for local testing, e.g. "http://10.0.2.2:5001/". */
         const val BASE_URL = "https://notionless.pythonanywhere.com/"
         private const val STATE_WEBVIEW = "webview_state"
+
+        /**
+         * The web app never scrolls the page itself (`html, body { overflow: hidden }` —
+         * scrolling happens in inner divs like the sidebar / editor). So the WebView's
+         * own scrollY stays 0 and SwipeRefreshLayout would think we are always at the
+         * top, stealing every swipe-down as a refresh. This hook asks the page whether
+         * ALL of its scrollers are at the top and reports back via NotionLessScroll.
+         */
+        private const val SCROLL_HOOK_JS = """(function(){
+  if (window.__nlScrollReport) { window.__nlScrollReport(); return; }
+  var scheduled = false;
+  var candidates = null;
+  var lastScan = 0;
+  // Full DOM scan + getComputedStyle per scroll frame janks on large docs,
+  // so cache the scrollable elements and re-scan at most every 2s.
+  function refreshCandidates() {
+    var found = [];
+    try {
+      var els = document.querySelectorAll('*');
+      for (var i = 0; i < els.length; i++) {
+        var el = els[i];
+        if (el.scrollHeight > el.clientHeight + 8) {
+          var oy = null;
+          try { oy = window.getComputedStyle(el).overflowY; } catch (e) {}
+          if (oy === 'auto' || oy === 'scroll' || oy === 'overlay') found.push(el);
+        }
+      }
+    } catch (e) {}
+    candidates = found;
+    lastScan = Date.now();
+  }
+  function atTop() {
+    try {
+      if (window.scrollY > 4) return false;
+      var de = document.scrollingElement || document.documentElement;
+      if (de && de.scrollTop > 4) return false;
+      if (document.body && document.body.scrollTop > 4) return false;
+      if (!candidates || Date.now() - lastScan > 2000) refreshCandidates();
+      for (var i = 0; i < candidates.length; i++) {
+        if (candidates[i].scrollTop > 8) return false;
+      }
+      return true;
+    } catch (e) { return true; }
+  }
+  function send() {
+    scheduled = false;
+    try { NotionLessScroll.onInnerScrollTop(atTop()); } catch (e) {}
+  }
+  function report() {
+    // rAF-throttle: scroll events fire fast, the check only runs once per frame.
+    if (scheduled) return;
+    scheduled = true;
+    if (window.requestAnimationFrame) window.requestAnimationFrame(send);
+    else setTimeout(send, 32);
+  }
+  window.__nlScrollReport = send;
+  window.__nlScrollRescan = refreshCandidates;
+  document.addEventListener('scroll', report, {capture: true, passive: true});
+  document.addEventListener('touchstart', report, {capture: true, passive: true});
+  document.addEventListener('touchmove', report, {capture: true, passive: true});
+  window.addEventListener('scroll', report, {passive: true});
+  window.addEventListener('resize', function() { refreshCandidates(); report(); });
+  refreshCandidates();
+  send();
+})();"""
     }
 
     private lateinit var webView: WebView
@@ -58,6 +124,30 @@ class MainActivity : AppCompatActivity() {
     private lateinit var errorText: TextView
 
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
+
+    /**
+     * Last known inner-scroll state from the page hook. Volatile because it is
+     * written from the JS bridge thread and read on the UI thread during touch
+     * interception. Defaults to true (fresh page = at top = refresh allowed).
+     */
+    @Volatile
+    private var innerScrollAtTop = true
+
+    /** Called from JS: true when every scroller in the page is at the top. */
+    private inner class ScrollBridge {
+        @JavascriptInterface
+        fun onInnerScrollTop(atTop: Boolean) {
+            runOnUiThread {
+                innerScrollAtTop = atTop
+                updateRefreshEnabled()
+            }
+        }
+    }
+
+    private fun updateRefreshEnabled() {
+        if (!::swipeRefresh.isInitialized || !::webView.isInitialized) return
+        swipeRefresh.isEnabled = innerScrollAtTop && webView.scrollY <= 0
+    }
 
     private val fileChooserLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -124,6 +214,10 @@ class MainActivity : AppCompatActivity() {
             settings.userAgentString = settings.userAgentString + " NotionLessAndroid/1.0"
         }
 
+        // Bridge for the scroll-top hook (pull-to-refresh guard). Must be added
+        // before any page loads so the injected JS can reach it.
+        webView.addJavascriptInterface(ScrollBridge(), "NotionLessScroll")
+
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val url = request.url.toString()
@@ -139,12 +233,20 @@ class MainActivity : AppCompatActivity() {
                 super.onPageStarted(view, url, favicon)
                 progressBar.visibility = View.VISIBLE
                 errorView.visibility = View.GONE
+                // Fresh navigation: assume top until the hook reports otherwise.
+                innerScrollAtTop = true
+                updateRefreshEnabled()
             }
 
             override fun onPageFinished(view: WebView, url: String) {
                 super.onPageFinished(view, url)
                 progressBar.visibility = View.GONE
                 swipeRefresh.isRefreshing = false
+                innerScrollAtTop = true
+                updateRefreshEnabled()
+                // (Re-)install the scroll-top reporter — needed on every page
+                // load since each navigation gets a fresh JS context.
+                view.evaluateJavascript(SCROLL_HOOK_JS, null)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                     CookieManager.getInstance().flush()
                 }
@@ -240,6 +342,28 @@ class MainActivity : AppCompatActivity() {
 
         swipeRefresh.setOnRefreshListener { webView.reload() }
 
+        // Only allow the pull gesture when nothing on the page is scrolled:
+        // - webView.canScrollVertically(-1) covers pages that scroll natively
+        //   (login, landing, public pages where body scrolls).
+        // - innerScrollAtTop covers the workspace, where scrolling happens in
+        //   inner divs and the WebView itself never scrolls. It is kept fresh
+        //   by the JS hook; this synchronous check guards the touch-intercept
+        //   race. updateRefreshEnabled() disables the layout outright so the
+        //   gesture never even starts mid-content.
+        swipeRefresh.setOnChildScrollUpCallback { _, _ ->
+            webView.canScrollVertically(-1) || !innerScrollAtTop
+        }
+        webView.setOnScrollChangeListener { _, _, scrollY, _, _ ->
+            updateRefreshEnabled()
+            if (scrollY == 0) {
+                // Native scroll back at top — re-ask the page about its inners.
+                webView.evaluateJavascript(
+                    "try{window.__nlScrollReport&&window.__nlScrollReport()}catch(e){}",
+                    null
+                )
+            }
+        }
+
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (::webView.isInitialized && webView.canGoBack()) webView.goBack()
@@ -249,6 +373,14 @@ class MainActivity : AppCompatActivity() {
 
         if (savedInstanceState != null) {
             webView.restoreState(savedInstanceState.getBundle(STATE_WEBVIEW) ?: Bundle())
+            // Restored pages don't reliably trigger onPageFinished, so the
+            // scroll hook would never install after rotation. Re-inject once
+            // the restored page has had a moment to settle.
+            webView.postDelayed({
+                if (!isFinishing && !isDestroyed) {
+                    webView.evaluateJavascript(SCROLL_HOOK_JS, null)
+                }
+            }, 500)
         } else {
             val deepLink = intent?.dataString
             if (deepLink != null && deepLink.startsWith(BASE_URL.trimEnd('/'))) {

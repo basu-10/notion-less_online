@@ -10,7 +10,7 @@ pointed at the live site, with all the storage bits the web app needs turned on.
 - Keeps login alive via cookies (`CookieManager`, third-party cookies on, flush on pause)
 - Enables `localStorage` (`domStorageEnabled`), `IndexedDB` (`databaseEnabled` + quota bump + DB path), cache (`LOAD_DEFAULT`)
 - File uploads (`onShowFileChooser`), camera/mic permission grants, downloads via `DownloadManager`
-- Back button goes back in page history; pull-to-refresh reloads
+- Back button goes back in page history; pull-to-refresh reloads (only when scrolled to the very top, so it never steals scrolls — a JS hook reports inner-div scroll state since the workspace scrolls in divs, not the page)
 - App links for `notionless.pythonanywhere.com` open in the app; other links open in a Custom Tab
 - Rotation-safe (`saveState`/`restoreState`), offline still boots from cache so the web app can show its own "Offline — editing locally" state
 
