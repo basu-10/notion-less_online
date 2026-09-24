@@ -29,6 +29,7 @@ const state = {
   slashFilter: "",
   isOpeningPage: false,
   selected: new Set(),
+  selecting: false,
   saveInProgress: false,
   manualSaveTimer: null,
   // Robust save engine (Plan B): per-page verified gate + single-flight flusher.
@@ -753,6 +754,7 @@ function childrenOf(parentId) {
 function renderTree() {
   const root = $("#pageTree");
   root.innerHTML = "";
+  root.classList.toggle("selecting", isSelecting());
   // Filter mode: flat match list so a buried page is one click away.
   const q = (state.pageFilter || "").trim().toLowerCase();
   if (q) {
@@ -807,9 +809,11 @@ function renderTree() {
       const checkbox = document.createElement("button");
       checkbox.className = "tree-checkbox" + (state.selected.has(page.id) ? " checked" : "");
       checkbox.innerHTML = state.selected.has(page.id) ? "✓" : "";
+      checkbox.setAttribute("aria-label", "Select " + (page.title || "Untitled"));
+      checkbox.setAttribute("aria-pressed", state.selected.has(page.id) ? "true" : "false");
       checkbox.addEventListener("click", (e) => {
         e.stopPropagation();
-        toggleSelection(page.id, e.ctrlKey || e.metaKey);
+        toggleSelection(page.id);
       });
 
       const twisty = document.createElement("button");
@@ -842,8 +846,8 @@ function renderTree() {
       link.textContent = page.title || "Untitled";
       link.title = page.title || "Untitled";
       link.addEventListener("click", (e) => {
-        if (e.ctrlKey || e.metaKey) {
-          toggleSelection(page.id, true);
+        if (isSelecting() || e.ctrlKey || e.metaKey) {
+          toggleSelection(page.id);
         } else {
           openPage(page.id);
         }
@@ -933,17 +937,17 @@ function renderTree() {
     openSidebarMenu(e.clientX, e.clientY);
   });
 
-  root.addEventListener("click", (e) => {
-    if (!e.target.closest(".tree-row")) {
-      state.selected.clear();
-      renderTree();
-      renderSelectionBar();
-    }
-  });
 }
 
 function initRootDropZone() {
   const root = $("#pageTree");
+  // Bound once here, not in renderTree(): re-adding it on every render would
+  // stack duplicate click handlers on the persistent #pageTree element.
+  root.addEventListener("click", (e) => {
+    if (!e.target.closest(".tree-row") && isSelecting()) {
+      setSelecting(false);
+    }
+  });
   root.addEventListener("dragover", (e) => {
     e.preventDefault();
     if (e.dataTransfer?.types?.includes("text/plain")) {
@@ -1015,15 +1019,23 @@ function isDescendant(childId, parentId) {
   return false;
 }
 
-function toggleSelection(pageId, additive) {
-  if (additive) {
-    if (state.selected.has(pageId)) {
-      state.selected.delete(pageId);
-    } else {
-      state.selected.add(pageId);
-    }
+function isSelecting() {
+  return state.selecting || state.selected.size > 0;
+}
+
+function setSelecting(on) {
+  state.selecting = !!on;
+  if (!state.selecting) state.selected.clear();
+  const btn = $("#selectModeBtn");
+  if (btn) btn.setAttribute("aria-pressed", state.selecting ? "true" : "false");
+  renderTree();
+  renderSelectionBar();
+}
+
+function toggleSelection(pageId) {
+  if (state.selected.has(pageId)) {
+    state.selected.delete(pageId);
   } else {
-    state.selected.clear();
     state.selected.add(pageId);
   }
   renderTree();
@@ -1040,22 +1052,27 @@ function renderSelectionBar() {
     sidebar.insertBefore(bar, sidebar.querySelector(".sidebar-footer"));
   }
   const count = state.selected.size;
-  if (count === 0) {
+  if (!isSelecting()) {
     bar.innerHTML = "";
     bar.style.display = "none";
     return;
   }
   bar.style.display = "flex";
-  bar.innerHTML = `<span>${count} selected</span>
-    <button class="sel-btn" data-action="delete">Delete</button>
-    <button class="sel-btn" data-action="move">Move to...</button>
-    <button class="sel-btn" data-action="clear">Clear</button>`;
+  if (count === 0) {
+    bar.innerHTML = `<span>Select pages</span>
+      <button class="sel-btn" data-action="done">Done</button>`;
+  } else {
+    bar.innerHTML = `<span>${count} selected</span>
+      <button class="sel-btn" data-action="delete">Delete</button>
+      <button class="sel-btn" data-action="move">Move to...</button>
+      <button class="sel-btn" data-action="clear">Clear</button>`;
+  }
   bar.querySelectorAll(".sel-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       const action = btn.dataset.action;
       if (action === "delete") deleteSelected();
       else if (action === "move") moveSelectedPrompt();
-      else if (action === "clear") { state.selected.clear(); renderTree(); renderSelectionBar(); }
+      else setSelecting(false);
     });
   });
 }
@@ -1076,6 +1093,9 @@ async function deleteSelected() {
     try { await window.api.deletePage(id); } catch {}
   }
   state.selected.clear();
+  state.selecting = false;
+  const btn = $("#selectModeBtn");
+  if (btn) btn.setAttribute("aria-pressed", "false");
   if (!childrenOf(ROOT).length) {
     const welcome = makePage({ id: "welcome", title: "Welcome", parentId: ROOT, emoji: "👋" });
     welcome._localOnly = true; welcome.dirty = true;
@@ -1136,9 +1156,7 @@ function moveSelectedPrompt() {
   function pick(id, label) {
     closeContextMenu();
     ids.forEach(pid => movePage(pid, id));
-    state.selected.clear();
-    renderTree();
-    renderSelectionBar();
+    setSelecting(false);
     setSaveState(label ? `Moved to ${label}` : "Moved", false);
   }
 
@@ -3296,6 +3314,7 @@ function updatePublicToggleUI() {
 }
 
 $("#newPageBtn").addEventListener("click", () => createPage(ROOT));
+$("#selectModeBtn").addEventListener("click", () => setSelecting(!state.selecting));
 $("#saveBtn").addEventListener("click", saveCurrent);
 $("#undoBtn").addEventListener("click", () => state.editor?.undo());
 $("#redoBtn").addEventListener("click", () => state.editor?.redo());
@@ -3524,11 +3543,9 @@ document.addEventListener("keydown", (e) => {
       $("#formatToolbar").classList.remove("open");
       return;
     }
-    if (state.selected.size) {
+    if (isSelecting()) {
       e.preventDefault();
-      state.selected.clear();
-      renderTree();
-      renderSelectionBar();
+      setSelecting(false);
       return;
     }
   }

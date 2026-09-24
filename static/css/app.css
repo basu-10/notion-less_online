@@ -115,6 +115,7 @@ html[data-theme="dark"] .brand-mark,
 .section-action:hover { background: var(--active); color: var(--text); }
 .section-action:active { transform: scale(0.94); }
 #newPageBtn:hover { background: var(--accent-soft); color: var(--accent-ink, #7a5c00); }
+#selectModeBtn[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink, #7a5c00); }
 #sortOrderBtn { font-size: 11px; letter-spacing: 0.03em; }
 #newPageBtn { font-size: 18px; font-weight: 400; }
 #collapseAll { font-size: 15px; font-weight: 400; }
@@ -211,10 +212,14 @@ html[data-theme="dark"] .brand-mark,
   width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(120,120,128,0.5);
   display: grid; place-items: center; cursor: pointer; flex: 0 0 16px;
   font-size: 9px; color: #fff; background: transparent; opacity: 0;
+  pointer-events: none;
   transition: opacity .12s ease, background .12s ease;
 }
-.tree-row:hover > .tree-checkbox { opacity: 1; }
-.tree-checkbox.checked { background: var(--accent); border-color: var(--accent); color: #1a1a18; opacity: 1; }
+.tree-row:hover > .tree-checkbox { opacity: 1; pointer-events: auto; }
+.tree-checkbox.checked { background: var(--accent); border-color: var(--accent); color: #1a1a18; opacity: 1; pointer-events: auto; }
+/* Selection mode (explicit button, tap-to-toggle rows): reveal every circle.
+   Default stays hover-only, so touch devices no longer show them permanently. */
+#pageTree.selecting .tree-checkbox { opacity: 1; pointer-events: auto; }
 
 /* Sidebar footer */
 .sidebar-footer {
@@ -1365,7 +1370,7 @@ html[data-theme="dark"] .sync-banner.is-offline,
   .page-more, .page-add { opacity: 1; min-width: 32px; min-height: 32px; }
   .tree-row { min-height: 38px; }
   .twisty { width: 28px; height: 28px; flex-basis: 28px; }
-  .tree-checkbox { opacity: 1; width: 20px; height: 20px; flex-basis: 20px; }
+  .tree-checkbox { width: 20px; height: 20px; flex-basis: 20px; }
   /* BlockNote's left drag handle / side menu is hover-only on desktop.
      Keep it reachable on touch so blocks stay manageable. */
   .bn-side-menu, .bn-block-handle, [class*="bn-side-menu"],
