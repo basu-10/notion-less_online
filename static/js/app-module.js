@@ -40,7 +40,10 @@ const state = {
   flushQueued: false,
   sortOrder: (() => { try { return localStorage.getItem("notion-sort-order") || "modified"; } catch { return "modified"; } })(),
   pageFilter: "",
+  sidebarTab: (() => { try { return localStorage.getItem("notion-sidebar-tab") || "library"; } catch { return "library"; } })(),
+  recentIds: [],
 };
+const MAX_RECENTS = 30;
 
 // Tunables chosen for PythonAnywhere free tier: few, small requests.
 const SAVE_DEBOUNCE_MS = 8000;
@@ -752,6 +755,136 @@ function childrenOf(parentId) {
     });
 }
 
+// ---------- Sidebar tabs: Recents / Library + recent-pages tracking ----------
+function recentStorageKey() {
+  try { return scopedKey("recentPageIds"); } catch { return "recentPageIds"; }
+}
+
+function recentLocalKey() {
+  const u = currentUsername();
+  return u ? "notion-recents:" + u : "notion-recents";
+}
+
+function sidebarTabLocalKey() {
+  const u = currentUsername();
+  return u ? "notion-sidebar-tab:" + u : "notion-sidebar-tab";
+}
+
+function getSidebarTab() {
+  return state.sidebarTab === "recents" ? "recents" : "library";
+}
+
+function applySidebarTabUI() {
+  const tab = getSidebarTab();
+  const sb = document.querySelector(".sidebar");
+  if (sb) sb.dataset.tab = tab;
+  const rec = $("#tabRecents");
+  const lib = $("#tabLibrary");
+  if (rec) {
+    rec.classList.toggle("active", tab === "recents");
+    rec.setAttribute("aria-selected", tab === "recents" ? "true" : "false");
+  }
+  if (lib) {
+    lib.classList.toggle("active", tab === "library");
+    lib.setAttribute("aria-selected", tab === "library" ? "true" : "false");
+  }
+}
+
+function setSidebarTab(tab) {
+  state.sidebarTab = tab === "recents" ? "recents" : "library";
+  try { localStorage.setItem("notion-sidebar-tab", state.sidebarTab); } catch {}
+  try { localStorage.setItem(sidebarTabLocalKey(), state.sidebarTab); } catch {}
+  try {
+    idbOrFallback(
+      window.notifications.saveState(scopedKey("sidebarTab"), state.sidebarTab).catch(() => {}),
+      2000, null
+    ).catch(() => {});
+  } catch {}
+  applySidebarTabUI();
+  renderTree();
+}
+
+async function loadSidebarState() {
+  // Tab preference: per-user IndexedDB wins, localStorage is the instant mirror.
+  try {
+    const savedTab = await idbOrFallback(
+      window.notifications.getState(scopedKey("sidebarTab")).catch(() => null),
+      2000, null
+    );
+    const lsTab = (() => {
+      try {
+        return localStorage.getItem(sidebarTabLocalKey())
+          || localStorage.getItem("notion-sidebar-tab");
+      } catch { return null; }
+    })();
+    const tab = savedTab === "recents" || savedTab === "library" ? savedTab
+      : (lsTab === "recents" || lsTab === "library" ? lsTab : "library");
+    state.sidebarTab = tab;
+  } catch { state.sidebarTab = state.sidebarTab || "library"; }
+  applySidebarTabUI();
+  // Recents: newest-first id list, pruned to pages that still exist.
+  let ids = [];
+  try {
+    const saved = await idbOrFallback(
+      window.notifications.getState(recentStorageKey()).catch(() => null),
+      2000, null
+    );
+    if (Array.isArray(saved)) ids = saved.filter(x => typeof x === "string");
+  } catch {}
+  if (!ids.length) {
+    try {
+      const raw = localStorage.getItem(recentLocalKey());
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) ids = parsed.filter(x => typeof x === "string");
+      }
+    } catch {}
+  }
+  state.recentIds = ids.filter(id => state.pages.has(id)).slice(0, MAX_RECENTS);
+}
+
+function persistRecents() {
+  try { localStorage.setItem(recentLocalKey(), JSON.stringify(state.recentIds)); } catch {}
+  try {
+    idbOrFallback(
+      window.notifications.saveState(recentStorageKey(), state.recentIds.slice()).catch(() => {}),
+      2000, null
+    ).catch(() => {});
+  } catch {}
+}
+
+function pushRecent(id, { rerender = true } = {}) {
+  if (!id || id === ROOT || !state.pages.has(id)) return;
+  state.recentIds = [id, ...state.recentIds.filter(x => x !== id)].slice(0, MAX_RECENTS);
+  persistRecents();
+  if (rerender && getSidebarTab() === "recents" && !(state.pageFilter || "").trim()) renderTree();
+}
+
+function evictRecents(ids) {
+  if (!ids || !ids.length) return;
+  const gone = new Set(ids);
+  const next = state.recentIds.filter(id => !gone.has(id));
+  if (next.length !== state.recentIds.length) {
+    state.recentIds = next;
+    persistRecents();
+  }
+}
+
+function clearRecents() {
+  state.recentIds = [];
+  persistRecents();
+  if (getSidebarTab() === "recents") renderTree();
+}
+
+function initSidebarTabs() {
+  applySidebarTabUI();
+  if (document.body.dataset.tabsBound) return;
+  document.body.dataset.tabsBound = "1";
+  $("#tabRecents")?.addEventListener("click", () => setSidebarTab("recents"));
+  $("#tabLibrary")?.addEventListener("click", () => setSidebarTab("library"));
+}
+initSidebarTabs();
+
 function renderTree() {
   const root = $("#pageTree");
   root.innerHTML = "";
@@ -791,6 +924,59 @@ function renderTree() {
       parent.style.cssText = "font-size:11px;color:var(--muted);flex-shrink:0;max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
       parent.textContent = parentTitle;
       row.append(emoji, link, parent);
+      root.appendChild(row);
+    }
+    return;
+  }
+  // Recents tab: flat newest-first list of recently opened pages.
+  if (getSidebarTab() === "recents") {
+    const recents = state.recentIds
+      .map(id => state.pages.get(id))
+      .filter(p => p && p.id !== ROOT);
+    const head = document.createElement("div");
+    head.className = "tree-recents-head";
+    const label = document.createElement("span");
+    label.textContent = recents.length ? recents.length + " recent" + (recents.length === 1 ? "" : "s") : "";
+    head.appendChild(label);
+    if (recents.length) {
+      const clear = document.createElement("button");
+      clear.className = "tree-recents-clear";
+      clear.textContent = "Clear";
+      clear.title = "Clear recent pages";
+      clear.setAttribute("aria-label", "Clear recent pages");
+      clear.addEventListener("click", clearRecents);
+      head.appendChild(clear);
+    }
+    root.appendChild(head);
+    if (!recents.length) {
+      const empty = document.createElement("div");
+      empty.className = "tree-recents-empty";
+      empty.textContent = "Pages you open will show up here";
+      root.appendChild(empty);
+      return;
+    }
+    for (const page of recents) {
+      const row = document.createElement("div");
+      row.className = "tree-row" + (page.id === state.currentPageId ? " active" : "");
+      row.dataset.id = page.id;
+      const emoji = document.createElement("span");
+      emoji.className = "page-emoji";
+      emoji.textContent = page.emoji || "";
+      const link = document.createElement("div");
+      link.className = "page-link";
+      link.textContent = page.title || "Untitled";
+      link.title = page.title || "Untitled";
+      link.addEventListener("click", () => openPage(page.id));
+      const parentTitle = page.parentId && page.parentId !== ROOT ? (state.pages.get(page.parentId)?.title || "") : "";
+      const parent = document.createElement("span");
+      parent.style.cssText = "font-size:11px;color:var(--muted);flex-shrink:0;max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
+      parent.textContent = parentTitle;
+      row.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        openContextMenu(e.clientX, e.clientY, page.id);
+      });
+      if (page.emoji) row.append(emoji, link, parent);
+      else row.append(link, parent);
       root.appendChild(row);
     }
     return;
@@ -1382,6 +1568,7 @@ async function openPage(id) {
   if (!page) { state.isOpeningPage = false; return; }
   state.currentPageId = id;
   try { await idbOrFallback(window.notifications.saveState(scopedKey("lastPageId"), id).catch(() => {}), 2000, null); } catch {}
+  pushRecent(id, { rerender: false });
   page.mountEpoch = (page.epoch || 0);
   // Mount cached copy instantly, locked until verified (stale-cache guard).
   const hadContent = page.blocks != null;
@@ -1616,6 +1803,7 @@ async function deletePage(id) {
     try { window.notifications.deleteDraft(did).catch(() => {}); } catch {}
     try { await window.api.deletePage(did); } catch {}
   }
+  evictRecents([id, ...descendants]);
   const remaining = childrenOf(ROOT);
   if (!remaining.length) {
     const welcome = makePage({ id: "welcome", title: "Welcome", parentId: ROOT, emoji: "👋" });
@@ -3155,6 +3343,8 @@ async function initialize() {
   state.expanded.add(ROOT);
   applyTheme(getTheme());
   initRootDropZone();
+  initSidebarTabs();
+  await loadSidebarState();
   let lastPageId = null;
   try { lastPageId = await idbOrFallback(window.notifications.getState(scopedKey("lastPageId")).catch(() => null), 2000, null); } catch {}
   const lastPage = lastPageId && state.pages.has(lastPageId) ? state.pages.get(lastPageId) : null;
