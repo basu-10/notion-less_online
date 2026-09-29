@@ -312,6 +312,8 @@ async function persistNotification(text) {
 async function setSaveState(text, persist=true) {
   const el = $("#saveState");
   if (el) el.textContent = text;
+  // Tab title tracks save transitions too (clears the unsaved dot on save).
+  try { updateTabTitle(); } catch {}
   // Drive the status dot: ok (saved/ready) · busy (syncing) · bad (conflict/offline).
   try {
     const trig = $("#notificationTrigger");
@@ -506,6 +508,7 @@ function markDirty() {
   writeDraft(page);
   renderTree();
   try { updateDocMeta(); } catch {}
+  try { updateTabTitle(); } catch {}
   scheduleFlush(SAVE_DEBOUNCE_MS);
 }
 
@@ -2177,6 +2180,7 @@ async function openPage(id, opts) {
   page.contentLoaded = page.contentLoaded || hadContent;
   if (!page.blocks) page.blocks = [{type:"paragraph"}];
   $("#pageTitle").value = page.title || "Untitled";
+  updateTabTitle();
   await mountEditor(page.blocks);
   setTimeout(() => renderAutoToc(), 80);
   state.expanded.add(page.id);
@@ -2261,6 +2265,7 @@ async function openPage(id, opts) {
         await writeDraft(page);
         if (state.currentPageId === id) {
           $("#pageTitle").value = page.title || "Untitled";
+          updateTabTitle();
           await mountEditor(page.blocks);
           setTimeout(() => renderAutoToc(), 80);
           revealPage(page.id);
@@ -2445,6 +2450,23 @@ function getRequestedPageIdFromUrl() {
     if (/^[A-Za-z0-9_-]+$/.test(h)) return h;
   } catch {}
   return null;
+}
+
+function updateTabTitle() {
+  // Browser tab shows the open page's name so multi-tab users can tell tabs
+  // apart. A leading dot marks unsaved changes on the current page.
+  try {
+    const page = state.pages.get(state.currentPageId);
+    if (!page) {
+      if (document.title !== "NotionLess") document.title = "NotionLess";
+      return;
+    }
+    const input = $("#pageTitle");
+    const raw = (input ? input.value : "") || page.title || "Untitled";
+    const name = (raw.trim() || "Untitled").slice(0, 120);
+    const next = (page.dirty ? "• " : "") + name + " — NotionLess";
+    if (document.title !== next) document.title = next;
+  } catch {}
 }
 
 function syncPageUrl(id, mode) {
@@ -5004,6 +5026,7 @@ $("#pageTitle").addEventListener("blur", () => {
   page.dirty = true;
   refreshGlobalDirty();
   writeDraft(page);
+  try { updateTabTitle(); } catch {}
   scheduleFlush(1500);
 });
 $("#pageTitle").addEventListener("keydown", (e) => {

@@ -1205,7 +1205,7 @@ html[data-theme="dark"] .bn-editor [data-content-type=codeBlock],
   right: 16px;
   top: 50%;
   transform: translateY(-50%);
-  z-index: 20;
+  z-index: 45;
   display: flex;
   flex-direction: column;
   align-items: center;
