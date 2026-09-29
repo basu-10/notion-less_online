@@ -1018,6 +1018,12 @@ function renderTree() {
         e.preventDefault();
         openContextMenu(e.clientX, e.clientY, page.id);
       });
+      row.addEventListener("auxclick", (e) => {
+        if (e.button === 1) {
+          e.preventDefault();
+          window.open(pageUrl(page.id), "_blank", "noopener");
+        }
+      });
       if (page.emoji) row.append(emoji, link, parent);
       else row.append(link, parent);
       root.appendChild(row);
@@ -1086,6 +1092,13 @@ function renderTree() {
       row.addEventListener("contextmenu", (e) => {
         e.preventDefault();
         openContextMenu(e.clientX, e.clientY, page.id);
+      });
+
+      row.addEventListener("auxclick", (e) => {
+        if (e.button === 1) {
+          e.preventDefault();
+          window.open(pageUrl(page.id), "_blank", "noopener");
+        }
       });
 
       row.addEventListener("dragstart", (e) => {
@@ -1887,6 +1900,7 @@ async function openPage(id) {
   const page = state.pages.get(id);
   if (!page) { state.isOpeningPage = false; return; }
   state.currentPageId = id;
+  syncPageUrl(id);
   try { await idbOrFallback(window.notifications.saveState(scopedKey("lastPageId"), id).catch(() => {}), 2000, null); } catch {}
   pushRecent(id, { rerender: false });
   page.mountEpoch = (page.epoch || 0);
@@ -2146,6 +2160,34 @@ async function deletePage(id) {
   renderTree();
 }
 
+function pageUrl(id) {
+  return "/app?page=" + encodeURIComponent(id);
+}
+
+function getRequestedPageIdFromUrl() {
+  try {
+    const params = new URLSearchParams(window.location.search || "");
+    const q = params.get("page");
+    if (q) return q;
+    const h = (window.location.hash || "").replace(/^#/, "");
+    if (!h) return null;
+    // Accept #page=<id> and bare #<id>.
+    const hm = h.match(/(?:^|[?&])page=([^&]+)/);
+    if (hm) return decodeURIComponent(hm[1]);
+    if (/^[A-Za-z0-9_-]+$/.test(h)) return h;
+  } catch {}
+  return null;
+}
+
+function syncPageUrl(id) {
+  try {
+    const url = pageUrl(id);
+    if (window.location.pathname + window.location.search !== url) {
+      window.history.replaceState(null, "", url);
+    }
+  } catch {}
+}
+
 function openContextMenu(x, y, pageId) {
   const menu = $("#contextMenu");
   state.contextPageId = pageId;
@@ -2154,6 +2196,7 @@ function openContextMenu(x, y, pageId) {
   const page = state.pages.get(pageId);
   const pageTitle = page ? (page.title || "Untitled") : "this page";
   const actions = [
+    ["Open in new tab", () => window.open(pageUrl(pageId), "_blank", "noopener")],
     ["New sub-page", () => createPage(pageId)],
     ["Duplicate", () => duplicatePage(pageId)],
     ["Rename", () => { openPage(pageId).then(() => { const input = $("#pageTitle"); input.focus(); input.select(); }); }],
@@ -2168,13 +2211,13 @@ function openContextMenu(x, y, pageId) {
   ];
   actions.forEach(([label, fn], idx) => {
     const b = document.createElement("button");
-    b.className = "context-item" + (idx === 3 ? " context-danger" : "");
+    b.className = "context-item" + (idx === 4 ? " context-danger" : "");
     b.textContent = label;
     b.addEventListener("click", () => { closeContextMenu(); fn(); });
     menu.appendChild(b);
   });
   menu.style.left = Math.min(x, window.innerWidth - 235) + "px";
-  menu.style.top = Math.min(y, window.innerHeight - 200) + "px";
+  menu.style.top = Math.min(y, window.innerHeight - 235) + "px";
   menu.classList.add("open");
 }
 
@@ -3720,10 +3763,21 @@ async function initialize() {
   await loadSidebarState();
   let lastPageId = null;
   try { lastPageId = await idbOrFallback(window.notifications.getState(scopedKey("lastPageId")).catch(() => null), 2000, null); } catch {}
+  // Deep link (?page=<id> or #<id>) wins over the remembered last page so
+  // "Open in new tab" lands on the intended page.
+  const requestedId = getRequestedPageIdFromUrl();
+  const requestedPage = requestedId && state.pages.has(requestedId) ? state.pages.get(requestedId) : null;
   const lastPage = lastPageId && state.pages.has(lastPageId) ? state.pages.get(lastPageId) : null;
-  const first = lastPage || state.pages.get("welcome") || childrenOf(ROOT)[0];
+  const first = requestedPage || lastPage || state.pages.get("welcome") || childrenOf(ROOT)[0];
   if (first) await openPage(first.id);
   else setSaveState("Ready");
+  // Back/forward between deep-linked pages opens the target page.
+  try {
+    window.addEventListener("popstate", () => {
+      const rid = getRequestedPageIdFromUrl();
+      if (rid && rid !== state.currentPageId && state.pages.has(rid)) openPage(rid);
+    });
+  } catch {}
   initPublicToggle();
   initAutoToc();
 }
