@@ -578,6 +578,11 @@ async function flushQueue() {
       }
     }
     if (!res) res = await window.api.updatePage(page.id, payload);
+    // Adopt the server-canonical parent (backend normalizes unknown parents
+    // to root and refuses cyclic reparents) so the tree never diverges.
+    if (res && (res.parent_id !== undefined || res.parentId !== undefined)) {
+      page.parentId = res.parent_id ?? res.parentId ?? page.parentId;
+    }
     page.rev = res.rev ?? ((page.rev || 1) + 1);
     page.baseRev = page.rev;
     page.baseUpdatedAt = res.updated_at ?? (Date.now() / 1000);
@@ -1185,8 +1190,12 @@ function renderTree() {
         row.classList.remove("drop-target");
         const draggedId = e.dataTransfer.getData("text/plain");
         if (!draggedId || draggedId === page.id) return;
-        if (isDescendant(draggedId, page.id)) return;
+        // Cycle guard: refuse to drop a page onto one of its own descendants
+        // (target's ancestor chain contains the dragged page). Dropping onto
+        // an ancestor is valid, so only this direction is blocked.
         if (isDescendant(page.id, draggedId)) return;
+        const dragged = state.pages.get(draggedId);
+        if (dragged && dragged.parentId === page.id) return;
         movePage(draggedId, page.id);
       });
 
@@ -1277,6 +1286,8 @@ function initRootDropZone() {
     if (dropZone) dropZone.classList.remove("visible");
     const draggedId = e.dataTransfer.getData("text/plain");
     if (!draggedId) return;
+    const dragged = state.pages.get(draggedId);
+    if (dragged && dragged.parentId === ROOT) return;
     movePage(draggedId, ROOT);
   });
 }
@@ -1528,7 +1539,18 @@ function closeSelectionBar() {
 async function movePage(pageId, newParentId) {
   const page = state.pages.get(pageId);
   if (!page) return;
-  if (isDescendant(pageId, newParentId)) return;
+  if (!newParentId) newParentId = ROOT;
+  if (page.parentId === newParentId) return;
+  if (newParentId === pageId) return;
+  // Cycle guard: the destination must not be inside the moved page's own
+  // subtree. isDescendant(child, parent) walks child's ancestors, so the
+  // check is isDescendant(newParent, page). The old inverted check
+  // (isDescendant(page, newParent)) was true for every page when moving to
+  // ROOT, which silently blocked all move-to-root attempts.
+  if (newParentId !== ROOT) {
+    if (!state.pages.has(newParentId)) newParentId = ROOT;
+    else if (isDescendant(newParentId, pageId)) return;
+  }
   page.parentId = newParentId;
   page.updatedAt = Date.now();
   page.epoch = (page.epoch || 0) + 1;
