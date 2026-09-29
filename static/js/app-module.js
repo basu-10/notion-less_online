@@ -4243,6 +4243,18 @@ async function initialize() {
     renderTree();
   }
 
+  // Early tab title: show the deep-linked page name from local data (drafts +
+  // cache) before the server round-trip, so tab managers/extensions that
+  // snapshot titles mid-load still capture the real page name.
+  try {
+    const earlyId = getRequestedPageIdFromUrl();
+    const early = earlyId && state.pages.get(earlyId);
+    if (early && (early.title || "").trim()) {
+      const t = (early.title.trim().slice(0, 120)) + " — NotionLess";
+      if (document.title !== t) document.title = t;
+    }
+  } catch {}
+
   try {
     const rows = await window.api.listPagesMeta();
     for (const p of rows || []) upsertPageMeta(p, { fromServer: true });

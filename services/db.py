@@ -97,7 +97,6 @@ def _ensure_pages_columns(conn):
 
 def get_user_db(username):
     db_path = resolve_user_db_path(username)
-    print(f"[DEBUG get_user_db] db_path={db_path}, exists={os.path.exists(db_path)}")
     conn = sqlite3.connect(db_path, timeout=30, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     _configure_conn(conn)
@@ -124,12 +123,6 @@ def get_user_db(username):
         conn.execute('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)')
     except Exception:
         pass
-    # Check user_settings table
-    try:
-        result = conn.execute('SELECT * FROM user_settings LIMIT 1').fetchone()
-        print(f"[DEBUG get_user_db] user_settings for {username}: {dict(result) if result else 'empty'}")
-    except sqlite3.OperationalError as e:
-        print(f"[DEBUG get_user_db] user_settings table error: {e}")
     return conn
 
 def init_user_db(conn):
