@@ -3945,12 +3945,19 @@ function showFormatToolbar() {
   const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
   const menuW = Math.min(360, vw - 16);
   const left = Math.max(8, Math.min(rect.left + (rect.width / 2) - menuW / 2, vw - menuW - 8));
-  let top = rect.top - 48;
-  if (top < 8) top = Math.min(rect.bottom + 8, Math.max(8, vh - 60));
+
+  // Open off-screen first so we can measure the real (possibly wrapped)
+  // height — a fixed 48px offset overlaps the selection when the bar wraps
+  // to two rows. Keep a 14px air gap above the selection.
+  toolbar.style.left = left + "px";
+  toolbar.style.top = "-9999px";
+  toolbar.classList.add("open");
+  const barH = toolbar.offsetHeight || 40;
+  let top = rect.top - barH - 14;
+  if (top < 8) top = Math.min(rect.bottom + 14, Math.max(8, vh - barH - 8));
 
   toolbar.style.left = left + "px";
   toolbar.style.top = top + "px";
-  toolbar.classList.add("open");
 }
 
 function onEditorKeydown(e) {
