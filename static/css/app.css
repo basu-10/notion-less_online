@@ -660,6 +660,36 @@ html[data-theme="dark"] .document-header,
 }
 .block-menu-item:hover .block-menu-icon { background: rgba(26,26,24,0.12); color: #1a1a18; }
 
+/* ---------- Tables: custom handles (vanilla BlockNote ships state, no DOM) ---------- */
+.table-handle-btn {
+  position: fixed; z-index: 900;
+  width: 26px; height: 26px; padding: 0;
+  display: none; align-items: center; justify-content: center;
+  border-radius: 8px; cursor: pointer;
+  font-size: 11px; font-weight: 700; letter-spacing: 1px;
+  color: var(--text-secondary);
+  background: var(--panel-translucent);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-popover);
+  user-select: none; -webkit-user-select: none;
+  touch-action: manipulation;
+}
+.table-handle-btn.show { display: flex; }
+.table-handle-btn:hover { background: var(--accent); color: #1a1a18; border-color: transparent; }
+.table-handle-btn.is-add {
+  font-size: 15px; font-weight: 600; letter-spacing: 0;
+  color: var(--accent-ink, #7a5c00);
+}
+html[data-theme="dark"] .table-handle-btn.is-add { color: #eab800; }
+.table-handle-btn.is-add:hover { color: #1a1a18; }
+#tableColHandle { writing-mode: vertical-rl; }
+.table-menu { width: 220px; }
+@media (hover: none), (pointer: coarse) {
+  .table-handle-btn { width: 32px; height: 32px; }
+}
+
 .format-toolbar {
   position: fixed; display: none; align-items: center; gap: 1px;
   padding: 4px; border-radius: 10px;
