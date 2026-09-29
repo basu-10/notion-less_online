@@ -1015,7 +1015,7 @@ function renderTree() {
       link.className = "page-link";
       link.textContent = page.title || "Untitled";
       link.title = page.title || "Untitled";
-      link.addEventListener("click", () => openPage(page.id));
+      link.addEventListener("click", () => openPage(page.id, { history: "push" }));
       const parentTitle = page.parentId && page.parentId !== ROOT ? (state.pages.get(page.parentId)?.title || "") : "";
       const parent = document.createElement("span");
       parent.style.cssText = "font-size:11px;color:var(--muted);flex-shrink:0;max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
@@ -1061,7 +1061,7 @@ function renderTree() {
       link.className = "page-link";
       link.textContent = page.title || "Untitled";
       link.title = page.title || "Untitled";
-      link.addEventListener("click", () => openPage(page.id));
+      link.addEventListener("click", () => openPage(page.id, { history: "push" }));
       const parentTitle = page.parentId && page.parentId !== ROOT ? (state.pages.get(page.parentId)?.title || "") : "";
       const parent = document.createElement("span");
       parent.style.cssText = "font-size:11px;color:var(--muted);flex-shrink:0;max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
@@ -1137,7 +1137,7 @@ function renderTree() {
         if (isSelecting() || e.ctrlKey || e.metaKey) {
           toggleSelection(page.id);
         } else {
-          openPage(page.id);
+          openPage(page.id, { history: "push" });
         }
       });
 
@@ -1565,7 +1565,7 @@ function renderBreadcrumbs() {
       s.className = "crumb-current";
     } else {
       s.href = "#";
-      s.addEventListener("click", (e) => { e.preventDefault(); openPage(crumb.id); });
+      s.addEventListener("click", (e) => { e.preventDefault(); openPage(crumb.id, { history: "push" }); });
     }
     el.appendChild(s);
     if (i < crumbs.length - 1) {
@@ -2124,7 +2124,11 @@ function scrollTreeRowIntoView(id) {
   }
 }
 
-async function openPage(id) {
+async function openPage(id, opts) {
+  // opts.history: "push" for user-initiated jumps (sidebar, breadcrumbs,
+  // quick-switch) so back/forward moves between pages; anything else
+  // replaces the URL so each tab keeps its own address without history spam.
+  const historyMode = (opts && opts.history) || "replace";
   // Queue current page snapshot locally (fast switch, no server wait).
   // NOTE: no updatedAt bump here — the previous page already got its
   // modified-time bump when it was actually edited (markDirty). Bumping on
@@ -2142,7 +2146,7 @@ async function openPage(id) {
   const page = state.pages.get(id);
   if (!page) { state.isOpeningPage = false; return; }
   state.currentPageId = id;
-  syncPageUrl(id);
+  syncPageUrl(id, historyMode);
   try { await idbOrFallback(window.notifications.saveState(scopedKey("lastPageId"), id).catch(() => {}), 2000, null); } catch {}
   pushRecent(id, { rerender: false });
   page.mountEpoch = (page.epoch || 0);
@@ -2355,7 +2359,7 @@ async function createPage(parentId=ROOT) {
     setSaveState("Offline — new page saved locally", false);
     scheduleFlush(15000);
   }
-  await openPage(page.id);
+  await openPage(page.id, { history: "push" });
   setTimeout(() => { $("#pageTitle").focus(); }, 60);
   setTimeout(() => {
     const row = document.querySelector(".tree-row[data-id='" + page.id + "']");
@@ -2421,12 +2425,14 @@ function getRequestedPageIdFromUrl() {
   return null;
 }
 
-function syncPageUrl(id) {
+function syncPageUrl(id, mode) {
   try {
     const url = pageUrl(id);
-    if (window.location.pathname + window.location.search !== url) {
-      window.history.replaceState(null, "", url);
-    }
+    if (window.location.pathname + window.location.search === url) return;
+    // User-initiated jumps push a history entry so back/forward moves between
+    // pages; programmatic opens (boot, fallbacks, refresh) only replace.
+    if (mode === "push") window.history.pushState({ page: id }, "", url);
+    else window.history.replaceState(null, "", url);
   } catch {}
 }
 
@@ -2441,7 +2447,7 @@ function openContextMenu(x, y, pageId) {
     ["Open in new tab", () => window.open(pageUrl(pageId), "_blank", "noopener")],
     ["New sub-page", () => createPage(pageId)],
     ["Duplicate", () => duplicatePage(pageId)],
-    ["Rename", () => { openPage(pageId).then(() => { const input = $("#pageTitle"); input.focus(); input.select(); }); }],
+    ["Rename", () => { openPage(pageId, { history: "push" }).then(() => { const input = $("#pageTitle"); input.focus(); input.select(); }); }],
     ["Delete page", async () => {
       const ok = await confirmDialog({
         title: `Delete "${pageTitle.length > 40 ? pageTitle.slice(0, 40) + "…" : pageTitle}"?`,
@@ -4772,7 +4778,7 @@ function handleQuickSwitchKey(e) {
     if (selected) {
       const id = selected.dataset.id;
       closeQuickSwitch();
-      if (id) openPage(id);
+      if (id) openPage(id, { history: "push" });
     } else if (createBtn) {
       quickSwitchCreate(createBtn.dataset.create || $("#quickSwitchInput").value);
     }
@@ -4790,7 +4796,7 @@ listEl.addEventListener("click", (e) => {
   if (!btn) return;
   const id = btn.dataset.id;
   closeQuickSwitch();
-  if (id) openPage(id);
+  if (id) openPage(id, { history: "push" });
 });
 
 // Sidebar filter: instant local filtering + Enter-to-create.
@@ -4816,7 +4822,7 @@ function initPageFilter() {
     if (e.key === "Enter" && (state.pageFilter || "").trim()) {
       e.preventDefault();
       const existing = [...state.pages.values()].find(p => p.id !== ROOT && (p.title || "").toLowerCase() === state.pageFilter.trim().toLowerCase());
-      if (existing) { openPage(existing.id); return; }
+      if (existing) { openPage(existing.id, { history: "push" }); return; }
       const title = state.pageFilter.trim();
       input.value = "";
       state.pageFilter = "";
