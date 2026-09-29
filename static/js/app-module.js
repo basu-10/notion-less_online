@@ -3093,6 +3093,25 @@ function isEmptyBlockText(txt) {
   return !((txt || "").trim());
 }
 
+// True when the user has a non-collapsed text selection inside the editor.
+// Used to decide right-click / long-press behavior: selection → formatting
+// toolbar only, no selection → normal insert / block menu.
+function hasEditorTextSelection() {
+  try {
+    const root = $("#editor");
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || sel.rangeCount === 0) return false;
+    const txt = sel.toString();
+    if (!txt || !txt.trim()) return false;
+    if (!root) return true;
+    try {
+      if (sel.anchorNode && !root.contains(sel.anchorNode)) return false;
+      if (sel.focusNode && !root.contains(sel.focusNode)) return false;
+    } catch { return false; }
+    return true;
+  } catch { return false; }
+}
+
 function focusBlockById(blockId, place="end") {
   try {
     if (!blockId || !state.editor) return false;
@@ -3138,10 +3157,18 @@ function openInsertMenuAt(x, y) {
 }
 
 // Right-click on an empty line opens the insert menu, on a filled block it
-// opens the block options instead. Shared by mouse contextmenu + mobile
+// opens the block options instead. When text is selected, show the formatting
+// toolbar only (no insert / block menu). Shared by mouse contextmenu + mobile
 // long-press so both gestures behave the same.
 function openBlockGestureAt(blockId, x, y) {
   try {
+    // Selection first, before any focus move (focusing would collapse it).
+    if (hasEditorTextSelection()) {
+      try { closeSlashMenu({ keepText: true }); } catch {}
+      try { $("#blockMenu")?.classList.remove("open"); } catch {}
+      try { showFormatToolbar(); } catch {}
+      return true;
+    }
     if (blockId) {
       try {
         const cur = getCurrentBlock();
@@ -3202,7 +3229,8 @@ function wireEditorInteractions() {
       if (blockId) showBlockMenu(blockId, e.clientX, e.clientY);
     }
   });
-  // Desktop: right-click on a new (empty) line opens the insert menu.
+  // Desktop: right-click shows formatting only when text is selected,
+  // otherwise insert menu (empty line) / block options (filled block).
   root.addEventListener("contextmenu", (e) => {
     try {
       if (!root.contains(e.target)) return;
@@ -3215,7 +3243,8 @@ function wireEditorInteractions() {
       openBlockGestureAt(blockId, e.clientX, e.clientY);
     } catch {}
   });
-  // Mobile: long-press (~550ms, no move) on a new line opens the insert menu.
+  // Mobile: long-press (~550ms, no move): formatting only when text is
+  // selected, otherwise insert menu / block options.
   root.addEventListener("touchstart", (e) => {
     try {
       if (!e.touches || e.touches.length !== 1) { cancelLongPressTimer(); return; }
