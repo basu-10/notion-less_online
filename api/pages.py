@@ -8,12 +8,18 @@ from flask_login import current_user, login_required
 from services.db import get_user_db
 from config import UPLOADS_DIR
 
-# Uploaded images are served publicly (see serve_upload): filenames are
+# Uploaded files are served publicly (see serve_upload): filenames are
 # unguessable UUIDs, so obscurity is the access control — the same model as
 # Notion's public image URLs. This is what lets public pages and copied pages
-# render images for logged-out visitors.
+# render media for logged-out visitors. Media only (images, short video/audio
+# clips, small documents) — no executables, ever.
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
-ALLOWED_UPLOAD_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+ALLOWED_UPLOAD_EXTS = [
+    '.jpg', '.jpeg', '.png', '.gif', '.webp',
+    '.mp4', '.webm', '.mov',
+    '.mp3', '.ogg', '.wav', '.m4a',
+    '.pdf', '.txt', '.md', '.csv',
+]
 
 # Payload keys that constitute a real content change. A PATCH/beacon carrying
 # none of these (e.g. an empty pagehide flush) must be a no-op: previously it
@@ -342,7 +348,7 @@ def upload_file():
         return jsonify({'error': 'No file selected'}), 400
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in ALLOWED_UPLOAD_EXTS:
-        return jsonify({'error': 'Unsupported file type (use JPG, PNG, GIF or WebP)'}), 400
+        return jsonify({'error': 'Unsupported file type (images, short video/audio, PDF/text)'}), 400
     # Bound phone photos: read with a cap instead of trusting Content-Length.
     try:
         blob = file.read(MAX_UPLOAD_BYTES + 1)

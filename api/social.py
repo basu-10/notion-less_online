@@ -77,6 +77,18 @@ def _feed_block_text(blocks, out, limit=600):
                     t = item.get('text')
                     if isinstance(t, str) and t.strip():
                         out.append(t.strip())
+                    else:
+                        # Nested inline content (e.g. {type:"link", content:[...]}).
+                        nested = item.get('content')
+                        if isinstance(nested, list):
+                            for sub in nested:
+                                if isinstance(sub, str):
+                                    if sub.strip():
+                                        out.append(sub.strip())
+                                elif isinstance(sub, dict):
+                                    st = sub.get('text')
+                                    if isinstance(st, str) and st.strip():
+                                        out.append(st.strip())
         children = b.get('children')
         if isinstance(children, list) and children:
             _feed_block_text(children, out, limit)

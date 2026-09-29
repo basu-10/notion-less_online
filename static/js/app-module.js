@@ -1,5 +1,5 @@
 
-import { BlockNoteEditor, TableHandlesExtension } from "https://esm.sh/@blocknote/core@0.51.3?bundle";
+import { BlockNoteEditor, SideMenuExtension, TableHandlesExtension } from "https://esm.sh/@blocknote/core@0.51.3?bundle";
 
 const ROOT = "root";
 
@@ -16,6 +16,10 @@ const BLOCKS = [
   { key: "code",   icon: "</>", label: "Code",      desc: "Monospace code block", type: "codeBlock" },
   { key: "table",  icon: "▦", label: "Table",     desc: "Insert a table", type: "table" },
   { key: "image",  icon: "🖼", label: "Image",       desc: "Upload or embed image/GIF", type: "image" },
+  { key: "video",  icon: "▶", label: "Video",       desc: "Upload or embed a video", type: "video" },
+  { key: "audio",  icon: "♪", label: "Audio",       desc: "Upload or embed audio", type: "audio" },
+  { key: "file",   icon: "📎", label: "File",        desc: "Upload or link a file (PDF, text…)", type: "file" },
+  { key: "divider", icon: "―", label: "Divider",     desc: "Horizontal rule", type: "divider" },
 ];
 
 const state = {
@@ -693,6 +697,54 @@ function exportNote() {
   const a = document.createElement("a");
   a.href = url; a.download = (page.title || "note") + ".json"; a.click(); URL.revokeObjectURL(url);
   setSaveState("Note exported");
+}
+
+function downloadTextFile(filename, text, mime) {
+  const blob = new Blob([text], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+function currentEditorBlocks() {
+  try {
+    if (state.currentPageId && state.editor) return state.editor.document;
+  } catch {}
+  const page = state.pages.get(state.currentPageId);
+  return (page && page.blocks) || [];
+}
+
+function safeFilename(title, ext) {
+  const base = (title || "note").replace(/[\\/:*?"<>|]/g, "").trim() || "note";
+  return base.slice(0, 80) + ext;
+}
+
+async function exportNoteMarkdown() {
+  const page = state.pages.get(state.currentPageId);
+  if (!page || !state.editor) { alertDialog({ title: "No page open", message: "Open a page first, then export it." }); return; }
+  try {
+    const md = await state.editor.blocksToMarkdownLossy(currentEditorBlocks());
+    downloadTextFile(safeFilename(page.title, ".md"), "# " + (page.title || "Untitled") + "\n\n" + md, "text/markdown");
+    setSaveState("Note exported as Markdown");
+  } catch (e) {
+    console.warn("markdown export failed", e);
+    alertDialog({ title: "Export failed", message: "Could not export this note as Markdown." });
+  }
+}
+
+async function exportNoteHtml() {
+  const page = state.pages.get(state.currentPageId);
+  if (!page || !state.editor) { alertDialog({ title: "No page open", message: "Open a page first, then export it." }); return; }
+  try {
+    const body = await state.editor.blocksToFullHTML(currentEditorBlocks());
+    const doc = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${escapeHtml(page.title || "Untitled")}</title></head><body><h1>${escapeHtml(page.title || "Untitled")}</h1>${body}</body></html>`;
+    downloadTextFile(safeFilename(page.title, ".html"), doc, "text/html");
+    setSaveState("Note exported as HTML");
+  } catch (e) {
+    console.warn("html export failed", e);
+    alertDialog({ title: "Export failed", message: "Could not export this note as HTML." });
+  }
 }
 
 async function importProfile(file) {
@@ -1529,6 +1581,7 @@ function renderBreadcrumbs() {
 async function mountEditor(blocks) {
   if (state.editor) {
     try { teardownTableHandles(); } catch {}
+    try { teardownSideMenu(); } catch {}
     try { state.editor.unmount(); } catch {}
     state.editor = null;
   }
@@ -1542,7 +1595,7 @@ async function mountEditor(blocks) {
   state.editor = BlockNoteEditor.create({
     initialContent: initialBlocks,
     blockHandle: true,
-    tables: { headers: true },
+    tables: { headers: true, cellBackgroundColor: true, cellTextColor: true },
     uploadFile: async (file) => {
       const { url } = await window.api.uploadFile(file);
       return url;
@@ -1559,6 +1612,7 @@ async function mountEditor(blocks) {
   });
   wireEditorInteractions();
   wireTableHandles();
+  wireSideMenu();
   try { updateDocMeta(); } catch {}
 }
 
@@ -1622,7 +1676,7 @@ function ensureTableUI() {
     const ws = $("#workspace");
     if (ws && !ws.dataset.tableHideBound) {
       ws.dataset.tableHideBound = "1";
-      ws.addEventListener("scroll", () => hideTableHandles(), { passive: true });
+      ws.addEventListener("scroll", () => { hideTableHandles(); document.getElementById("blockSideMenu")?.classList.remove("show"); }, { passive: true });
     }
     window.addEventListener("scroll", () => hideTableHandles(), { passive: true, capture: true });
     window.addEventListener("resize", () => hideTableHandles(), { passive: true });
@@ -1742,8 +1796,55 @@ function openTableMenu(kind, x, y) {
     });
     menu.appendChild(b);
   });
+  // Paint + alignment, applied straight onto the tableContent cells.
+  const blockId = s.block.id;
+  const swHead = document.createElement("div");
+  swHead.className = "slash-header";
+  swHead.textContent = isRow ? "Row background" : "Column background";
+  menu.appendChild(swHead);
+  const swRow = document.createElement("div");
+  swRow.className = "table-swatches";
+  CELL_BG_COLORS.forEach((c) => {
+    const sw = document.createElement("button");
+    sw.type = "button";
+    sw.className = "hl-swatch";
+    sw.title = c.name === "default" ? "No background" : c.name;
+    sw.setAttribute("aria-label", (isRow ? "Row" : "Column") + " background " + c.name);
+    sw.style.setProperty("--hl", c.css);
+    sw.innerHTML = c.name === "default" ? `<span aria-hidden="true">∅</span>` : `<span class="hl-dot" aria-hidden="true"></span>`;
+    sw.addEventListener("click", () => {
+      if (isRow) paintTableRow(blockId, idx, { backgroundColor: c.name });
+      else paintTableCol(blockId, idx, { backgroundColor: c.name });
+      closeTableMenu();
+      hideTableHandles();
+    });
+    swRow.appendChild(sw);
+  });
+  menu.appendChild(swRow);
+  if (isRow) {
+    const alHead = document.createElement("div");
+    alHead.className = "slash-header";
+    alHead.textContent = "Align row";
+    menu.appendChild(alHead);
+    const alRow = document.createElement("div");
+    alRow.className = "table-swatches";
+    [["left", "⇤"], ["center", "⇔"], ["right", "⇥"]].forEach(([align, icon]) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "block-menu-item table-align-btn";
+      b.textContent = icon + " " + align;
+      b.setAttribute("aria-label", "Align row " + align);
+      b.addEventListener("click", () => {
+        paintTableRow(blockId, idx, { textAlignment: align });
+        closeTableMenu();
+        hideTableHandles();
+      });
+      alRow.appendChild(b);
+    });
+    menu.appendChild(alRow);
+  }
   menu.style.left = Math.min(x, window.innerWidth - 220) + "px";
-  menu.style.top = Math.min(y, window.innerHeight - 160) + "px";
+  menu.style.top = Math.min(y, window.innerHeight - 260) + "px";
   menu.classList.add("open");
   menu.setAttribute("aria-hidden", "false");
 }
@@ -1834,6 +1935,147 @@ function tableToggleHeader(blockId) {
     try { state.editor.focus(); } catch {}
     markDirty();
   } catch (e) { console.warn("toggle header failed", e); }
+}
+
+// Cell paint helpers: legacy string cells are normalized to tableCell objects
+// only for the cells we touch; untouched cells keep their original shape.
+function tableCellWith(cell, patch) {
+  if (cell && typeof cell === "object") {
+    return { ...cell, props: { ...(cell.props || {}), ...patch }, content: cell.content ?? "" };
+  }
+  const text = typeof cell === "string" ? cell : "";
+  return { type: "tableCell", props: { ...patch }, content: text ? [text] : [] };
+}
+
+function paintTableCells(blockId, pick, patch) {
+  try {
+    const block = tableBlockById(blockId);
+    if (!block || !block.content || !Array.isArray(block.content.rows)) return;
+    const rows = block.content.rows.map((row, ri) => ({
+      ...row,
+      cells: (row.cells || []).map((cell, ci) => (pick(ri, ci) ? tableCellWith(cell, patch) : cell)),
+    }));
+    state.editor.updateBlock(blockId, { content: { ...block.content, rows } });
+    try { state.editor.focus(); } catch {}
+    markDirty();
+  } catch (e) { console.warn("paint cells failed", e); }
+}
+
+function paintTableRow(blockId, rowIndex, patch) {
+  paintTableCells(blockId, (ri) => ri === rowIndex, patch);
+}
+
+function paintTableCol(blockId, colIndex, patch) {
+  paintTableCells(blockId, (ri, ci) => ci === colIndex, patch);
+}
+
+const CELL_BG_COLORS = [
+  { name: "default", css: "transparent" },
+  { name: "gray", css: "#e5e7eb" },
+  { name: "brown", css: "#e7d8c9" },
+  { name: "red", css: "#fecaca" },
+  { name: "orange", css: "#fed7aa" },
+  { name: "yellow", css: "#fef08a" },
+  { name: "green", css: "#bbf7d0" },
+  { name: "blue", css: "#bfdbfe" },
+  { name: "purple", css: "#ddd6fe" },
+  { name: "pink", css: "#fecdd3" },
+];
+
+// ---------- Block side menu: hover grips with drag (desktop) ----------
+// Same story as tables: vanilla ships the SideMenuExtension state but no DOM.
+// We render a small "+" (insert) + "⋮⋮" (drag) pill from the store, using the
+// extension's own blockDragStart/blockDragEnd for reordering.
+let sideMenuUnsub = null;
+
+function getSideMenuExt() {
+  try { return state.editor ? state.editor.getExtension(SideMenuExtension) : null; }
+  catch { return null; }
+}
+
+function ensureSideMenuUI() {
+  let el = document.getElementById("blockSideMenu");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "blockSideMenu";
+    el.className = "block-side-menu";
+    el.setAttribute("aria-hidden", "true");
+    el.innerHTML = `<button type="button" class="side-menu-btn" data-act="add" title="Add block" aria-label="Add block">+</button>
+      <button type="button" class="side-menu-btn drag" data-act="drag" title="Drag to reorder" aria-label="Drag to reorder" draggable="true">⋮⋮</button>`;
+    document.body.appendChild(el);
+    el.querySelector('[data-act="add"]').addEventListener("click", (e) => {
+      e.stopPropagation();
+      try {
+        const blk = getSideMenuExt()?.store?.state?.block;
+        if (blk) {
+          // Mirror the docs recipe, but route through our own slash menu:
+          // empty block gets the trigger, otherwise work in a fresh block
+          // below so picking a type never eats existing text.
+          if (!getBlockTextById(blk.id)) {
+            focusBlockById(blk.id, "end");
+          } else {
+            const inserted = state.editor.insertBlocks([{ type: "paragraph" }], blk.id, "after");
+            const nid = Array.isArray(inserted) && inserted[0] ? inserted[0].id : null;
+            if (nid) focusBlockById(nid, "start");
+            else focusBlockById(blk.id, "end");
+          }
+        }
+        openSlashFromButton();
+      } catch (err) { console.warn(err); }
+    });
+    const dragBtn = el.querySelector('[data-act="drag"]');
+    dragBtn.addEventListener("dragstart", (evt) => {
+      try {
+        const ext = getSideMenuExt();
+        const blk = ext?.store?.state?.block;
+        if (ext && blk) ext.blockDragStart(evt, blk);
+      } catch (err) { console.warn(err); }
+    });
+    dragBtn.addEventListener("dragend", () => {
+      try { getSideMenuExt()?.blockDragEnd(); } catch {}
+    });
+  }
+  try { state.editor && state.editor.registerPortalElement(el); } catch {}
+  return el;
+}
+
+function teardownSideMenu() {
+  try { if (sideMenuUnsub) sideMenuUnsub(); } catch {}
+  sideMenuUnsub = null;
+  const el = document.getElementById("blockSideMenu");
+  if (el) el.classList.remove("show");
+}
+
+function wireSideMenu() {
+  try { if (sideMenuUnsub) sideMenuUnsub(); } catch {}
+  sideMenuUnsub = null;
+  teardownSideMenu();
+  const ext = getSideMenuExt();
+  if (!ext || !ext.store) return;
+  ensureSideMenuUI();
+  try {
+    sideMenuUnsub = ext.store.subscribe(() => renderSideMenu());
+  } catch (e) { console.warn("side menu subscribe failed", e); }
+  renderSideMenu();
+}
+
+function renderSideMenu() {
+  const ext = getSideMenuExt();
+  const el = document.getElementById("blockSideMenu");
+  if (!el) return;
+  const s = ext?.store?.state;
+  if (!s || !s.show || !s.block || !s.referencePos) {
+    el.classList.remove("show");
+    return;
+  }
+  if (s.block.type === "table") {
+    // Tables have their own grips; don't stack a second pill on top.
+    el.classList.remove("show");
+    return;
+  }
+  const r = s.referencePos;
+  placeFixed(el, r.left - 68, r.top - 2);
+  el.classList.add("show");
 }
 
 function parseBlocks(content) {
@@ -2592,7 +2834,33 @@ async function chooseSlash(command) {
     // empty block. Strip the "/filter" trigger, then run the shared chooser
     // (same flow as the 📷 topbar button, desktop and mobile).
     closeSlashMenu();
-    await openImageChooser();
+    await openMediaChooser("image");
+    return;
+  }
+  if (command.type === "video" || command.type === "audio" || command.type === "file") {
+    // Same chooser flow as images (upload or link), but for the other media
+    // blocks. A bare type-switch would strand an empty, unfillable block
+    // because vanilla ships no native file panel.
+    closeSlashMenu();
+    await openMediaChooser(command.type);
+    return;
+  }
+  if (command.type === "divider") {
+    // Dividers carry no content: replace an empty block, otherwise insert
+    // below so no text is ever lost.
+    const block = getCurrentBlock();
+    if (!block) return closeSlashMenu();
+    try {
+      if (isEmptyBlockText(currentBlockText(block))) {
+        state.editor.replaceBlocks([block.id], [{ type: "divider" }]);
+      } else {
+        state.editor.insertBlocks([{ type: "divider" }], block.id, "after");
+      }
+      try { state.editor.focus(); } catch {}
+    } catch (err) {
+      console.warn("Could not insert divider", err);
+    }
+    closeSlashMenu();
     return;
   }
   if (command.type === "table") {
@@ -2634,41 +2902,54 @@ async function chooseSlash(command) {
   closeSlashMenu();
 }
 
-// ---------- Images: one shared flow for slash, button, block menu ----------
+// ---------- Media: one shared flow for slash, button, block menu ----------
 // Desktop paste / drag-drop is handled natively by BlockNote via uploadFile.
 // Mobile has no file-paste, so every entry point lands here: pick a file
 // (system picker = camera roll on phones) or embed a link (GIFs included).
-const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+const MEDIA_MAX_BYTES = 10 * 1024 * 1024;
+const MEDIA_KINDS = {
+  image: { label: "image", accept: "image/*", exts: [".jpg", ".jpeg", ".png", ".gif", ".webp"], hint: "Upload from this device (camera roll on mobile) or embed a link — GIFs play inline." },
+  video: { label: "video", accept: "video/*", exts: [".mp4", ".webm", ".mov"], hint: "Upload a short clip (max 10 MB) or embed a link to a video file." },
+  audio: { label: "audio", accept: "audio/*", exts: [".mp3", ".ogg", ".wav", ".m4a"], hint: "Upload a short clip (max 10 MB) or embed a link to an audio file." },
+  file:  { label: "file", accept: ".pdf,.txt,.md,.csv", exts: [".pdf", ".txt", ".md", ".csv"], hint: "Upload a small document (max 10 MB) or link one by URL." },
+};
 
-function insertImageWithUrl(url, caption="") {
+function insertMediaWithUrl(kind, url, extra={}) {
   try {
     if (!state.editor || !url) return false;
-    const props = { url };
-    if (caption) props.caption = caption;
+    const props = { url, ...extra };
+    if (kind === "file" && !props.name) {
+      try { props.name = decodeURIComponent(url.split("?")[0].split("/").pop() || "file"); }
+      catch { props.name = "file"; }
+    }
     const ref = getCurrentBlock();
-    // Convert an empty paragraph in place so "/image" leaves no residue.
+    // Convert an empty paragraph in place so "/video" etc. leave no residue.
     try {
       if (ref && isEmptyBlockText(currentBlockText(ref))) {
-        state.editor.updateBlock(ref, { type: "image", props });
+        state.editor.updateBlock(ref, { type: kind, props });
         try { state.editor.focus(); } catch {}
         return true;
       }
     } catch {}
     try {
       if (ref && typeof state.editor.insertBlocks === "function") {
-        state.editor.insertBlocks([{ type: "image", props }], ref, "after");
+        state.editor.insertBlocks([{ type: kind, props }], ref, "after");
         try { state.editor.focus(); } catch {}
         return true;
       }
     } catch {}
     try {
       if (typeof state.editor.insertBlocks === "function") {
-        state.editor.insertBlocks([{ type: "image", props }]);
+        state.editor.insertBlocks([{ type: kind, props }]);
         return true;
       }
     } catch {}
-  } catch (e) { console.warn("insert image failed", e); }
+  } catch (e) { console.warn("insert media failed", e); }
   return false;
+}
+
+function insertImageWithUrl(url, caption="") {
+  return insertMediaWithUrl("image", url, caption ? { caption } : {});
 }
 
 function insertEmptyImageBlock() {
@@ -2686,33 +2967,50 @@ function insertEmptyImageBlock() {
   } catch {}
 }
 
-async function uploadImageFile(file) {
+function mediaKindOf(file, fallback="image") {
+  const t = (file && file.type) || "";
+  if (t.startsWith("video/")) return "video";
+  if (t.startsWith("audio/")) return "audio";
+  if (t.startsWith("image/")) return "image";
+  return fallback;
+}
+
+async function uploadMediaFile(kind, file) {
   if (!file) return;
-  if (file.type && !file.type.startsWith("image/")) {
-    alertDialog({ title: "Not an image", message: "Please choose an image file (JPG, PNG, GIF or WebP)." });
+  const spec = MEDIA_KINDS[kind] || MEDIA_KINDS.image;
+  const ext = (file.name && file.name.includes("."))
+    ? file.name.slice(file.name.lastIndexOf(".")).toLowerCase() : "";
+  if (ext && !(spec.exts.includes(ext))) {
+    alertDialog({ title: "Not a " + spec.label, message: "Please choose one of: " + spec.exts.join(", ") });
     return;
   }
-  if (file.size && file.size > IMAGE_MAX_BYTES) {
-    alertDialog({ title: "File too large", message: "Images must be 10 MB or smaller." });
+  if (file.size && file.size > MEDIA_MAX_BYTES) {
+    alertDialog({ title: "File too large", message: "Files must be 10 MB or smaller." });
     return;
   }
-  setSaveState("Uploading image...", false);
+  setSaveState("Uploading " + spec.label + "...", false);
   try {
     const { url } = await window.api.uploadFile(file);
-    insertImageWithUrl(url);
-    setSaveState("Image added", false);
+    insertMediaWithUrl(kind, url);
+    setSaveState(spec.label[0].toUpperCase() + spec.label.slice(1) + " added", false);
   } catch (e) {
-    console.warn("image upload failed", e);
-    alertDialog({ title: "Upload failed", message: (e && e.message) || "Could not upload the image. Please try again." });
+    console.warn("media upload failed", e);
+    alertDialog({ title: "Upload failed", message: (e && e.message) || "Could not upload. Please try again." });
     setSaveState("Upload failed", false);
   }
 }
 
-async function openImageChooser() {
+async function uploadImageFile(file) {
+  return uploadMediaFile(mediaKindOf(file, "image"), file);
+}
+
+async function openMediaChooser(kind="image") {
   if (!state.editor) return;
+  const spec = MEDIA_KINDS[kind] || MEDIA_KINDS.image;
+  const cap = spec.label[0].toUpperCase() + spec.label.slice(1);
   const pick = await showDialog({
-    title: "Add image",
-    message: "Upload from this device (camera roll on mobile) or embed a link — GIFs play inline.",
+    title: "Add " + spec.label,
+    message: spec.hint,
     actions: [
       { label: "Cancel", kind: "ghost", value: "cancel" },
       { label: "From link", kind: "ghost", value: "url" },
@@ -2721,32 +3019,37 @@ async function openImageChooser() {
   });
   if (pick === "upload") {
     const inp = document.getElementById("imageUploadInput");
-    if (inp) { inp.value = ""; inp.click(); }
-    else insertEmptyImageBlock();
+    if (inp) { inp.value = ""; inp.accept = spec.accept; inp.dataset.kind = kind; inp.click(); }
+    else if (kind === "image") insertEmptyImageBlock();
+    else alertDialog({ title: "No file picker", message: "Your browser blocked the file picker — use From link instead." });
   } else if (pick === "url") {
-    const url = await promptImageUrl();
+    const url = await promptMediaUrl(cap);
     if (!url) return;
     if (!/^https?:\/\//i.test(url)) {
-      alertDialog({ title: "Invalid link", message: "Image links must start with http:// or https://." });
+      alertDialog({ title: "Invalid link", message: "Links must start with http:// or https://." });
       return;
     }
-    insertImageWithUrl(url);
+    insertMediaWithUrl(kind, url);
   }
 }
 
-function promptImageUrl() {
+async function openImageChooser() {
+  return openMediaChooser("image");
+}
+
+function promptMediaUrl(kindLabel="Image") {
   // Themed URL input reusing the nl-dialog overlay (never native prompt).
   return new Promise((resolve) => {
     const overlay = document.getElementById("nlDialogOverlay");
-    if (!overlay) { try { resolve(window.prompt("Image URL:") || null); } catch { resolve(null); } return; }
+    if (!overlay) { try { resolve(window.prompt(kindLabel + " URL:") || null); } catch { resolve(null); } return; }
     if (_dialogResolve) { const r = _dialogResolve; _dialogResolve = null; try { r(false); } catch {} }
-    document.getElementById("nlDialogTitle").textContent = "Embed image link";
+    document.getElementById("nlDialogTitle").textContent = "Embed " + kindLabel.toLowerCase() + " link";
     const msg = document.getElementById("nlDialogMessage");
     msg.textContent = "";
     const input = document.createElement("input");
     input.type = "url";
-    input.placeholder = "https://… (.jpg, .png, .gif, .webp)";
-    input.setAttribute("aria-label", "Image URL");
+    input.placeholder = "https://…";
+    input.setAttribute("aria-label", kindLabel + " URL");
     input.autocomplete = "off";
     input.spellcheck = false;
     input.className = "nl-dialog-input";
@@ -2767,7 +3070,7 @@ function promptImageUrl() {
       resolve(v || null);
     };
     _dialogResolve = finish;
-    [["Cancel", "ghost", false], ["Add image", "primary", true]].forEach(([label, kind, val]) => {
+    [["Cancel", "ghost", false], ["Add " + kindLabel.toLowerCase(), "primary", true]].forEach(([label, kind, val]) => {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "nl-dialog-btn " + kind;
@@ -2996,6 +3299,9 @@ const BLOCK_TYPES = [
 function showBlockMenu(blockId, x, y) {
   const menu = $("#blockMenu");
   menu.innerHTML = "";
+  menu.dataset.blockId = blockId;
+  menu.dataset.x = x;
+  menu.dataset.y = y;
 
   BLOCK_TYPES.forEach(bt => {
     const item = document.createElement("button");
@@ -3010,6 +3316,21 @@ function showBlockMenu(blockId, x, y) {
     menu.appendChild(item);
   });
 
+  // Divider convert: typeless, so a blind type-swap would drop text.
+  const divBtn = document.createElement("button");
+  divBtn.className = "block-menu-item";
+  divBtn.innerHTML = `<span class="block-menu-icon">―</span>Divider`;
+  divBtn.addEventListener("click", () => {
+    menu.classList.remove("open");
+    try {
+      const cur = getBlockTextById(blockId);
+      if (!cur) state.editor.replaceBlocks([blockId], [{ type: "divider" }]);
+      else state.editor.insertBlocks([{ type: "divider" }], blockId, "after");
+      try { state.editor.focus(); } catch {}
+    } catch (e) { console.warn(e); }
+  });
+  menu.appendChild(divBtn);
+
   menu.appendChild(createBlockMenuDivider());
 
   const imageBtn = document.createElement("button");
@@ -3022,7 +3343,58 @@ function showBlockMenu(blockId, x, y) {
   });
   menu.appendChild(imageBtn);
 
+  // Reorder: works everywhere (mouse, touch, keyboard users).
+  const moveUp = document.createElement("button");
+  moveUp.className = "block-menu-item";
+  moveUp.innerHTML = `<span class="block-menu-icon">↑</span>Move up`;
+  moveUp.addEventListener("click", () => {
+    menu.classList.remove("open");
+    try {
+      try { state.editor.moveBlocksUp(blockId); }
+      catch { state.editor.moveBlocksUp(); }
+      try { state.editor.focus(); } catch {}
+    } catch (e) { console.warn(e); }
+  });
+  menu.appendChild(moveUp);
+  const moveDown = document.createElement("button");
+  moveDown.className = "block-menu-item";
+  moveDown.innerHTML = `<span class="block-menu-icon">↓</span>Move down`;
+  moveDown.addEventListener("click", () => {
+    menu.classList.remove("open");
+    try {
+      try { state.editor.moveBlocksDown(blockId); }
+      catch { state.editor.moveBlocksDown(); }
+      try { state.editor.focus(); } catch {}
+    } catch (e) { console.warn(e); }
+  });
+  menu.appendChild(moveDown);
+
   menu.appendChild(createBlockMenuDivider());
+
+  // Code blocks: language picker (the demo page promises one — now it exists).
+  // Images: caption editing.
+  try {
+    const blk = state.editor.getBlock(blockId);
+    if (blk && blk.type === "codeBlock") {
+      const lang = (blk.props && blk.props.language) || "default";
+      const langBtn = document.createElement("button");
+      langBtn.className = "block-menu-item";
+      langBtn.innerHTML = `<span class="block-menu-icon">&lt;/&gt;</span>Language: ${escapeHtml(lang)}`;
+      langBtn.addEventListener("click", () => showCodeLanguageMenu(blockId));
+      menu.appendChild(langBtn);
+      menu.appendChild(createBlockMenuDivider());
+    } else if (blk && blk.type === "image") {
+      const capBtn = document.createElement("button");
+      capBtn.className = "block-menu-item";
+      capBtn.innerHTML = `<span class="block-menu-icon">✎</span>Edit caption`;
+      capBtn.addEventListener("click", () => {
+        menu.classList.remove("open");
+        editImageCaption(blockId);
+      });
+      menu.appendChild(capBtn);
+      menu.appendChild(createBlockMenuDivider());
+    }
+  } catch {}
 
   // Tables: whole-table actions live here (per-row/column grips appear on
   // hover next to the table itself). Without this section a table block has
@@ -3065,8 +3437,8 @@ function showBlockMenu(blockId, x, y) {
   });
   menu.appendChild(deleteBtn);
 
-  const left = Math.min(x, window.innerWidth - 200);
-  const top = Math.min(y, window.innerHeight - 350);
+  const left = Math.min(x, window.innerWidth - 230);
+  const top = Math.min(y, window.innerHeight - 480);
   menu.style.left = left + "px";
   menu.style.top = top + "px";
   menu.classList.add("open");
@@ -3076,6 +3448,117 @@ function createBlockMenuDivider() {
   const div = document.createElement("div");
   div.className = "block-menu-divider";
   return div;
+}
+
+function getBlockTextById(blockId) {
+  try {
+    const b = state.editor.getBlock(blockId);
+    return currentBlockText(b);
+  } catch { return ""; }
+}
+
+const CODE_LANGUAGE_FALLBACK = ["javascript", "typescript", "python", "html", "css", "json", "markdown", "bash", "sql", "yaml", "java", "go", "rust", "php", "ruby", "c", "cpp"];
+
+function codeLanguages() {
+  // Prefer the schema's own list when it exposes one; fall back otherwise.
+  try {
+    const ps = state.editor?.schema?.blockSchema?.codeBlock?.propSchema?.language;
+    const vals = ps && (ps.values || ps.options);
+    if (Array.isArray(vals) && vals.length) {
+      const names = vals.map(v => (typeof v === "string" ? v : v && v.value)).filter(v => typeof v === "string" && v);
+      if (names.length) return names;
+    }
+  } catch {}
+  return CODE_LANGUAGE_FALLBACK;
+}
+
+function showCodeLanguageMenu(blockId) {
+  const menu = $("#blockMenu");
+  const x = parseFloat(menu.dataset.x || "100");
+  const y = parseFloat(menu.dataset.y || "100");
+  menu.innerHTML = "";
+  const header = document.createElement("div");
+  header.className = "slash-header";
+  header.textContent = "Code language";
+  menu.appendChild(header);
+  let current = "";
+  try { current = state.editor.getBlock(blockId)?.props?.language || ""; } catch {}
+  codeLanguages().forEach((lang) => {
+    const b = document.createElement("button");
+    b.className = "block-menu-item" + (lang === current ? " selected-lang" : "");
+    b.innerHTML = `<span class="block-menu-icon">&lt;/&gt;</span>${escapeHtml(lang)}${lang === current ? " ✓" : ""}`;
+    b.addEventListener("click", () => {
+      try {
+        state.editor.updateBlock(blockId, { type: "codeBlock", props: { language: lang } });
+        try { state.editor.focus(); } catch {}
+      } catch (e) { console.warn(e); }
+      menu.classList.remove("open");
+    });
+    menu.appendChild(b);
+  });
+  menu.appendChild(createBlockMenuDivider());
+  const back = document.createElement("button");
+  back.className = "block-menu-item";
+  back.textContent = "← Back";
+  back.addEventListener("click", () => showBlockMenu(blockId, x, y));
+  menu.appendChild(back);
+  menu.style.left = Math.min(x, window.innerWidth - 200) + "px";
+  menu.style.top = Math.min(y, window.innerHeight - 350) + "px";
+  menu.classList.add("open");
+}
+
+function editImageCaption(blockId) {
+  let current = "";
+  try { current = state.editor.getBlock(blockId)?.props?.caption || ""; } catch {}
+  const overlay = document.getElementById("nlDialogOverlay");
+  if (!overlay) return;
+  if (_dialogResolve) { const r = _dialogResolve; _dialogResolve = null; try { r(false); } catch {} }
+  document.getElementById("nlDialogTitle").textContent = "Image caption";
+  const msg = document.getElementById("nlDialogMessage");
+  msg.textContent = "";
+  const input = document.createElement("input");
+  input.type = "text";
+  input.placeholder = "Add a caption…";
+  input.value = current;
+  input.setAttribute("aria-label", "Image caption");
+  input.autocomplete = "off";
+  input.className = "nl-dialog-input";
+  input.style.cssText = "width:100%;min-height:44px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;";
+  msg.appendChild(input);
+  const box = document.getElementById("nlDialogActions");
+  box.innerHTML = "";
+  let done = false;
+  const finish = (val) => {
+    if (done) return;
+    done = true;
+    overlay.classList.remove("open");
+    overlay.setAttribute("aria-hidden", "true");
+    document.removeEventListener("keydown", _dialogEsc, true);
+    overlay.onclick = null;
+    _dialogResolve = null;
+    if (val === true) {
+      try {
+        const blk = state.editor.getBlock(blockId);
+        state.editor.updateBlock(blockId, { props: { ...(blk.props || {}), caption: (input.value || "").trim() } });
+        try { state.editor.focus(); } catch {}
+      } catch (e) { console.warn(e); }
+    }
+  };
+  _dialogResolve = finish;
+  [["Cancel", "ghost", false], ["Save caption", "primary", true]].forEach(([label, kind, val]) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "nl-dialog-btn " + kind;
+    btn.textContent = label;
+    btn.addEventListener("click", () => finish(val));
+    box.appendChild(btn);
+  });
+  overlay.classList.add("open");
+  overlay.setAttribute("aria-hidden", "false");
+  document.addEventListener("keydown", _dialogEsc, true);
+  overlay.onclick = (e) => { if (e.target === overlay) finish(false); };
+  setTimeout(() => { try { input.focus({ preventScroll: true }); } catch {} }, 40);
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); finish(true); } });
 }
 
 function bnToggleStyles(styles) {
@@ -3099,9 +3582,123 @@ function getActiveBnStyles() {
   return {};
 }
 
+function applyTextColor(colorName) {
+  // colorName: BlockNote textColor name, or null/"default" to clear.
+  if (!colorName || colorName === "default") {
+    try {
+      const active = getActiveBnStyles();
+      if (state.editor && typeof state.editor.removeStyles === "function" && active.textColor) {
+        state.editor.removeStyles({ textColor: active.textColor });
+        try { state.editor.focus(); } catch {}
+        return;
+      }
+    } catch {}
+    if (bnToggleStyles({ textColor: "default" })) return;
+    return;
+  }
+  bnToggleStyles({ textColor: colorName });
+}
+
 function toggleBasicStyle(styleKey, execCmd) {
   if (bnToggleStyles({ [styleKey]: true })) return;
-  try { document.execCommand(execCmd); } catch {}
+  try { if (execCmd) document.execCommand(execCmd); } catch {}
+}
+
+// ---------- Links: create / edit / remove ----------
+// insertInlineContent replaces the editor's current selection range, so this
+// works both for wrapping selected text and for inserting at a bare caret —
+// even though opening the dialog blurs the editor (ProseMirror keeps the
+// selection in its own state).
+function openLinkDialog() {
+  if (!state.editor) return;
+  let selText = "";
+  let existingHref = "";
+  try {
+    const sel = window.getSelection();
+    selText = (sel && sel.toString()) || "";
+    const node = sel && sel.anchorNode;
+    const el = node ? (node.nodeType === 1 ? node : node.parentElement) : null;
+    const a = el && el.closest ? el.closest("a") : null;
+    if (a) {
+      existingHref = a.getAttribute("href") || "";
+      if (!selText) selText = a.textContent || "";
+    }
+  } catch {}
+  const overlay = document.getElementById("nlDialogOverlay");
+  if (!overlay) return;
+  if (_dialogResolve) { const r = _dialogResolve; _dialogResolve = null; try { r(false); } catch {} }
+  document.getElementById("nlDialogTitle").textContent = existingHref ? "Edit link" : "Add link";
+  const msg = document.getElementById("nlDialogMessage");
+  msg.textContent = "";
+  const inputCss = "width:100%;min-height:44px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;margin-bottom:8px;";
+  const urlInput = document.createElement("input");
+  urlInput.type = "url";
+  urlInput.placeholder = "https://…";
+  urlInput.value = existingHref;
+  urlInput.setAttribute("aria-label", "Link URL");
+  urlInput.autocomplete = "off";
+  urlInput.spellcheck = false;
+  urlInput.className = "nl-dialog-input";
+  urlInput.style.cssText = inputCss;
+  const textInput = document.createElement("input");
+  textInput.type = "text";
+  textInput.placeholder = "Link text (defaults to selected text)";
+  textInput.value = selText;
+  textInput.setAttribute("aria-label", "Link text");
+  textInput.autocomplete = "off";
+  textInput.spellcheck = false;
+  textInput.className = "nl-dialog-input";
+  textInput.style.cssText = inputCss + "margin-bottom:0;";
+  msg.append(urlInput, textInput);
+  const box = document.getElementById("nlDialogActions");
+  box.innerHTML = "";
+  let done = false;
+  const finish = (val) => {
+    if (done) return;
+    done = true;
+    overlay.classList.remove("open");
+    overlay.setAttribute("aria-hidden", "true");
+    document.removeEventListener("keydown", _dialogEsc, true);
+    overlay.onclick = null;
+    _dialogResolve = null;
+    try {
+      if (val === "save") {
+        let href = (urlInput.value || "").trim();
+        const text = (textInput.value || "").trim() || selText || href;
+        if (href && !/^[a-z][a-z0-9+.-]*:/i.test(href)) href = "https://" + href;
+        if (!href) { alertDialog({ title: "No URL", message: "Enter a link URL first." }); return; }
+        if (!/^(https?|mailto):/i.test(href)) {
+          alertDialog({ title: "Invalid link", message: "Links must start with http://, https:// or mailto:." });
+          return;
+        }
+        state.editor.insertInlineContent([{ type: "link", href, content: text }]);
+        try { state.editor.focus(); } catch {}
+      } else if (val === "remove") {
+        const text = (textInput.value || "").trim() || selText || existingHref;
+        if (text) state.editor.insertInlineContent([text]);
+        try { state.editor.focus(); } catch {}
+      }
+    } catch (e) { console.warn("link edit failed", e); }
+  };
+  _dialogResolve = finish;
+  const buttons = [["Cancel", "ghost", "cancel"]];
+  if (existingHref) buttons.push(["Remove link", "danger", "remove"]);
+  buttons.push(["Save link", "primary", "save"]);
+  buttons.forEach(([label, kind, val]) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "nl-dialog-btn " + kind;
+    btn.textContent = label;
+    btn.addEventListener("click", () => finish(val));
+    box.appendChild(btn);
+  });
+  overlay.classList.add("open");
+  overlay.setAttribute("aria-hidden", "false");
+  document.addEventListener("keydown", _dialogEsc, true);
+  overlay.onclick = (e) => { if (e.target === overlay) finish("cancel"); };
+  setTimeout(() => { try { (existingHref ? textInput : urlInput).focus({ preventScroll: true }); } catch {} }, 40);
+  urlInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); finish("save"); } });
+  textInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); finish("save"); } });
 }
 
 function applyHighlight(colorName) {
@@ -3130,6 +3727,7 @@ const FORMAT_BUTTONS = [
   { label: "I", title: "Italic", shortcut: "Ctrl+I", style: "italic", execCmd: "italic", styleLabel: "italic" },
   { label: "U", title: "Underline", shortcut: "Ctrl+U", style: "underline", execCmd: "underline", styleLabel: "underline" },
   { label: "S", title: "Strikethrough", shortcut: "Ctrl+Shift+S", style: "strike", execCmd: "strikeThrough", styleLabel: "line-through" },
+  { label: "</>", title: "Inline code", shortcut: "", style: "code", execCmd: null, styleLabel: "code" },
 ];
 
 // BlockNote default backgroundColor names. `css` is only the swatch preview;
@@ -3143,6 +3741,20 @@ const HIGHLIGHT_COLORS = [
 ];
 const HIGHLIGHT_DEFAULT = "yellow";
 
+// BlockNote default text-color names. `css` is only the swatch preview;
+// the editor resolves the name to its themed color.
+const TEXT_COLORS = [
+  { name: "gray", title: "Gray text", css: "#9ca3af" },
+  { name: "brown", title: "Brown text", css: "#a0785a" },
+  { name: "red", title: "Red text", css: "#ef4444" },
+  { name: "orange", title: "Orange text", css: "#f97316" },
+  { name: "yellow", title: "Yellow text", css: "#ca8a04" },
+  { name: "green", title: "Green text", css: "#22c55e" },
+  { name: "blue", title: "Blue text", css: "#3b82f6" },
+  { name: "purple", title: "Purple text", css: "#a855f7" },
+  { name: "pink", title: "Pink text", css: "#ec4899" },
+];
+
 function refreshFormatToolbarActive() {
   const toolbar = $("#formatToolbar");
   if (!toolbar || !toolbar.classList.contains("open")) return;
@@ -3154,8 +3766,13 @@ function refreshFormatToolbarActive() {
   toolbar.querySelectorAll(".hl-swatch[data-color]").forEach((sw) => {
     sw.classList.toggle("active", active.backgroundColor === sw.getAttribute("data-color"));
   });
-  const clearBtn = toolbar.querySelector(".hl-clear");
+  toolbar.querySelectorAll(".tx-swatch[data-color]").forEach((sw) => {
+    sw.classList.toggle("active", active.textColor === sw.getAttribute("data-color"));
+  });
+  const clearBtn = toolbar.querySelector(".hl-clear:not(.tx-clear)");
   if (clearBtn) clearBtn.classList.toggle("active", !active.backgroundColor);
+  const txClearBtn = toolbar.querySelector(".tx-clear");
+  if (txClearBtn) txClearBtn.classList.toggle("active", !active.textColor);
 }
 
 function showFormatToolbar() {
@@ -3222,6 +3839,47 @@ function showFormatToolbar() {
     setTimeout(refreshFormatToolbarActive, 0);
   });
   toolbar.appendChild(clearBtn);
+
+  // Link: opens the link dialog (uses selected text, or inserts at caret).
+  const linkDivider = document.createElement("div");
+  linkDivider.className = "format-divider";
+  toolbar.appendChild(linkDivider);
+  const linkBtn = document.createElement("button");
+  linkBtn.className = "format-btn";
+  linkBtn.textContent = "🔗";
+  linkBtn.title = "Add / edit link";
+  linkBtn.setAttribute("aria-label", "Add or edit link");
+  linkBtn.addEventListener("mousedown", (e) => { e.preventDefault(); });
+  linkBtn.addEventListener("click", () => { openLinkDialog(); });
+  toolbar.appendChild(linkBtn);
+
+  // Text colors: an "A" in each BlockNote theme color.
+  TEXT_COLORS.forEach((tc) => {
+    const sw = document.createElement("button");
+    sw.className = "hl-swatch tx-swatch" + (activeStyles.textColor === tc.name ? " active" : "");
+    sw.dataset.color = tc.name;
+    sw.title = tc.title;
+    sw.setAttribute("aria-label", tc.title);
+    sw.innerHTML = `<span class="tx-a" aria-hidden="true" style="color:${tc.css}">A</span>`;
+    sw.addEventListener("mousedown", (e) => { e.preventDefault(); });
+    sw.addEventListener("click", () => {
+      applyTextColor(tc.name);
+      setTimeout(refreshFormatToolbarActive, 0);
+    });
+    toolbar.appendChild(sw);
+  });
+
+  const txClear = document.createElement("button");
+  txClear.className = "format-btn hl-clear tx-clear" + (!activeStyles.textColor ? " active" : "");
+  txClear.textContent = "A∅";
+  txClear.title = "Default text color";
+  txClear.setAttribute("aria-label", "Default text color");
+  txClear.addEventListener("mousedown", (e) => { e.preventDefault(); });
+  txClear.addEventListener("click", () => {
+    applyTextColor(null);
+    setTimeout(refreshFormatToolbarActive, 0);
+  });
+  toolbar.appendChild(txClear);
 
   // Mark B/I/U/S active state on open.
   refreshFormatToolbarActive();
@@ -4403,8 +5061,10 @@ document.addEventListener("mousedown", (e) => {
   }
 });
 
-$("#exportProfile").addEventListener("click", exportProfile);
-$("#exportNote").addEventListener("click", exportNote);
+  $("#exportProfile").addEventListener("click", exportProfile);
+  $("#exportNote").addEventListener("click", exportNote);
+  $("#exportMarkdown").addEventListener("click", exportNoteMarkdown);
+  $("#exportHtml").addEventListener("click", exportNoteHtml);
 $("#importProfile").addEventListener("click", () => $("#importFile").click());
 $("#importFile").addEventListener("change", (e) => { if (e.target.files && e.target.files[0]) importProfile(e.target.files[0]); e.target.value = ""; });
 $("#notificationTrigger").addEventListener("click", toggleNotificationPanel);
@@ -4473,8 +5133,10 @@ $("#imageBtn")?.addEventListener("click", () => {
 });
 document.getElementById("imageUploadInput")?.addEventListener("change", (e) => {
   const f = e.target.files && e.target.files[0];
-  if (f) uploadImageFile(f);
+  const kind = e.target.dataset.kind || mediaKindOf(f, "image");
+  if (f) uploadMediaFile(kind, f);
   e.target.value = "";
+  e.target.dataset.kind = "";
 });
 
 // Dismiss floating bars when the doc scrolls so they never freeze mid-screen.
@@ -4884,6 +5546,22 @@ async function copyEmoji(emoji) {
   }
 }
 
+function insertOrCopyEmoji(emoji) {
+  // With a page open, drop the emoji at the caret (insertInlineContent drops
+  // it into the live selection); otherwise fall back to clipboard copy.
+  addToRecent(emoji);
+  let inserted = false;
+  try {
+    if (state.editor && state.currentPageId) {
+      state.editor.insertInlineContent(emoji);
+      try { state.editor.focus(); } catch {}
+      inserted = true;
+    }
+  } catch {}
+  if (inserted) setSaveState(`${emoji} inserted`, false);
+  else copyEmoji(emoji);
+}
+
 $("#footerEmojiBtn").addEventListener("click", () => {
   sidebarUserMenu.classList.remove("open");
   sidebarMenuBtn.setAttribute("aria-expanded", "false");
@@ -4939,7 +5617,7 @@ $("#emojiGrid").addEventListener("click", (e) => {
     const isPinned = pinned.includes(emoji);
     item.classList.toggle("pinned", isPinned);
   } else {
-    copyEmoji(emoji);
+    insertOrCopyEmoji(emoji);
     closeEmojiPicker();
   }
 });
