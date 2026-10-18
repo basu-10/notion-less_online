@@ -3907,7 +3907,18 @@ function showFormatToolbar() {
   const toolbar = $("#formatToolbar");
   toolbar.innerHTML = "";
 
+  // Each functional cluster lives in its own sunken .format-group pill so
+  // the toolbar reads as labeled sections instead of a flat button soup.
+  const newGroup = (extra) => {
+    const group = document.createElement("div");
+    group.className = "format-group" + (extra ? " " + extra : "");
+    toolbar.appendChild(group);
+    return group;
+  };
+
+  let group = newGroup("grp-styles"); // B I U S
   FORMAT_BUTTONS.forEach((btn, i) => {
+    if (i === 4) group = newGroup("grp-code"); // </>
     const button = document.createElement("button");
     button.className = "format-btn";
     button.dataset.style = btn.style;
@@ -3925,17 +3936,12 @@ function showFormatToolbar() {
       toggleBasicStyle(btn.style, btn.execCmd);
       setTimeout(refreshFormatToolbarActive, 0);
     });
-    toolbar.appendChild(button);
-
-    if (i === 3) {
-      const divider = document.createElement("div");
-      divider.className = "format-divider";
-      toolbar.appendChild(divider);
-    }
+    group.appendChild(button);
   });
 
-  // Highlight swatches live in the same toolbar, right after B/I/U/S.
+  // Highlight swatches live in their own group, right after the styles.
   const activeStyles = getActiveBnStyles();
+  group = newGroup("grp-highlight");
   HIGHLIGHT_COLORS.forEach((hl) => {
     const sw = document.createElement("button");
     sw.className = "hl-swatch" + (activeStyles.backgroundColor === hl.name ? " active" : "");
@@ -3951,7 +3957,7 @@ function showFormatToolbar() {
       applyHighlight(hl.name);
       setTimeout(refreshFormatToolbarActive, 0);
     });
-    toolbar.appendChild(sw);
+    group.appendChild(sw);
   });
 
   const clearBtn = document.createElement("button");
@@ -3966,12 +3972,10 @@ function showFormatToolbar() {
     applyHighlight(null);
     setTimeout(refreshFormatToolbarActive, 0);
   });
-  toolbar.appendChild(clearBtn);
+  group.appendChild(clearBtn);
 
   // Link: opens the link dialog (uses selected text, or inserts at caret).
-  const linkDivider = document.createElement("div");
-  linkDivider.className = "format-divider";
-  toolbar.appendChild(linkDivider);
+  group = newGroup("grp-link");
   const linkBtn = document.createElement("button");
   linkBtn.className = "format-btn";
   linkBtn.textContent = "🔗";
@@ -3979,9 +3983,10 @@ function showFormatToolbar() {
   linkBtn.setAttribute("aria-label", "Add or edit link");
   linkBtn.addEventListener("mousedown", (e) => { e.preventDefault(); });
   linkBtn.addEventListener("click", () => { openLinkDialog(); });
-  toolbar.appendChild(linkBtn);
+  group.appendChild(linkBtn);
 
   // Text colors: an "A" in each BlockNote theme color.
+  group = newGroup("grp-text");
   TEXT_COLORS.forEach((tc) => {
     const sw = document.createElement("button");
     sw.className = "hl-swatch tx-swatch" + (activeStyles.textColor === tc.name ? " active" : "");
@@ -3994,7 +3999,7 @@ function showFormatToolbar() {
       applyTextColor(tc.name);
       setTimeout(refreshFormatToolbarActive, 0);
     });
-    toolbar.appendChild(sw);
+    group.appendChild(sw);
   });
 
   const txClear = document.createElement("button");
@@ -4007,17 +4012,17 @@ function showFormatToolbar() {
     applyTextColor(null);
     setTimeout(refreshFormatToolbarActive, 0);
   });
-  toolbar.appendChild(txClear);
+  group.appendChild(txClear);
 
-  // Clipboard group: copy + paste together, kept apart from the style
-  // swatches by a divider so they read as one unit.
-  const clipDivider = document.createElement("div");
-  clipDivider.className = "format-divider";
-  toolbar.appendChild(clipDivider);
+  // Clipboard group: copy + paste together in their own sunken container.
+  const clipGroup = newGroup("clip-group");
+
+  const ICON_COPY = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>';
+  const ICON_PASTE = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1H9V4Z"/></svg>';
 
   const copyBtn = document.createElement("button");
   copyBtn.className = "format-btn";
-  copyBtn.textContent = "⧉";
+  copyBtn.innerHTML = ICON_COPY;
   copyBtn.title = "Copy (Ctrl+C)";
   copyBtn.setAttribute("aria-label", "Copy selection");
   copyBtn.addEventListener("mousedown", (e) => { e.preventDefault(); });
@@ -4026,11 +4031,11 @@ function showFormatToolbar() {
     setSaveState(ok ? "Copied" : "Nothing to copy", false);
     if (isMobileLayout() || isCoarsePointer()) toolbar.classList.remove("open");
   });
-  toolbar.appendChild(copyBtn);
+  clipGroup.appendChild(copyBtn);
 
   const pasteBtn = document.createElement("button");
   pasteBtn.className = "format-btn";
-  pasteBtn.textContent = "📋";
+  pasteBtn.innerHTML = ICON_PASTE;
   pasteBtn.title = "Paste (Ctrl+V)";
   pasteBtn.setAttribute("aria-label", "Paste from clipboard");
   pasteBtn.addEventListener("mousedown", (e) => { e.preventDefault(); });
@@ -4038,7 +4043,10 @@ function showFormatToolbar() {
     await pasteClipboardIntoEditor();
     if (isMobileLayout() || isCoarsePointer()) toolbar.classList.remove("open");
   });
-  toolbar.appendChild(pasteBtn);
+  clipGroup.appendChild(pasteBtn);
+
+  // Mark B/I/U/S active state on open.
+  refreshFormatToolbarActive();
 
   // Mark B/I/U/S active state on open.
   refreshFormatToolbarActive();
@@ -4067,16 +4075,15 @@ function showFormatToolbar() {
   // strand it off-screen.
   const vw = (window.visualViewport && window.visualViewport.width) || window.innerWidth;
   const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
-  const menuW = Math.min(360, vw - 16);
-  const left = Math.max(8, Math.min(rect.left + (rect.width / 2) - menuW / 2, vw - menuW - 8));
-
   // Open off-screen first so we can measure the real (possibly wrapped)
-  // height — a fixed 48px offset overlaps the selection when the bar wraps
-  // to two rows. Keep a 14px air gap above the selection.
-  toolbar.style.left = left + "px";
+  // width and height — the group pills changed the bar's size, never assume
+  // a fixed width here. Keep a 14px air gap above the selection.
+  toolbar.style.left = "0px";
   toolbar.style.top = "-9999px";
   toolbar.classList.add("open");
   const barH = toolbar.offsetHeight || 40;
+  const menuW = Math.min(toolbar.offsetWidth || 360, vw - 16);
+  const left = Math.max(8, Math.min(rect.left + (rect.width / 2) - menuW / 2, vw - menuW - 8));
   let top = rect.top - barH - 14;
   if (top < 8) top = Math.min(rect.bottom + 14, Math.max(8, vh - barH - 8));
 
