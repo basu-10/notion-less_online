@@ -3273,8 +3273,28 @@ function openInsertMenuAt(x, y) {
   } catch {}
 }
 
-// Right-click on an empty line opens the insert menu, on a filled block it
-// opens the block options instead. When text is selected, show the formatting
+// Block kinds that carry text converts vs. ones that need their own menu.
+// Text converts (paragraph/heading/list/quote/code) are meaningless on
+// media, tables, and dividers, so those blocks get a compact menu with only
+// relevant options (insert below, move, paste, delete + type specifics).
+const TEXTISH_BLOCK_TYPES = new Set([
+  "paragraph", "heading", "bulletListItem", "numberedListItem",
+  "checkListItem", "quote", "codeBlock",
+]);
+
+const BLOCK_KIND_LABELS = {
+  image: "Image", video: "Video", audio: "Audio", file: "File",
+  table: "Table", divider: "Divider",
+};
+
+function blockKindById(blockId) {
+  try { return state.editor?.getBlock(blockId)?.type || null; } catch { return null; }
+}
+
+// Right-click on an empty text line opens the insert menu, on a filled block
+// it opens the block options instead. Non-text blocks (image/video/audio/
+// file/table/divider) always get block options, never the insert menu, even
+// though they carry no text. When text is selected, show the formatting
 // toolbar only (no insert / block menu). Shared by mouse contextmenu + mobile
 // long-press so both gestures behave the same.
 function openBlockGestureAt(blockId, x, y) {
@@ -3294,7 +3314,16 @@ function openBlockGestureAt(blockId, x, y) {
       } catch {}
     }
     const target = (blockId && findBlockById(blockId)) || getCurrentBlock();
-    if (isEmptyBlockText(currentBlockText(target))) {
+    // Kind first: media/table/divider blocks never open the insert menu —
+    // the text-trigger check below would misread them as "empty".
+    let kind = null;
+    try {
+      kind = (target && target.type) || (blockId && blockKindById(blockId)) || null;
+    } catch {}
+    if (kind && !TEXTISH_BLOCK_TYPES.has(kind)) {
+      if (blockId) showBlockMenu(blockId, x, y);
+      else openInsertMenuAt(x, y);
+    } else if (isEmptyBlockText(currentBlockText(target))) {
       openInsertMenuAt(x, y);
     } else if (blockId) {
       showBlockMenu(blockId, x, y);
@@ -3461,6 +3490,107 @@ function showBlockMenu(blockId, x, y) {
   menu.dataset.blockId = blockId;
   menu.dataset.x = x;
   menu.dataset.y = y;
+
+  // Non-text blocks (image/video/audio/file/table/divider) get a compact
+  // menu with only relevant options — never text converts. Insert / move /
+  // paste / delete stay, plus type specifics (table actions, image caption).
+  // This is the first step toward per-block menus; text blocks keep the full
+  // convert menu below.
+  const kind = blockKindById(blockId);
+  if (kind && !TEXTISH_BLOCK_TYPES.has(kind)) {
+    appendBlockMenuHeader(menu, BLOCK_KIND_LABELS[kind] || "Block");
+    if (kind === "table") {
+      try {
+        const tb = tableBlockById(blockId);
+        if (tb) {
+          const tItems = [
+            ["➕  Add row below", () => tableAppendRow(blockId)],
+            ["➕  Add column right", () => tableAppendCol(blockId)],
+            [((tb.content && tb.content.headerRows) ? "☑  Header row: on" : "☐  Header row: off"), () => tableToggleHeader(blockId)],
+          ];
+          tItems.forEach(([label, fn]) => {
+            const b = document.createElement("button");
+            b.className = "block-menu-item";
+            b.textContent = label;
+            b.addEventListener("click", () => {
+              menu.classList.remove("open");
+              try { fn(); } catch (e) { console.warn(e); }
+              try { state.editor.focus(); } catch {}
+            });
+            menu.appendChild(b);
+          });
+        }
+      } catch {}
+      menu.appendChild(createBlockMenuDivider());
+    } else if (kind === "image") {
+      const capBtn = document.createElement("button");
+      capBtn.className = "block-menu-item";
+      capBtn.innerHTML = `<span class="block-menu-icon">✎</span>Edit caption`;
+      capBtn.addEventListener("click", () => {
+        menu.classList.remove("open");
+        editImageCaption(blockId);
+      });
+      menu.appendChild(capBtn);
+      menu.appendChild(createBlockMenuDivider());
+    }
+    appendBlockMenuHeader(menu, "Media");
+    [["🖼", "Insert image below", "image"], ["▶", "Insert video below", "video"], ["♪", "Insert audio below", "audio"], ["📎", "Insert file below", "file"]].forEach(([icon, label, mkind]) => {
+      const btn = document.createElement("button");
+      btn.className = "block-menu-item";
+      btn.innerHTML = `<span class="block-menu-icon">${icon}</span>${label}`;
+      btn.addEventListener("click", () => {
+        menu.classList.remove("open");
+        try { focusBlockById(blockId, "end"); } catch {}
+        setTimeout(() => { try { openMediaChooser(mkind); } catch (e) { console.warn(e); } }, 30);
+      });
+      menu.appendChild(btn);
+    });
+    menu.appendChild(createBlockMenuDivider());
+    appendBlockMenuHeader(menu, "Actions");
+    [["↑", "Move up", (id) => { try { state.editor.moveBlocksUp(id); } catch { state.editor.moveBlocksUp(); } }],
+     ["↓", "Move down", (id) => { try { state.editor.moveBlocksDown(id); } catch { state.editor.moveBlocksDown(); } }]].forEach(([icon, label, fn]) => {
+      const b = document.createElement("button");
+      b.className = "block-menu-item";
+      b.innerHTML = `<span class="block-menu-icon">${icon}</span>${label}`;
+      b.addEventListener("click", () => {
+        menu.classList.remove("open");
+        try { fn(blockId); } catch (e) { console.warn(e); }
+        try { state.editor.focus(); } catch {}
+      });
+      menu.appendChild(b);
+    });
+    menu.appendChild(createBlockMenuDivider());
+    appendBlockMenuHeader(menu, "Clipboard");
+    const npaste = document.createElement("button");
+    npaste.className = "block-menu-item";
+    npaste.innerHTML = `<span class="block-menu-icon">📋</span>Paste`;
+    npaste.addEventListener("click", async () => {
+      menu.classList.remove("open");
+      try { focusBlockById(blockId, "end"); } catch {}
+      try { state.editor.focus(); } catch {}
+      const ok = await pasteClipboardIntoEditor();
+      if (ok === false) setSaveState("Clipboard empty", false);
+    });
+    menu.appendChild(npaste);
+    menu.appendChild(createBlockMenuDivider());
+    const ndel = document.createElement("button");
+    ndel.className = "block-menu-item danger";
+    ndel.innerHTML = "Delete block";
+    ndel.addEventListener("click", () => {
+      try { state.editor.removeBlock(blockId); } catch (e) { console.warn(e); }
+      menu.classList.remove("open");
+    });
+    menu.appendChild(ndel);
+    menu.classList.add("open");
+    if (isMobileLayout()) {
+      menu.style.left = "";
+      menu.style.top = "";
+      menu.style.maxHeight = "";
+      return;
+    }
+    placeMenuAtPoint(menu, x, y, 420);
+    return;
+  }
 
   BLOCK_TYPES.forEach((bt, bi) => {
     // Grouped converts mirror the slash menu: Basic blocks / Lists /
