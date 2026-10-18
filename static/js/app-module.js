@@ -3484,6 +3484,203 @@ function appendBlockMenuHeader(menu, text) {
   menu.appendChild(h);
 }
 
+// ---------- Per-block menu pieces (shared by the type-specific menus) ----------
+function addMediaInsertGroup(menu, blockId) {
+  appendBlockMenuHeader(menu, "Media");
+  [["🖼", "Insert image below", "image"], ["▶", "Insert video below", "video"], ["♪", "Insert audio below", "audio"], ["📎", "Insert file below", "file"]].forEach(([icon, label, mkind]) => {
+    const btn = document.createElement("button");
+    btn.className = "block-menu-item";
+    btn.innerHTML = `<span class="block-menu-icon">${icon}</span>${label}`;
+    btn.addEventListener("click", () => {
+      menu.classList.remove("open");
+      try { focusBlockById(blockId, "end"); } catch {}
+      setTimeout(() => { try { openMediaChooser(mkind); } catch (e) { console.warn(e); } }, 30);
+    });
+    menu.appendChild(btn);
+  });
+}
+
+function addMoveGroup(menu, blockId) {
+  appendBlockMenuHeader(menu, "Actions");
+  [["↑", "Move up", (id) => { try { state.editor.moveBlocksUp(id); } catch { state.editor.moveBlocksUp(); } }],
+   ["↓", "Move down", (id) => { try { state.editor.moveBlocksDown(id); } catch { state.editor.moveBlocksDown(); } }]].forEach(([icon, label, fn]) => {
+    const b = document.createElement("button");
+    b.className = "block-menu-item";
+    b.innerHTML = `<span class="block-menu-icon">${icon}</span>${label}`;
+    b.addEventListener("click", () => {
+      menu.classList.remove("open");
+      try { fn(blockId); } catch (e) { console.warn(e); }
+      try { state.editor.focus(); } catch {}
+    });
+    menu.appendChild(b);
+  });
+}
+
+function addPasteGroup(menu, blockId) {
+  appendBlockMenuHeader(menu, "Clipboard");
+  const p = document.createElement("button");
+  p.className = "block-menu-item";
+  p.innerHTML = `<span class="block-menu-icon">📋</span>Paste`;
+  p.addEventListener("click", async () => {
+    menu.classList.remove("open");
+    try { focusBlockById(blockId, "end"); } catch {}
+    try { state.editor.focus(); } catch {}
+    const ok = await pasteClipboardIntoEditor();
+    if (ok === false) setSaveState("Clipboard empty", false);
+  });
+  menu.appendChild(p);
+}
+
+function addDeleteOption(menu, blockId) {
+  const del = document.createElement("button");
+  del.className = "block-menu-item danger";
+  del.innerHTML = "Delete block";
+  del.addEventListener("click", () => {
+    try { state.editor.removeBlock(blockId); } catch (e) { console.warn(e); }
+    menu.classList.remove("open");
+  });
+  menu.appendChild(del);
+}
+
+function addCopyLinkOption(menu, blockId, kindLabel) {
+  const b = document.createElement("button");
+  b.className = "block-menu-item";
+  b.innerHTML = `<span class="block-menu-icon">🔗</span>Copy ${kindLabel} link`;
+  b.addEventListener("click", async () => {
+    menu.classList.remove("open");
+    try {
+      const url = state.editor.getBlock(blockId)?.props?.url || "";
+      if (!url) { setSaveState("No link yet", false); return; }
+      await navigator.clipboard.writeText(url);
+      setSaveState("Link copied", false);
+    } catch { setSaveState("Copy failed", false); }
+  });
+  menu.appendChild(b);
+}
+
+function placeOpenedBlockMenu(menu, x, y) {
+  menu.classList.add("open");
+  if (isMobileLayout()) {
+    menu.style.left = "";
+    menu.style.top = "";
+    menu.style.maxHeight = "";
+    return;
+  }
+  placeMenuAtPoint(menu, x, y, 420);
+}
+
+// ---------- Separate right-click menus, one per non-text block type ----------
+function showImageMenu(menu, blockId, x, y) {
+  appendBlockMenuHeader(menu, "Image");
+  const capBtn = document.createElement("button");
+  capBtn.className = "block-menu-item";
+  capBtn.innerHTML = `<span class="block-menu-icon">✎</span>Edit caption`;
+  capBtn.addEventListener("click", () => {
+    menu.classList.remove("open");
+    editImageCaption(blockId);
+  });
+  menu.appendChild(capBtn);
+  addCopyLinkOption(menu, blockId, "image");
+  menu.appendChild(createBlockMenuDivider());
+  addMediaInsertGroup(menu, blockId);
+  menu.appendChild(createBlockMenuDivider());
+  addMoveGroup(menu, blockId);
+  menu.appendChild(createBlockMenuDivider());
+  addPasteGroup(menu, blockId);
+  menu.appendChild(createBlockMenuDivider());
+  addDeleteOption(menu, blockId);
+  placeOpenedBlockMenu(menu, x, y);
+}
+
+function showVideoMenu(menu, blockId, x, y) {
+  appendBlockMenuHeader(menu, "Video");
+  addCopyLinkOption(menu, blockId, "video");
+  menu.appendChild(createBlockMenuDivider());
+  addMediaInsertGroup(menu, blockId);
+  menu.appendChild(createBlockMenuDivider());
+  addMoveGroup(menu, blockId);
+  menu.appendChild(createBlockMenuDivider());
+  addPasteGroup(menu, blockId);
+  menu.appendChild(createBlockMenuDivider());
+  addDeleteOption(menu, blockId);
+  placeOpenedBlockMenu(menu, x, y);
+}
+
+function showAudioMenu(menu, blockId, x, y) {
+  appendBlockMenuHeader(menu, "Audio");
+  addCopyLinkOption(menu, blockId, "audio");
+  menu.appendChild(createBlockMenuDivider());
+  addMediaInsertGroup(menu, blockId);
+  menu.appendChild(createBlockMenuDivider());
+  addMoveGroup(menu, blockId);
+  menu.appendChild(createBlockMenuDivider());
+  addPasteGroup(menu, blockId);
+  menu.appendChild(createBlockMenuDivider());
+  addDeleteOption(menu, blockId);
+  placeOpenedBlockMenu(menu, x, y);
+}
+
+function showFileMenu(menu, blockId, x, y) {
+  appendBlockMenuHeader(menu, "File");
+  addCopyLinkOption(menu, blockId, "file");
+  menu.appendChild(createBlockMenuDivider());
+  addMediaInsertGroup(menu, blockId);
+  menu.appendChild(createBlockMenuDivider());
+  addMoveGroup(menu, blockId);
+  menu.appendChild(createBlockMenuDivider());
+  addPasteGroup(menu, blockId);
+  menu.appendChild(createBlockMenuDivider());
+  addDeleteOption(menu, blockId);
+  placeOpenedBlockMenu(menu, x, y);
+}
+
+function showTableMenu(menu, blockId, x, y) {
+  appendBlockMenuHeader(menu, "Table");
+  try {
+    const tb = tableBlockById(blockId);
+    if (tb) {
+      const tItems = [
+        ["➕  Add row below", () => tableAppendRow(blockId)],
+        ["➕  Add column right", () => tableAppendCol(blockId)],
+        [((tb.content && tb.content.headerRows) ? "☑  Header row: on" : "☐  Header row: off"), () => tableToggleHeader(blockId)],
+      ];
+      tItems.forEach(([label, fn]) => {
+        const b = document.createElement("button");
+        b.className = "block-menu-item";
+        b.textContent = label;
+        b.addEventListener("click", () => {
+          menu.classList.remove("open");
+          try { fn(); } catch (e) { console.warn(e); }
+          try { state.editor.focus(); } catch {}
+        });
+        menu.appendChild(b);
+      });
+    }
+  } catch {}
+  menu.appendChild(createBlockMenuDivider());
+  addMediaInsertGroup(menu, blockId);
+  menu.appendChild(createBlockMenuDivider());
+  addMoveGroup(menu, blockId);
+  menu.appendChild(createBlockMenuDivider());
+  addPasteGroup(menu, blockId);
+  menu.appendChild(createBlockMenuDivider());
+  addDeleteOption(menu, blockId);
+  placeOpenedBlockMenu(menu, x, y);
+}
+
+function showDividerMenu(menu, blockId, x, y) {
+  appendBlockMenuHeader(menu, "Divider");
+  menu.appendChild(createBlockMenuDivider());
+  addMediaInsertGroup(menu, blockId);
+  menu.appendChild(createBlockMenuDivider());
+  addMoveGroup(menu, blockId);
+  menu.appendChild(createBlockMenuDivider());
+  addPasteGroup(menu, blockId);
+  menu.appendChild(createBlockMenuDivider());
+  addDeleteOption(menu, blockId);
+  placeOpenedBlockMenu(menu, x, y);
+}
+
 function showBlockMenu(blockId, x, y) {
   const menu = $("#blockMenu");
   menu.innerHTML = "";
@@ -3491,104 +3688,19 @@ function showBlockMenu(blockId, x, y) {
   menu.dataset.x = x;
   menu.dataset.y = y;
 
-  // Non-text blocks (image/video/audio/file/table/divider) get a compact
-  // menu with only relevant options — never text converts. Insert / move /
-  // paste / delete stay, plus type specifics (table actions, image caption).
-  // This is the first step toward per-block menus; text blocks keep the full
-  // convert menu below.
+  // Non-text blocks each get their own dedicated menu — never text
+  // converts. Text blocks fall through to the full convert menu below.
   const kind = blockKindById(blockId);
   if (kind && !TEXTISH_BLOCK_TYPES.has(kind)) {
-    appendBlockMenuHeader(menu, BLOCK_KIND_LABELS[kind] || "Block");
-    if (kind === "table") {
-      try {
-        const tb = tableBlockById(blockId);
-        if (tb) {
-          const tItems = [
-            ["➕  Add row below", () => tableAppendRow(blockId)],
-            ["➕  Add column right", () => tableAppendCol(blockId)],
-            [((tb.content && tb.content.headerRows) ? "☑  Header row: on" : "☐  Header row: off"), () => tableToggleHeader(blockId)],
-          ];
-          tItems.forEach(([label, fn]) => {
-            const b = document.createElement("button");
-            b.className = "block-menu-item";
-            b.textContent = label;
-            b.addEventListener("click", () => {
-              menu.classList.remove("open");
-              try { fn(); } catch (e) { console.warn(e); }
-              try { state.editor.focus(); } catch {}
-            });
-            menu.appendChild(b);
-          });
-        }
-      } catch {}
-      menu.appendChild(createBlockMenuDivider());
-    } else if (kind === "image") {
-      const capBtn = document.createElement("button");
-      capBtn.className = "block-menu-item";
-      capBtn.innerHTML = `<span class="block-menu-icon">✎</span>Edit caption`;
-      capBtn.addEventListener("click", () => {
-        menu.classList.remove("open");
-        editImageCaption(blockId);
-      });
-      menu.appendChild(capBtn);
-      menu.appendChild(createBlockMenuDivider());
-    }
-    appendBlockMenuHeader(menu, "Media");
-    [["🖼", "Insert image below", "image"], ["▶", "Insert video below", "video"], ["♪", "Insert audio below", "audio"], ["📎", "Insert file below", "file"]].forEach(([icon, label, mkind]) => {
-      const btn = document.createElement("button");
-      btn.className = "block-menu-item";
-      btn.innerHTML = `<span class="block-menu-icon">${icon}</span>${label}`;
-      btn.addEventListener("click", () => {
-        menu.classList.remove("open");
-        try { focusBlockById(blockId, "end"); } catch {}
-        setTimeout(() => { try { openMediaChooser(mkind); } catch (e) { console.warn(e); } }, 30);
-      });
-      menu.appendChild(btn);
-    });
-    menu.appendChild(createBlockMenuDivider());
-    appendBlockMenuHeader(menu, "Actions");
-    [["↑", "Move up", (id) => { try { state.editor.moveBlocksUp(id); } catch { state.editor.moveBlocksUp(); } }],
-     ["↓", "Move down", (id) => { try { state.editor.moveBlocksDown(id); } catch { state.editor.moveBlocksDown(); } }]].forEach(([icon, label, fn]) => {
-      const b = document.createElement("button");
-      b.className = "block-menu-item";
-      b.innerHTML = `<span class="block-menu-icon">${icon}</span>${label}`;
-      b.addEventListener("click", () => {
-        menu.classList.remove("open");
-        try { fn(blockId); } catch (e) { console.warn(e); }
-        try { state.editor.focus(); } catch {}
-      });
-      menu.appendChild(b);
-    });
-    menu.appendChild(createBlockMenuDivider());
-    appendBlockMenuHeader(menu, "Clipboard");
-    const npaste = document.createElement("button");
-    npaste.className = "block-menu-item";
-    npaste.innerHTML = `<span class="block-menu-icon">📋</span>Paste`;
-    npaste.addEventListener("click", async () => {
-      menu.classList.remove("open");
-      try { focusBlockById(blockId, "end"); } catch {}
-      try { state.editor.focus(); } catch {}
-      const ok = await pasteClipboardIntoEditor();
-      if (ok === false) setSaveState("Clipboard empty", false);
-    });
-    menu.appendChild(npaste);
-    menu.appendChild(createBlockMenuDivider());
-    const ndel = document.createElement("button");
-    ndel.className = "block-menu-item danger";
-    ndel.innerHTML = "Delete block";
-    ndel.addEventListener("click", () => {
-      try { state.editor.removeBlock(blockId); } catch (e) { console.warn(e); }
-      menu.classList.remove("open");
-    });
-    menu.appendChild(ndel);
-    menu.classList.add("open");
-    if (isMobileLayout()) {
-      menu.style.left = "";
-      menu.style.top = "";
-      menu.style.maxHeight = "";
-      return;
-    }
-    placeMenuAtPoint(menu, x, y, 420);
+    const builders = {
+      image: showImageMenu,
+      video: showVideoMenu,
+      audio: showAudioMenu,
+      file: showFileMenu,
+      table: showTableMenu,
+      divider: showDividerMenu,
+    };
+    (builders[kind] || showDividerMenu)(menu, blockId, x, y);
     return;
   }
 
