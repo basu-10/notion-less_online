@@ -4983,6 +4983,250 @@ $("#sortOrderBtn").addEventListener("click", () => {
 
 updateSortBtn();
 
+// ---------- Multi-account switching (passwords never stored) ----------
+// Only usernames are remembered, in localStorage (`notion-saved-accounts`).
+// Every switch re-authenticates with that account's password via
+// POST /api/auth/login, then reloads — IndexedDB drafts/state stay safely
+// scoped per account (see scopedKey/currentUsername).
+const SAVED_ACCOUNTS_KEY = "notion-saved-accounts";
+const MAX_SAVED_ACCOUNTS = 10;
+
+function getSavedAccounts() {
+  try {
+    const raw = localStorage.getItem(SAVED_ACCOUNTS_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(arr)) return [];
+    const seen = new Set();
+    const out = [];
+    for (const name of arr) {
+      if (typeof name !== "string") continue;
+      const u = name.trim();
+      if (!u || seen.has(u.toLowerCase())) continue;
+      if (!/^[a-zA-Z0-9_-]{3,32}$/.test(u)) continue;
+      seen.add(u.toLowerCase());
+      out.push(u);
+    }
+    return out.slice(0, MAX_SAVED_ACCOUNTS);
+  } catch { return []; }
+}
+
+function rememberAccount(username) {
+  const u = (username || "").trim();
+  if (!u) return;
+  try {
+    const rest = getSavedAccounts().filter(n => n.toLowerCase() !== u.toLowerCase());
+    localStorage.setItem(SAVED_ACCOUNTS_KEY, JSON.stringify([u, ...rest].slice(0, MAX_SAVED_ACCOUNTS)));
+  } catch {}
+}
+
+function forgetAccount(username) {
+  const u = (username || "").trim().toLowerCase();
+  if (!u) return;
+  try {
+    localStorage.setItem(SAVED_ACCOUNTS_KEY,
+      JSON.stringify(getSavedAccounts().filter(n => n.toLowerCase() !== u)));
+  } catch {}
+}
+
+// Remember this login so it shows up in the switcher next time.
+try { if (currentUsername()) rememberAccount(currentUsername()); } catch {}
+
+async function doSwitchAccount(username, password) {
+  const u = (username || "").trim();
+  if (!u) throw new Error("Username required");
+  if (!password) throw new Error("Password required");
+  // Snapshot current edits locally (per-account IndexedDB) + best-effort
+  // server push so nothing is lost when the session cookie flips.
+  try { snapshotCurrentToPage(); } catch {}
+  try {
+    const cur = state.pages.get(state.currentPageId);
+    if (cur) { try { await writeDraft(cur); } catch {} }
+  } catch {}
+  try { flushBeacon(); } catch {}
+  await new Promise(r => setTimeout(r, 150));
+  const res = await fetch("/api/auth/login", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: u, password }),
+  });
+  let data = null;
+  try { data = await res.json(); } catch {}
+  if (!res.ok) throw new Error((data && data.error) || "Invalid credentials");
+  rememberAccount(data.username || u);
+  window.location.href = "/app";
+}
+
+function openSwitchAccountDialog() {
+  const overlay = document.getElementById("nlDialogOverlay");
+  if (!overlay) { window.location.href = "/auth/login"; return; }
+  if (_dialogResolve) { const r = _dialogResolve; _dialogResolve = null; try { r(false); } catch {} }
+  const me = currentUsername();
+  document.getElementById("nlDialogTitle").textContent = "Switch account";
+  const msg = document.getElementById("nlDialogMessage");
+  msg.textContent = "";
+  msg.style.textAlign = "left";
+
+  const wrap = document.createElement("div");
+  wrap.className = "acct-switch";
+  const accounts = getSavedAccounts();
+  const others = accounts.filter(n => n.toLowerCase() !== (me || "").toLowerCase());
+
+  if (!others.length) {
+    const empty = document.createElement("p");
+    empty.className = "acct-hint";
+    empty.textContent = me
+      ? `Signed in as ${me}. Sign in below to add another account to this device — only the username is remembered, never the password.`
+      : "Sign in below to add an account to this device — only the username is remembered, never the password.";
+    wrap.appendChild(empty);
+  } else {
+    const list = document.createElement("div");
+    list.className = "acct-list";
+    others.forEach(name => {
+      const row = document.createElement("div");
+      row.className = "acct-row";
+      const av = document.createElement("span");
+      av.className = "user-avatar";
+      av.textContent = name.charAt(0).toUpperCase();
+      const nm = document.createElement("span");
+      nm.className = "acct-name";
+      nm.textContent = name;
+      const go = document.createElement("button");
+      go.type = "button";
+      go.className = "nl-dialog-btn primary acct-go";
+      go.textContent = "Switch";
+      go.addEventListener("click", () => {
+        pwWrap.style.display = "block";
+        pwUser.textContent = name;
+        pwInput.value = "";
+        pwError.textContent = "";
+                        try { pwInput.focus({ preventScroll: true }); } catch { try { pwInput.focus(); } catch {} }
+        wrap.querySelectorAll(".acct-row").forEach(r => r.classList.remove("active"));
+        row.classList.add("active");
+      });
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "acct-remove";
+      del.title = "Forget " + name;
+      del.setAttribute("aria-label", "Forget " + name);
+      del.textContent = "✕";
+      del.addEventListener("click", (e) => {
+        e.stopPropagation();
+        forgetAccount(name);
+        row.remove();
+        if (!wrap.querySelector(".acct-row")) openSwitchAccountDialog();
+      });
+      row.append(av, nm, go, del);
+      row.addEventListener("click", (e) => { if (e.target !== del) go.click(); });
+      list.appendChild(row);
+    });
+    wrap.appendChild(list);
+  }
+
+  // Password step for a picked saved account.
+  const pwWrap = document.createElement("div");
+  pwWrap.className = "acct-pw";
+  pwWrap.style.display = "none";
+  const pwLabel = document.createElement("div");
+  pwLabel.className = "acct-hint";
+  const pwUser = document.createElement("strong");
+  pwLabel.append("Password for ", pwUser, ":");
+  const pwInput = document.createElement("input");
+  pwInput.type = "password";
+  pwInput.className = "nl-dialog-input acct-input";
+  pwInput.placeholder = "Password";
+  pwInput.autocomplete = "current-password";
+  pwInput.setAttribute("aria-label", "Account password");
+  const pwError = document.createElement("div");
+  pwError.className = "acct-error";
+  pwError.setAttribute("role", "alert");
+  const pwGo = document.createElement("button");
+  pwGo.type = "button";
+  pwGo.className = "nl-dialog-btn primary acct-switch-go";
+  pwGo.textContent = "Switch to this account";
+  pwGo.addEventListener("click", async () => {
+    pwError.textContent = "";
+    pwGo.disabled = true;
+    pwGo.textContent = "Switching…";
+    try {
+      await doSwitchAccount(pwUser.textContent, pwInput.value);
+    } catch (err) {
+      pwError.textContent = (err && err.message) || "Switch failed";
+      pwGo.disabled = false;
+      pwGo.textContent = "Switch to this account";
+    }
+  });
+  pwInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); pwGo.click(); } });
+  pwWrap.append(pwLabel, pwInput, pwError, pwGo);
+  wrap.appendChild(pwWrap);
+
+  // Add / switch to a new (or unlisted) account.
+  const div = document.createElement("div");
+  div.className = "acct-divider";
+  div.textContent = others.length ? "Or use another account" : "Sign in";
+  const newUser = document.createElement("input");
+  newUser.className = "nl-dialog-input acct-input";
+  newUser.placeholder = "Username";
+  newUser.autocomplete = "username";
+  newUser.setAttribute("aria-label", "Username");
+  newUser.spellcheck = false;
+  const newPw = document.createElement("input");
+  newPw.type = "password";
+  newPw.className = "nl-dialog-input acct-input";
+  newPw.placeholder = "Password";
+  newPw.autocomplete = "current-password";
+  newPw.setAttribute("aria-label", "Password");
+  const newError = document.createElement("div");
+  newError.className = "acct-error";
+  newError.setAttribute("role", "alert");
+  const addBtn = document.createElement("button");
+  addBtn.type = "button";
+  addBtn.className = "nl-dialog-btn ghost acct-switch-go";
+  addBtn.textContent = "Add & switch";
+  const tryAdd = async () => {
+    newError.textContent = "";
+    addBtn.disabled = true;
+    const orig = addBtn.textContent;
+    addBtn.textContent = "Switching…";
+    try {
+      await doSwitchAccount(newUser.value, newPw.value);
+    } catch (err) {
+      newError.textContent = (err && err.message) || "Switch failed";
+      addBtn.disabled = false;
+      addBtn.textContent = orig;
+    }
+  };
+  addBtn.addEventListener("click", tryAdd);
+  newPw.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); tryAdd(); } });
+  wrap.append(div, newUser, newPw, newError, addBtn);
+  msg.appendChild(wrap);
+
+  const box = document.getElementById("nlDialogActions");
+  box.innerHTML = "";
+  let done = false;
+  const finish = (val) => {
+    if (done) return;
+    done = true;
+    overlay.classList.remove("open");
+    overlay.setAttribute("aria-hidden", "true");
+    document.removeEventListener("keydown", _dialogEsc, true);
+    overlay.onclick = null;
+    _dialogResolve = null;
+  };
+  _dialogResolve = finish;
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "nl-dialog-btn ghost";
+  closeBtn.textContent = "Close";
+  closeBtn.addEventListener("click", () => finish(false));
+  box.appendChild(closeBtn);
+  overlay.classList.add("open");
+  overlay.setAttribute("aria-hidden", "false");
+  document.addEventListener("keydown", _dialogEsc, true);
+  overlay.onclick = (e) => { if (e.target === overlay) finish(false); };
+  setTimeout(() => { try { (newUser || closeBtn).focus({ preventScroll: true }); } catch { try { closeBtn.focus(); } catch {} } }, 40);
+}
+
 const sidebarMenuBtn = $("#sidebarMenuBtn");
 const sidebarUserMenu = $("#sidebarUserMenu");
 // Sidebar avatar shows the logged-in user's initial (not a hardcoded "U").
@@ -5019,6 +5263,11 @@ $("#myWallBtn").addEventListener("click", () => {
   if (username) {
     window.location.href = "/wall/" + encodeURIComponent(username);
   }
+});
+$("#switchAccountBtn")?.addEventListener("click", () => {
+  sidebarUserMenu.classList.remove("open");
+  sidebarMenuBtn.setAttribute("aria-expanded", "false");
+  openSwitchAccountDialog();
 });
 $("#pageTitle").addEventListener("input", markDirty);
 $("#pageTitle").addEventListener("blur", () => {

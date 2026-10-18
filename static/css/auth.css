@@ -173,3 +173,14 @@ body {
   .theme-toggle-wrapper { top: 12px; right: 12px; }
   .auth-back { top: 12px; left: 12px; }
 }
+
+/* Saved accounts (usernames only) on the login card */
+#savedAccounts:empty { display: none; }
+.auth-saved-label { font-size: 12px; margin: 2px 0 8px !important; }
+.auth-saved-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.auth-saved-chip {
+  padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--text); cursor: pointer;
+  font-size: 13px; font-weight: 600; min-height: 44px;
+}
+.auth-saved-chip:hover { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }

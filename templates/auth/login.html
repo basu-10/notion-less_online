@@ -78,6 +78,7 @@
         </div>
         <button type="submit" aria-label="Sign in">Sign in</button>
       </form>
+      <div id="savedAccounts" aria-label="Saved accounts"></div>
       <p>No account? <a href="/auth/register">Create one</a></p>
       <p class="auth-home-link"><a href="/">← Back to home</a></p>
     </article>
@@ -143,6 +144,41 @@
 
         updateThemeUI(currentMode());
       } catch (e) {}
+    })();
+  </script>
+  <script>
+    // Saved accounts (usernames only, never passwords): one-tap fill.
+    (function() {
+      var box = document.getElementById('savedAccounts');
+      var input = document.getElementById('loginUsername');
+      if (!box || !input) return;
+      var names = [];
+      try {
+        var raw = localStorage.getItem('notion-saved-accounts');
+        var arr = raw ? JSON.parse(raw) : [];
+        if (Array.isArray(arr)) names = arr.filter(function(n) {
+          return typeof n === 'string' && /^[a-zA-Z0-9_-]{3,32}$/.test(n.trim());
+        }).slice(0, 5);
+      } catch (e) {}
+      if (!names.length) return;
+      var label = document.createElement('p');
+      label.className = 'auth-saved-label';
+      label.textContent = 'Saved on this device:';
+      var row = document.createElement('div');
+      row.className = 'auth-saved-row';
+      names.forEach(function(n) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'auth-saved-chip';
+        b.textContent = n;
+        b.setAttribute('aria-label', 'Fill username ' + n);
+        b.addEventListener('click', function() {
+          input.value = n;
+          document.getElementById('loginPassword').focus();
+        });
+        row.appendChild(b);
+      });
+      box.append(label, row);
     })();
   </script>
   <script>

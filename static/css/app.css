@@ -1542,3 +1542,50 @@ div[class*="suggestion-menu"], div[class*="formatting-toolbar"] {
   .nl-dialog-btn { width: 100%; min-height: 44px; }
   .shortcut-hud { display: none; }
 }
+
+/* ---------- Account switcher (sidebar user menu -> dialog) ---------- */
+.nl-dialog-input {
+  width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--text); font-size: 14px; font-family: inherit; outline: none;
+  box-sizing: border-box;
+}
+.nl-dialog-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-wash); }
+.acct-switch { display: flex; flex-direction: column; gap: 10px; }
+.acct-list { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; }
+.acct-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 8px 7px 7px; border-radius: 10px; cursor: pointer;
+  border: 1px solid transparent;
+}
+.acct-row:hover { background: var(--hover); }
+.acct-row.active { background: var(--accent-soft); border-color: var(--accent); }
+.acct-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 600; color: var(--text); }
+.acct-row .nl-dialog-btn.acct-go { width: auto; flex-shrink: 0; min-height: 34px; padding: 6px 14px; font-size: 13px; }
+.acct-remove {
+  width: 28px; height: 28px; border-radius: 50%; border: none; cursor: pointer;
+  background: transparent; color: var(--muted); font-size: 12px; flex-shrink: 0;
+  display: grid; place-items: center;
+}
+.acct-remove:hover { background: var(--active); color: var(--text); }
+.acct-pw { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 10px; background: var(--hover); }
+.acct-hint { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+.acct-divider {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px;
+}
+.acct-divider::before, .acct-divider::after { content: ""; flex: 1; height: 1px; background: var(--border-subtle); }
+.acct-input { margin-top: 2px; }
+.acct-error { min-height: 0; font-size: 13px; color: var(--danger); }
+.acct-error:not(:empty) { margin-top: 2px; }
+.acct-switch-go { width: 100%; min-height: 44px; }
+
+/* Narrow screens: keep the row compact but honor 44px touch targets. */
+@media (max-width: 768px) {
+  .acct-list { max-height: 32dvh; }
+  .acct-row { gap: 8px; padding: 6px 6px 6px 6px; }
+  .acct-row .nl-dialog-btn.acct-go { width: auto; min-height: 44px; padding: 8px 16px; }
+  .acct-remove { width: 44px; height: 44px; font-size: 14px; }
+  .acct-name { font-size: 13px; }
+}
