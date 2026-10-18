@@ -4,23 +4,33 @@ import { BlockNoteEditor, SideMenuExtension, TableHandlesExtension } from "https
 const ROOT = "root";
 
 const BLOCKS = [
-  { key: "page",   icon: "⊕", label: "Page",       desc: "Create nested child page", type: "page" },
-  { key: "text",   icon: "T", label: "Text",       desc: "Plain text paragraph", type: "paragraph" },
-  { key: "h1",     icon: "H1", label: "Heading 1",  desc: "Large section heading", type: "heading", props: { level: 1 } },
-  { key: "h2",     icon: "H2", label: "Heading 2",  desc: "Medium section heading", type: "heading", props: { level: 2 } },
-  { key: "h3",     icon: "H3", label: "Heading 3",  desc: "Small section heading", type: "heading", props: { level: 3 } },
-  { key: "bullet", icon: "•",  label: "Bulleted list", desc: "Simple bullet list", type: "bulletListItem" },
-  { key: "number", icon: "1.", label: "Numbered list", desc: "Ordered list", type: "numberedListItem" },
-  { key: "todo",   icon: "☐", label: "To-do",       desc: "Task with checkbox", type: "checkListItem" },
-  { key: "quote",  icon: "“", label: "Quote",       desc: "Quoted text", type: "quote" },
-  { key: "code",   icon: "</>", label: "Code",      desc: "Monospace code block", type: "codeBlock" },
-  { key: "table",  icon: "▦", label: "Table",     desc: "Insert a table", type: "table" },
-  { key: "image",  icon: "🖼", label: "Image",       desc: "Upload or embed image/GIF", type: "image" },
-  { key: "video",  icon: "▶", label: "Video",       desc: "Upload or embed a video", type: "video" },
-  { key: "audio",  icon: "♪", label: "Audio",       desc: "Upload or embed audio", type: "audio" },
-  { key: "file",   icon: "📎", label: "File",        desc: "Upload or link a file (PDF, text…)", type: "file" },
-  { key: "divider", icon: "―", label: "Divider",     desc: "Horizontal rule", type: "divider" },
+  { key: "page",   icon: "⊕", label: "Page",       desc: "Create nested child page", type: "page", group: "basic" },
+  { key: "text",   icon: "T", label: "Text",       desc: "Plain text paragraph", type: "paragraph", group: "basic" },
+  { key: "h1",     icon: "H1", label: "Heading 1",  desc: "Large section heading", type: "heading", props: { level: 1 }, group: "basic" },
+  { key: "h2",     icon: "H2", label: "Heading 2",  desc: "Medium section heading", type: "heading", props: { level: 2 }, group: "basic" },
+  { key: "h3",     icon: "H3", label: "Heading 3",  desc: "Small section heading", type: "heading", props: { level: 3 }, group: "basic" },
+  { key: "bullet", icon: "•",  label: "Bulleted list", desc: "Simple bullet list", type: "bulletListItem", group: "lists" },
+  { key: "number", icon: "1.", label: "Numbered list", desc: "Ordered list", type: "numberedListItem", group: "lists" },
+  { key: "todo",   icon: "☐", label: "To-do",       desc: "Task with checkbox", type: "checkListItem", group: "lists" },
+  { key: "quote",  icon: "“", label: "Quote",       desc: "Quoted text", type: "quote", group: "extras" },
+  { key: "code",   icon: "</>", label: "Code",      desc: "Monospace code block", type: "codeBlock", group: "extras" },
+  { key: "table",  icon: "▦", label: "Table",     desc: "Insert a table", type: "table", group: "extras" },
+  { key: "divider", icon: "―", label: "Divider",     desc: "Horizontal rule", type: "divider", group: "extras" },
+  { key: "image",  icon: "🖼", label: "Image",       desc: "Upload or embed image/GIF", type: "image", group: "media" },
+  { key: "video",  icon: "▶", label: "Video",       desc: "Upload or embed a video", type: "video", group: "media" },
+  { key: "audio",  icon: "♪", label: "Audio",       desc: "Upload or embed audio", type: "audio", group: "media" },
+  { key: "file",   icon: "📎", label: "File",        desc: "Upload or link a file (PDF, text…)", type: "file", group: "media" },
+  { key: "paste", icon: "📋", label: "Paste", desc: "Paste from clipboard", type: "paste", group: "clipboard", separatorBefore: true },
 ];
+
+// Slash-menu group labels. "basic" reuses the static "Basic blocks" header
+// already rendered at the top, so it needs no entry here.
+const SLASH_GROUP_LABELS = {
+  lists: "Lists",
+  extras: "More blocks",
+  media: "Media",
+  clipboard: "Clipboard",
+};
 
 const state = {
   pages: new Map(),
@@ -2764,6 +2774,34 @@ function renderSlashMenu() {
   }
   state.slashIndex = Math.max(0, Math.min(state.slashIndex, Math.max(0, cmds.length - 1)));
   cmds.forEach((cmd, i) => {
+    // Grouped sections: divider + label on every group transition, derived
+    // from the visible list so filtered results (e.g. "/video") still get a
+    // correct header. "basic" reuses the static top header, so it adds none.
+    const g = cmd.group || "basic";
+    const pg = i > 0 ? (cmds[i - 1].group || "basic") : null;
+    let dividerAdded = false;
+    const addDivider = () => {
+      const sep = document.createElement("div");
+      sep.className = "slash-divider";
+      sep.setAttribute("aria-hidden", "true");
+      menu.appendChild(sep);
+      dividerAdded = true;
+    };
+    const addLabel = (text) => {
+      const gh = document.createElement("div");
+      gh.className = "slash-header";
+      gh.textContent = text;
+      menu.appendChild(gh);
+    };
+    if (i === 0) {
+      if (SLASH_GROUP_LABELS[g]) addLabel(SLASH_GROUP_LABELS[g]);
+    } else if (g !== pg) {
+      addDivider();
+      if (SLASH_GROUP_LABELS[g]) addLabel(SLASH_GROUP_LABELS[g]);
+    }
+    // Legacy per-item separator (paste): only when the group transition
+    // hasn't already added one.
+    if (cmd.separatorBefore && i > 0 && !dividerAdded) addDivider();
     const item = document.createElement("button");
     item.className = "slash-item" + (i === state.slashIndex ? " selected" : "");
     item.innerHTML = `<span class="slash-icon"></span><span class="slash-copy"><div class="slash-label"></div><div class="slash-desc"></div></span>`;
@@ -2873,6 +2911,15 @@ function openSlashFromButton() {
 }
 
 async function chooseSlash(command) {
+  if (command.type === "paste") {
+    // Strip the "/filter" trigger first so the pasted content lands clean,
+    // then run the same clipboard flow as the formatting toolbar's paste.
+    closeSlashMenu();
+    try { state.editor.focus(); } catch {}
+    const ok = await pasteClipboardIntoEditor();
+    if (ok === false) setSaveState("Clipboard empty", false);
+    return;
+  }
   if (command.type === "page") {
     closeSlashMenu();
     if (state.dirty) await saveCurrent();
@@ -3182,27 +3229,47 @@ function findBlockById(blockId) {
   return null;
 }
 
+// Viewport-aware placement shared by the right-click / long-press menus.
+// The old block-menu math (min(y, vh-480)) pushed tall menus off-screen;
+// this flips above the point when there is no room below and always clamps
+// into the viewport, so the menu can never be stranded out of view.
+function placeMenuAtPoint(menu, x, y, capH=420) {
+  const GAP = 8;
+  const MARGIN = 8;
+  const vw = window.innerWidth || document.documentElement.clientWidth || 800;
+  const vh = window.innerHeight || document.documentElement.clientHeight || 600;
+  const maxAllowedH = Math.max(160, vh - MARGIN * 2);
+  menu.style.maxHeight = Math.min(capH, maxAllowedH) + "px";
+  const menuW = menu.offsetWidth || 240;
+  const menuH = menu.offsetHeight || Math.min(capH, maxAllowedH);
+  let left = Math.max(MARGIN, Math.min(x, vw - menuW - MARGIN));
+  if (vw - menuW - MARGIN < MARGIN) left = MARGIN;
+  const spaceBelow = vh - y - GAP;
+  const spaceAbove = y - GAP;
+  let top;
+  if (spaceBelow >= menuH || spaceBelow >= spaceAbove) {
+    top = y + GAP;
+    if (top + menuH > vh - MARGIN) top = Math.max(MARGIN, vh - menuH - MARGIN);
+  } else {
+    top = y - menuH - GAP;
+    if (top < MARGIN) top = Math.max(MARGIN, vh - menuH - MARGIN);
+  }
+  menu.style.left = left + "px";
+  menu.style.top = top + "px";
+}
+
 function openInsertMenuAt(x, y) {
   try {
     if (!state.editor) return;
     state.slashFilter = "";
     state.slashIndex = 0;
     renderSlashMenu();
-    if (isMobileLayout()) return;
     const menu = $("#slashMenu");
     if (!menu || typeof x !== "number" || typeof y !== "number") return;
-    const GAP = 8;
-    const MARGIN = 8;
-    const vw = window.innerWidth || document.documentElement.clientWidth || 800;
-    const vh = window.innerHeight || document.documentElement.clientHeight || 600;
-    const menuW = menu.offsetWidth || 320;
-    const menuH = menu.offsetHeight || 300;
-    let left = Math.max(MARGIN, Math.min(x, vw - menuW - MARGIN));
-    if (vw - menuW - MARGIN < MARGIN) left = MARGIN;
-    let top = y + GAP;
-    if (top + menuH > vh - MARGIN) top = Math.max(MARGIN, y - menuH - GAP);
-    menu.style.left = left + "px";
-    menu.style.top = top + "px";
+    // Mobile docks the slash menu as a bottom sheet (see CSS); caret math
+    // would strand it behind the keyboard.
+    if (isMobileLayout()) { menu.style.left = ""; menu.style.top = ""; menu.style.maxHeight = ""; return; }
+    placeMenuAtPoint(menu, x, y, 380);
   } catch {}
 }
 
@@ -3364,16 +3431,29 @@ function wireEditorInteractions() {
 }
 
 const BLOCK_TYPES = [
-  { label: "Text", icon: "T", type: "paragraph" },
-  { label: "Heading 1", icon: "H1", type: "heading", props: { level: 1 } },
-  { label: "Heading 2", icon: "H2", type: "heading", props: { level: 2 } },
-  { label: "Heading 3", icon: "H3", type: "heading", props: { level: 3 } },
-  { label: "Bullet List", icon: "•", type: "bulletListItem" },
-  { label: "Numbered List", icon: "1.", type: "numberedListItem" },
-  { label: "To-do", icon: "☐", type: "checkListItem" },
-  { label: "Quote", icon: '"', type: "quote" },
-  { label: "Code", icon: "</>", type: "codeBlock" },
+  { label: "Text", icon: "T", type: "paragraph", group: "basic" },
+  { label: "Heading 1", icon: "H1", type: "heading", props: { level: 1 }, group: "basic" },
+  { label: "Heading 2", icon: "H2", type: "heading", props: { level: 2 }, group: "basic" },
+  { label: "Heading 3", icon: "H3", type: "heading", props: { level: 3 }, group: "basic" },
+  { label: "Bullet List", icon: "•", type: "bulletListItem", group: "lists" },
+  { label: "Numbered List", icon: "1.", type: "numberedListItem", group: "lists" },
+  { label: "To-do", icon: "☐", type: "checkListItem", group: "lists" },
+  { label: "Quote", icon: '"', type: "quote", group: "extras" },
+  { label: "Code", icon: "</>", type: "codeBlock", group: "extras" },
 ];
+
+const BLOCK_GROUP_LABELS = {
+  basic: "Basic blocks",
+  lists: "Lists",
+  extras: "More blocks",
+};
+
+function appendBlockMenuHeader(menu, text) {
+  const h = document.createElement("div");
+  h.className = "slash-header";
+  h.textContent = text;
+  menu.appendChild(h);
+}
 
 function showBlockMenu(blockId, x, y) {
   const menu = $("#blockMenu");
@@ -3382,7 +3462,17 @@ function showBlockMenu(blockId, x, y) {
   menu.dataset.x = x;
   menu.dataset.y = y;
 
-  BLOCK_TYPES.forEach(bt => {
+  BLOCK_TYPES.forEach((bt, bi) => {
+    // Grouped converts mirror the slash menu: Basic blocks / Lists /
+    // More blocks, each divider-separated after the first.
+    const prevG = bi > 0 ? (BLOCK_TYPES[bi - 1].group || "basic") : null;
+    const curG = bt.group || "basic";
+    if (bi === 0) {
+      appendBlockMenuHeader(menu, BLOCK_GROUP_LABELS[curG] || "Basic blocks");
+    } else if (curG !== prevG) {
+      menu.appendChild(createBlockMenuDivider());
+      appendBlockMenuHeader(menu, BLOCK_GROUP_LABELS[curG] || curG);
+    }
     const item = document.createElement("button");
     item.className = "block-menu-item";
     item.innerHTML = `<span class="block-menu-icon">${bt.icon}</span>${bt.label}`;
@@ -3412,17 +3502,27 @@ function showBlockMenu(blockId, x, y) {
 
   menu.appendChild(createBlockMenuDivider());
 
-  const imageBtn = document.createElement("button");
-  imageBtn.className = "block-menu-item";
-  imageBtn.innerHTML = `<span class="block-menu-icon">🖼</span>Insert image below`;
-  imageBtn.addEventListener("click", () => {
-    menu.classList.remove("open");
-    try { focusBlockById(blockId, "end"); } catch {}
-    setTimeout(() => { try { openImageChooser(); } catch (e) { console.warn(e); } }, 30);
+  // Media inserts share one chooser flow (upload or link); keep all four in
+  // their own labeled group so they never read as plain block converts.
+  const mediaHeader = document.createElement("div");
+  mediaHeader.className = "slash-header";
+  mediaHeader.textContent = "Media";
+  menu.appendChild(mediaHeader);
+  [["🖼", "Insert image below", "image"], ["▶", "Insert video below", "video"], ["♪", "Insert audio below", "audio"], ["📎", "Insert file below", "file"]].forEach(([icon, label, kind]) => {
+    const btn = document.createElement("button");
+    btn.className = "block-menu-item";
+    btn.innerHTML = `<span class="block-menu-icon">${icon}</span>${label}`;
+    btn.addEventListener("click", () => {
+      menu.classList.remove("open");
+      try { focusBlockById(blockId, "end"); } catch {}
+      setTimeout(() => { try { openMediaChooser(kind); } catch (e) { console.warn(e); } }, 30);
+    });
+    menu.appendChild(btn);
   });
-  menu.appendChild(imageBtn);
+  menu.appendChild(createBlockMenuDivider());
 
   // Reorder: works everywhere (mouse, touch, keyboard users).
+  appendBlockMenuHeader(menu, "Actions");
   const moveUp = document.createElement("button");
   moveUp.className = "block-menu-item";
   moveUp.innerHTML = `<span class="block-menu-icon">↑</span>Move up`;
@@ -3447,6 +3547,22 @@ function showBlockMenu(blockId, x, y) {
     } catch (e) { console.warn(e); }
   });
   menu.appendChild(moveDown);
+
+  // Paste lives in its own group below the insert/move actions (same
+  // clipboard flow as the formatting toolbar), never mixed into them.
+  menu.appendChild(createBlockMenuDivider());
+  appendBlockMenuHeader(menu, "Clipboard");
+  const pasteBtn = document.createElement("button");
+  pasteBtn.className = "block-menu-item";
+  pasteBtn.innerHTML = `<span class="block-menu-icon">📋</span>Paste`;
+  pasteBtn.addEventListener("click", async () => {
+    menu.classList.remove("open");
+    try { focusBlockById(blockId, "end"); } catch {}
+    try { state.editor.focus(); } catch {}
+    const ok = await pasteClipboardIntoEditor();
+    if (ok === false) setSaveState("Clipboard empty", false);
+  });
+  menu.appendChild(pasteBtn);
 
   menu.appendChild(createBlockMenuDivider());
 
@@ -3516,11 +3632,16 @@ function showBlockMenu(blockId, x, y) {
   });
   menu.appendChild(deleteBtn);
 
-  const left = Math.min(x, window.innerWidth - 230);
-  const top = Math.min(y, window.innerHeight - 480);
-  menu.style.left = left + "px";
-  menu.style.top = top + "px";
+  // Open first so offsetWidth/Height measure the real menu, then clamp +
+  // flip into the viewport (never the old min(y, vh-480) strand-off).
   menu.classList.add("open");
+  if (isMobileLayout()) {
+    menu.style.left = "";
+    menu.style.top = "";
+    menu.style.maxHeight = "";
+    return;
+  }
+  placeMenuAtPoint(menu, x, y, 420);
 }
 
 function createBlockMenuDivider() {
@@ -3581,9 +3702,14 @@ function showCodeLanguageMenu(blockId) {
   back.textContent = "← Back";
   back.addEventListener("click", () => showBlockMenu(blockId, x, y));
   menu.appendChild(back);
-  menu.style.left = Math.min(x, window.innerWidth - 200) + "px";
-  menu.style.top = Math.min(y, window.innerHeight - 350) + "px";
   menu.classList.add("open");
+  if (isMobileLayout()) {
+    menu.style.left = "";
+    menu.style.top = "";
+    menu.style.maxHeight = "";
+    return;
+  }
+  placeMenuAtPoint(menu, x, y, 420);
 }
 
 function editImageCaption(blockId) {
@@ -3819,7 +3945,7 @@ function copySelectionToClipboard() {
 // normal Ctrl+V. Plain-text insert is the fallback for browsers that reject
 // clipboard.read().
 async function pasteClipboardIntoEditor() {
-  if (!state.editor) return;
+  if (!state.editor) return false;
   let html = "";
   let text = "";
   try {
@@ -3833,7 +3959,7 @@ async function pasteClipboardIntoEditor() {
       text = await navigator.clipboard.readText();
     }
   } catch (e) { console.warn("paste read failed", e); }
-  if (!html && !text) return;
+  if (!html && !text) return false;
 
   try { state.editor.focus(); } catch {}
   const view = state.editor._tiptapEditor?.view;
@@ -3842,12 +3968,14 @@ async function pasteClipboardIntoEditor() {
       const dt = new DataTransfer();
       dt.setData("text/html", html);
       view.dom.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
-      return;
+      return true;
     } catch {}
   }
   if (text) {
     try { state.editor.insertInlineContent([text]); } catch {}
+    return true;
   }
+  return false;
 }
 
 const FORMAT_BUTTONS = [

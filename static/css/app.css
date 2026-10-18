@@ -621,6 +621,7 @@ html[data-theme="dark"] .document-header,
 .slash-copy { min-width: 0; }
 .slash-label { font-size: 13px; color: var(--text); font-weight: 500; }
 .slash-desc { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.slash-divider { height: 1px; background: var(--border-subtle); margin: 4px 8px; }
 
 #contextMenu {
   position: fixed; z-index: 1200; width: 220px;
@@ -638,7 +639,8 @@ html[data-theme="dark"] .document-header,
 .context-danger:hover { background: var(--danger); color: #fff; }
 
 .block-menu {
-  position: fixed; width: 200px; z-index: 1000;
+  position: fixed; width: 200px; max-width: calc(100vw - 16px); max-height: 420px;
+  overflow-y: auto; z-index: 1000;
   border-radius: 10px; padding: 5px;
   display: none;
 }
@@ -876,6 +878,16 @@ html[data-theme="dark"] .bn-editor [data-background-color] a,
   /* Slash menu becomes a bottom sheet so the keyboard can never strand it
      off-screen or paint it as a stray bar at the page bottom. */
   #slashMenu.open {
+    position: fixed !important;
+    left: 12px !important; right: 12px !important;
+    top: auto !important;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+    width: auto !important; max-width: none !important;
+    max-height: 44dvh !important;
+  }
+  /* Block options dock the same way so tall menus can't strand off-screen
+     behind the keyboard on phones. */
+  .block-menu.open {
     position: fixed !important;
     left: 12px !important; right: 12px !important;
     top: auto !important;
