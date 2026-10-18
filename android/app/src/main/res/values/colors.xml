@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Matches web accent #d85b45 -->
-    <color name="accent">#D85B45</color>
+    <!-- Matches web branding: gold accent #eab800, ink tile #1d1d1f -->
+    <color name="accent">#EAB800</color>
+    <color name="brand_bg">#1D1D1F</color>
     <color name="surface">#F4F2ED</color>
     <color name="ink">#2B2620</color>
 </resources>

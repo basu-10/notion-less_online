@@ -74,15 +74,15 @@
   display: grid; place-items: center;
   border-radius: 7px;
   background: #1d1d1f;
-  color: #d9a400;
+  color: #eab800;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0;
   flex-shrink: 0;
 }
 html[data-theme="dark"] .brand-mark,
-:root[data-theme="dark"] .brand-mark { background: #1d1d1f; color: #d9a400; }
-[data-theme="dark"] .brand-mark { background: #1d1d1f; color: #d9a400; }
+:root[data-theme="dark"] .brand-mark { background: #1d1d1f; color: #eab800; }
+[data-theme="dark"] .brand-mark { background: #1d1d1f; color: #eab800; }
 
 /* Sidebar sections: Apple small caps */
 .sidebar-section {
