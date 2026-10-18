@@ -3801,6 +3801,55 @@ function applyHighlight(colorName) {
   try { document.execCommand("backColor", false, colorName); } catch {}
 }
 
+// Copy keeps the browser selection intact and lets BlockNote's own copy
+// handler serialize blocks (HTML + JSON) into the clipboard, same as Ctrl+C.
+function copySelectionToClipboard() {
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed || !state.editor) return false;
+  try {
+    document.execCommand("copy");
+    return true;
+  } catch (e) { console.warn("copy failed", e); }
+  return false;
+}
+
+// Paste reads the clipboard (async Clipboard API needs a user gesture — the
+// toolbar button is one) and feeds text/html, then text/plain, through a
+// synthetic paste event on the ProseMirror view so BlockNote parses it like a
+// normal Ctrl+V. Plain-text insert is the fallback for browsers that reject
+// clipboard.read().
+async function pasteClipboardIntoEditor() {
+  if (!state.editor) return;
+  let html = "";
+  let text = "";
+  try {
+    if (navigator.clipboard && typeof navigator.clipboard.read === "function") {
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        if (!html && item.types.includes("text/html")) html = await item.getType("text/html").then((b) => b.text());
+        if (!text && item.types.includes("text/plain")) text = await item.getType("text/plain").then((b) => b.text());
+      }
+    } else {
+      text = await navigator.clipboard.readText();
+    }
+  } catch (e) { console.warn("paste read failed", e); }
+  if (!html && !text) return;
+
+  try { state.editor.focus(); } catch {}
+  const view = state.editor._tiptapEditor?.view;
+  if (view && html && typeof DataTransfer === "function") {
+    try {
+      const dt = new DataTransfer();
+      dt.setData("text/html", html);
+      view.dom.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
+      return;
+    } catch {}
+  }
+  if (text) {
+    try { state.editor.insertInlineContent([text]); } catch {}
+  }
+}
+
 const FORMAT_BUTTONS = [
   { label: "B", title: "Bold", shortcut: "Ctrl+B", style: "bold", execCmd: "bold", styleLabel: "bold" },
   { label: "I", title: "Italic", shortcut: "Ctrl+I", style: "italic", execCmd: "italic", styleLabel: "italic" },
@@ -3959,6 +4008,37 @@ function showFormatToolbar() {
     setTimeout(refreshFormatToolbarActive, 0);
   });
   toolbar.appendChild(txClear);
+
+  // Clipboard group: copy + paste together, kept apart from the style
+  // swatches by a divider so they read as one unit.
+  const clipDivider = document.createElement("div");
+  clipDivider.className = "format-divider";
+  toolbar.appendChild(clipDivider);
+
+  const copyBtn = document.createElement("button");
+  copyBtn.className = "format-btn";
+  copyBtn.textContent = "⧉";
+  copyBtn.title = "Copy (Ctrl+C)";
+  copyBtn.setAttribute("aria-label", "Copy selection");
+  copyBtn.addEventListener("mousedown", (e) => { e.preventDefault(); });
+  copyBtn.addEventListener("click", async () => {
+    const ok = copySelectionToClipboard();
+    setSaveState(ok ? "Copied" : "Nothing to copy", false);
+    if (isMobileLayout() || isCoarsePointer()) toolbar.classList.remove("open");
+  });
+  toolbar.appendChild(copyBtn);
+
+  const pasteBtn = document.createElement("button");
+  pasteBtn.className = "format-btn";
+  pasteBtn.textContent = "📋";
+  pasteBtn.title = "Paste (Ctrl+V)";
+  pasteBtn.setAttribute("aria-label", "Paste from clipboard");
+  pasteBtn.addEventListener("mousedown", (e) => { e.preventDefault(); });
+  pasteBtn.addEventListener("click", async () => {
+    await pasteClipboardIntoEditor();
+    if (isMobileLayout() || isCoarsePointer()) toolbar.classList.remove("open");
+  });
+  toolbar.appendChild(pasteBtn);
 
   // Mark B/I/U/S active state on open.
   refreshFormatToolbarActive();
