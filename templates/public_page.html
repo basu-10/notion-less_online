@@ -469,7 +469,7 @@
 
   <script type="module">
     import { BlockNoteEditor } from "https://esm.sh/@blocknote/core@0.51.3?bundle";
-    import { getCellImageSchema } from "/static/js/cell-image.js?v=20261123.1";
+    import { getCellImageSchema } from "/static/js/cell-image.js?v=20261123.2";
 
     const username = {{ username | tojson }};
     const pageId = {{ page_id | tojson }};
@@ -498,18 +498,18 @@
           const rawContent = page.content || '[]';
           const blocks = (typeof rawContent === 'string') ? JSON.parse(rawContent) : (Array.isArray(rawContent) ? rawContent : []);
           if (blocks && Array.isArray(blocks) && blocks.length > 0) {
-            editor = BlockNoteEditor.create({ initialContent: blocks, schema: getCellImageSchema() });
+            editor = BlockNoteEditor.create({ initialContent: blocks, schema: getCellImageSchema(), editable: false });
             content = '<div id="publicEditor"></div>';
             contentRendered = true;
           } else {
             // Even if blocks appear empty, render editor with default empty paragraph so page never looks broken
-            editor = BlockNoteEditor.create({ initialContent: [{ type: 'paragraph', content: '' }], schema: getCellImageSchema() });
+            editor = BlockNoteEditor.create({ initialContent: [{ type: 'paragraph', content: '' }], schema: getCellImageSchema(), editable: false });
             content = '<div id="publicEditor"></div>';
             contentRendered = true;
           }
         } catch (e) {
           // Fallback for malformed content: show empty editor rather than error message
-          editor = BlockNoteEditor.create({ initialContent: [{ type: 'paragraph', content: '' }], schema: getCellImageSchema() });
+          editor = BlockNoteEditor.create({ initialContent: [{ type: 'paragraph', content: '' }], schema: getCellImageSchema(), editable: false });
           content = '<div id="publicEditor"></div>';
           contentRendered = true;
         }
@@ -618,6 +618,7 @@
 
         if (editor && document.getElementById('publicEditor')) {
           editor.mount(document.getElementById('publicEditor'));
+          editor.isEditable = false;
           const editorContainer = document.getElementById('publicEditor').querySelector('.bn-editor');
           if (editorContainer) editorContainer.style.minHeight = '200px';
         }

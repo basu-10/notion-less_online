@@ -729,7 +729,8 @@ html[data-theme="dark"] .table-handle-btn.is-add { color: #eab800; }
 
 /* ---------- Inline images inside table cells ---------- */
 .bn-editor .nl-cell-image {
-  display: inline-block; max-width: 100%; vertical-align: middle;
+  display: inline-block; position: relative; max-width: 100%;
+  vertical-align: middle; line-height: 0;
 }
 .bn-editor .nl-cell-image img {
   display: block; max-width: 100%; height: auto;
@@ -738,6 +739,22 @@ html[data-theme="dark"] .table-handle-btn.is-add { color: #eab800; }
 .bn-editor .nl-cell-image.ProseMirror-selectednode img {
   outline: 2px solid var(--accent); outline-offset: 2px;
 }
+.bn-editor .nl-cell-image-handle {
+  position: absolute; top: 50%; margin-top: -15px;
+  width: 8px; height: 30px; border-radius: 4px;
+  background: var(--text); border: 1px solid var(--surface);
+  cursor: ew-resize; opacity: 0; z-index: 3;
+  touch-action: none; transition: opacity 0.12s ease;
+}
+.bn-editor .nl-cell-image-handle.left { left: 4px; }
+.bn-editor .nl-cell-image-handle.right { right: 4px; }
+.bn-editor .nl-cell-image:hover .nl-cell-image-handle,
+.bn-editor .nl-cell-image.resizing .nl-cell-image-handle,
+.bn-editor .nl-cell-image.show-handles .nl-cell-image-handle,
+.bn-editor .nl-cell-image.ProseMirror-selectednode .nl-cell-image-handle {
+  opacity: 1;
+}
+.bn-editor .nl-cell-image.resizing { user-select: none; }
 
 /* ---------- Text-color swatches + selected language ---------- */
 .tx-a { font-size: 15px; font-weight: 700; font-style: normal; display: block; line-height: 1; }

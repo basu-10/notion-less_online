@@ -1,6 +1,6 @@
 
 import { BlockNoteEditor, SideMenuExtension, TableHandlesExtension } from "https://esm.sh/@blocknote/core@0.51.3?bundle";
-import { CELL_IMAGE_TYPE, getCellImageSchema } from "./cell-image.js?v=20261123.1";
+import { CELL_IMAGE_TYPE, getCellImageSchema } from "./cell-image.js?v=20261123.2";
 
 const ROOT = "root";
 
@@ -3268,6 +3268,110 @@ function clipboardIsImageOnly(dt) {
   return /^(https?:\/\/|blob:|data:image\/)[^\s]+$/i.test(text.trim());
 }
 
+// ---------- Inline cell image targeting (caption / size / delete) ----------
+function cellImageInfo(wrap) {
+  try {
+    const view = state.editor?._tiptapEditor?.view;
+    if (!view || !wrap) return null;
+    let base = null;
+    try { base = view.posAtDOM(wrap, 0); } catch {}
+    if (typeof base !== "number") return null;
+    for (const pos of [base, base - 1, base + 1]) {
+      try {
+        const node = view.state.doc.nodeAt(pos);
+        if (node && node.type.name === CELL_IMAGE_TYPE) return { view, pos, node };
+      } catch {}
+    }
+  } catch {}
+  return null;
+}
+
+function updateCellImageProps(wrap, props) {
+  const info = cellImageInfo(wrap);
+  if (!info) return false;
+  try {
+    const attrs = { ...info.node.attrs, ...props };
+    const next = info.node.type.create(attrs, info.node.content, info.node.marks);
+    info.view.dispatch(info.view.state.tr.replaceWith(info.pos, info.pos + info.node.nodeSize, next));
+    markDirty();
+    return true;
+  } catch (e) { console.warn("update cell image failed", e); return false; }
+}
+
+function deleteCellImage(wrap) {
+  const info = cellImageInfo(wrap);
+  if (!info) return false;
+  try {
+    info.view.dispatch(info.view.state.tr.delete(info.pos, info.pos + info.node.nodeSize));
+    markDirty();
+    try { state.editor.focus(); } catch {}
+    return true;
+  } catch { return false; }
+}
+
+function cellImageHostWidth(wrap) {
+  try {
+    const host = wrap?.closest("p") || wrap?.parentElement;
+    return Math.max(64, Math.round(host?.clientWidth || 400));
+  } catch { return 400; }
+}
+
+function setCellImageWidth(wrap, width) {
+  return updateCellImageProps(wrap, { width: Math.max(0, Math.round(Number(width) || 0)) });
+}
+
+function cellImageNaturalWidth(wrap) {
+  try { return wrap?.querySelector("img")?.naturalWidth || 0; } catch { return 0; }
+}
+
+function editCellImageAlt(wrap) {
+  let current = "";
+  try { current = cellImageInfo(wrap)?.node?.attrs?.caption || ""; } catch {}
+  const overlay = document.getElementById("nlDialogOverlay");
+  if (!overlay) return;
+  if (_dialogResolve) { const r = _dialogResolve; _dialogResolve = null; try { r(false); } catch {} }
+  document.getElementById("nlDialogTitle").textContent = "Image alt text";
+  const msg = document.getElementById("nlDialogMessage");
+  msg.textContent = "";
+  const input = document.createElement("input");
+  input.type = "text";
+  input.placeholder = "Describe this image…";
+  input.value = current;
+  input.setAttribute("aria-label", "Image alt text");
+  input.autocomplete = "off";
+  input.className = "nl-dialog-input";
+  input.style.cssText = "width:100%;min-height:44px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;";
+  msg.appendChild(input);
+  const box = document.getElementById("nlDialogActions");
+  box.innerHTML = "";
+  let done = false;
+  const finish = (val) => {
+    if (done) return;
+    done = true;
+    overlay.classList.remove("open");
+    overlay.setAttribute("aria-hidden", "true");
+    document.removeEventListener("keydown", _dialogEsc, true);
+    overlay.onclick = null;
+    _dialogResolve = null;
+    if (val === true) updateCellImageProps(wrap, { caption: (input.value || "").trim() });
+  };
+  _dialogResolve = finish;
+  [["Cancel", "ghost", false], ["Save", "primary", true]].forEach(([label, kind, val]) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "nl-dialog-btn " + kind;
+    btn.textContent = label;
+    btn.addEventListener("click", () => finish(val));
+    box.appendChild(btn);
+  });
+  overlay.classList.add("open");
+  overlay.setAttribute("aria-hidden", "false");
+  document.addEventListener("keydown", _dialogEsc, true);
+  overlay.onclick = (e) => { if (e.target === overlay) finish(false); };
+  setTimeout(() => { try { input.focus({ preventScroll: true }); } catch {} }, 40);
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); finish(true); } });
+}
+
 function insertMediaWithUrl(kind, url, extra={}) {
   try {
     if (!state.editor || !url) return false;
@@ -3671,6 +3775,12 @@ function wireEditorInteractions() {
       // Android fires contextmenu right after our long-press timer already
       // opened the menu: don't open it twice.
       if (Date.now() - _longPressFiredAt < 900) return;
+      const cellImg = e.target && e.target.closest ? e.target.closest(".nl-cell-image") : null;
+      if (cellImg && !hasEditorTextSelection()) {
+        try { closeSlashMenu({ keepText: true }); } catch {}
+        showCellImageMenu(cellImg, e.clientX, e.clientY);
+        return;
+      }
       const blockId = resolveBlockIdFromEventTarget(e.target);
       try { focusCellAtPoint(e.clientX, e.clientY); } catch {}
       openBlockGestureAt(blockId, e.clientX, e.clientY);
@@ -3692,6 +3802,15 @@ function wireEditorInteractions() {
         try {
           const el = (document.elementFromPoint(_longPressX, _longPressY) || target);
           if (!el || !root.contains(el)) return;
+          const cellImg = el.closest ? el.closest(".nl-cell-image") : null;
+          if (cellImg && !hasEditorTextSelection()) {
+            _longPressFiredAt = Date.now();
+            _suppressNextEditorClick = true;
+            setTimeout(() => { _suppressNextEditorClick = false; }, 600);
+            try { if (navigator.vibrate) navigator.vibrate(12); } catch {}
+            showCellImageMenu(cellImg, _longPressX, _longPressY);
+            return;
+          }
           const blockId = resolveBlockIdFromEventTarget(el);
           _longPressFiredAt = Date.now();
           _suppressNextEditorClick = true;
@@ -3915,6 +4034,72 @@ function placeOpenedBlockMenu(menu, x, y) {
 }
 
 // ---------- Separate right-click menus, one per non-text block type ----------
+function editorContentWidth() {
+  try {
+    const el = state.editor?.domElement?.firstElementChild || document.querySelector("#editor .bn-editor");
+    return Math.max(160, Math.round(el?.clientWidth || 800));
+  } catch { return 800; }
+}
+
+function imageBlockNaturalWidth(blockId) {
+  try {
+    const outer = Array.from(document.querySelectorAll(".bn-block-outer"))
+      .find((b) => b.dataset.id === blockId);
+    const img = outer?.querySelector("img.bn-visual-media") || outer?.querySelector("img");
+    return img?.naturalWidth || 0;
+  } catch { return 0; }
+}
+
+function setImageBlockPreviewWidth(blockId, width) {
+  try {
+    const blk = state.editor.getBlock(blockId);
+    if (!blk) return false;
+    const props = { ...(blk.props || {}), previewWidth: Math.max(0, Math.round(Number(width) || 0)) };
+    state.editor.updateBlock(blockId, { props });
+    try { state.editor.focus(); } catch {}
+    return true;
+  } catch (e) { console.warn("resize image block failed", e); return false; }
+}
+
+// Shared size section used by both the block-image and cell-image menus.
+function addImageSizeGroup(menu, { maxWidth, naturalWidth, apply }) {
+  appendBlockMenuHeader(menu, "Size");
+  const max = Math.max(64, Math.round(maxWidth || 640));
+  const natural = naturalWidth > 0 ? Math.min(naturalWidth, max) : 0;
+  [["Small", 0.25], ["Medium", 0.5], ["Large", 0.75], ["Fill width", 1]].forEach(([label, pct]) => {
+    const btn = document.createElement("button");
+    btn.className = "block-menu-item";
+    btn.innerHTML = `<span class="block-menu-icon">↔</span>${label}`;
+    btn.addEventListener("click", () => {
+      menu.classList.remove("open");
+      try { apply(Math.max(48, Math.min(max, Math.round(max * pct)))); } catch (e) { console.warn(e); }
+    });
+    menu.appendChild(btn);
+  });
+  const orig = document.createElement("button");
+  orig.className = "block-menu-item";
+  orig.innerHTML = `<span class="block-menu-icon">↺</span>Original size`;
+  orig.addEventListener("click", () => {
+    menu.classList.remove("open");
+    try { apply(natural); } catch (e) { console.warn(e); }
+  });
+  menu.appendChild(orig);
+}
+
+function addOpenImageOption(menu, getUrl) {
+  const b = document.createElement("button");
+  b.className = "block-menu-item";
+  b.innerHTML = `<span class="block-menu-icon">↗</span>Open image`;
+  b.addEventListener("click", () => {
+    menu.classList.remove("open");
+    try {
+      const url = getUrl && getUrl();
+      if (url) window.open(url, "_blank", "noopener,noreferrer");
+    } catch (e) { console.warn(e); }
+  });
+  menu.appendChild(b);
+}
+
 function showImageMenu(menu, blockId, x, y) {
   appendBlockMenuHeader(menu, "Image");
   const capBtn = document.createElement("button");
@@ -3926,6 +4111,12 @@ function showImageMenu(menu, blockId, x, y) {
   });
   menu.appendChild(capBtn);
   addCopyLinkOption(menu, blockId, "image");
+  addOpenImageOption(menu, () => state.editor.getBlock(blockId)?.props?.url || "");
+  addImageSizeGroup(menu, {
+    maxWidth: editorContentWidth(),
+    naturalWidth: imageBlockNaturalWidth(blockId),
+    apply: (w) => setImageBlockPreviewWidth(blockId, w),
+  });
   menu.appendChild(createBlockMenuDivider());
   addMediaInsertGroup(menu, blockId);
   menu.appendChild(createBlockMenuDivider());
@@ -3934,6 +4125,59 @@ function showImageMenu(menu, blockId, x, y) {
   addPasteGroup(menu, blockId);
   menu.appendChild(createBlockMenuDivider());
   addDeleteOption(menu, blockId);
+  placeOpenedBlockMenu(menu, x, y);
+}
+
+// Right-click / long-press on an inline cell image gets its own menu instead
+// of the enclosing table's menu. The wrap element is enough to find the node
+// position and update/delete it straight through ProseMirror.
+function showCellImageMenu(wrap, x, y) {
+  const menu = $("#blockMenu");
+  menu.innerHTML = "";
+  menu.dataset.blockId = "";
+  menu.dataset.x = x;
+  menu.dataset.y = y;
+  const attrs = cellImageInfo(wrap)?.node?.attrs || {};
+  const url = attrs.url || "";
+  appendBlockMenuHeader(menu, "Image");
+
+  const altBtn = document.createElement("button");
+  altBtn.className = "block-menu-item";
+  altBtn.innerHTML = `<span class="block-menu-icon">✎</span>Edit alt text`;
+  altBtn.addEventListener("click", () => {
+    menu.classList.remove("open");
+    editCellImageAlt(wrap);
+  });
+  menu.appendChild(altBtn);
+
+  const linkBtn = document.createElement("button");
+  linkBtn.className = "block-menu-item";
+  linkBtn.innerHTML = `<span class="block-menu-icon">🔗</span>Copy image link`;
+  linkBtn.addEventListener("click", async () => {
+    menu.classList.remove("open");
+    try {
+      if (!url) { setSaveState("No link yet", false); return; }
+      await navigator.clipboard.writeText(url);
+      setSaveState("Link copied", false);
+    } catch { setSaveState("Copy failed", false); }
+  });
+  menu.appendChild(linkBtn);
+  addOpenImageOption(menu, () => attrs.url || "");
+  addImageSizeGroup(menu, {
+    maxWidth: cellImageHostWidth(wrap),
+    naturalWidth: cellImageNaturalWidth(wrap),
+    apply: (w) => setCellImageWidth(wrap, w),
+  });
+
+  menu.appendChild(createBlockMenuDivider());
+  const del = document.createElement("button");
+  del.className = "block-menu-item danger";
+  del.textContent = "Delete image";
+  del.addEventListener("click", () => {
+    menu.classList.remove("open");
+    deleteCellImage(wrap);
+  });
+  menu.appendChild(del);
   placeOpenedBlockMenu(menu, x, y);
 }
 
