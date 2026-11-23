@@ -1963,48 +1963,50 @@ function stripCellSlashTrigger() {
   } catch {}
 }
 
-// Right-click / long-press inside a table cell does not move the ProseMirror
-// caret there on its own, so cell menu actions would hit the previous cell.
-// Move the caret to the pressed point (only when nothing is selected) so the
-// "insert image into this cell" action targets what the user pointed at.
-function focusCellAtPoint(x, y) {
+// Put the ProseMirror caret at the start of a table cell. Cells are nested
+// content, so a plain "set cursor to block" call cannot reach them; the Tiptap
+// setTextSelection command plus a DOM-range fallback handle both the normal
+// and the drag/drop selection shapes.
+function placeCaretInCell(cell) {
   try {
-    if (!state.editor || hasEditorTextSelection()) return false;
-    const hitEl = document.elementFromPoint(x, y);
-    const cell = hitEl && hitEl.closest ? hitEl.closest("td, th") : null;
-    if (!cell) return false;
-    const view = state.editor._tiptapEditor?.view;
-    if (!view || !view.state) return false;
-    let pos = null;
+    const ed = state.editor?._tiptapEditor;
+    const view = ed?.view;
+    if (!view || !cell) return false;
+    try { view.focus(); } catch {}
+    const p = cell.querySelector("p") || cell;
     try {
-      const hit = view.posAtCoords({ left: x, top: y });
-      if (hit && typeof hit.pos === "number") pos = hit.pos;
+      const pos = view.posAtDOM(p, 0);
+      if (typeof pos === "number" && ed.commands?.setTextSelection) {
+        ed.commands.setTextSelection(pos);
+      }
     } catch {}
-    if (pos == null) {
-      const p = cell.querySelector("p");
-      if (p) { try { pos = view.posAtDOM(p, 0); } catch {} }
-    }
-    if (pos == null) return false;
-    const TextSel = view.state.selection.constructor;
-    try {
-      const next = TextSel.create(view.state.doc, pos);
-      view.dispatch(view.state.tr.setSelection(next));
-      view.focus();
-      return true;
-    } catch {
-      const range = document.caretRangeFromPoint
-        ? document.caretRangeFromPoint(x, y)
-        : null;
-      if (range) {
+    if (!caretInsideTableCell()) {
+      try {
+        const range = document.createRange();
+        range.selectNodeContents(p);
+        range.collapse(true);
         const sel = window.getSelection();
         sel.removeAllRanges();
         sel.addRange(range);
         view.focus();
-        return true;
-      }
+      } catch {}
     }
-  } catch {}
-  return false;
+    return caretInsideTableCell();
+  } catch { return false; }
+}
+
+// Right-click / long-press inside a table cell does not move the ProseMirror
+// caret there on its own, so cell menu actions would hit the previous cell.
+// Move the caret to the pressed point (only when nothing is selected) so the
+// "insert image into this cell" action targets what the user pointed at.
+function focusCellAtPoint(x, y, { force=false }={}) {
+  try {
+    if (!state.editor || (!force && hasEditorTextSelection())) return false;
+    const hitEl = document.elementFromPoint(x, y);
+    const cell = hitEl && hitEl.closest ? hitEl.closest("td, th") : null;
+    if (!cell) return false;
+    return placeCaretInCell(cell);
+  } catch { return false; }
 }
 
 function tableDims(block) {
@@ -3163,13 +3165,107 @@ const MEDIA_KINDS = {
 };
 
 function insertCellImage(url, caption="") {
+  return insertCellImages([{ url, caption }]);
+}
+
+// Insert one or more inline images at the caret. Accepts image URLs coming
+// from the chooser, uploaded files, or a copied/dragged image block.
+function insertCellImages(images) {
   try {
-    if (!state.editor || !url || typeof state.editor.insertInlineContent !== "function") return false;
-    state.editor.insertInlineContent([{ type: CELL_IMAGE_TYPE, props: { url, caption } }]);
+    const list = (images || []).filter((img) => img && img.url);
+    if (!state.editor || !list.length || typeof state.editor.insertInlineContent !== "function") return false;
+    const content = [];
+    list.forEach((img, i) => {
+      if (i) content.push(" ");
+      content.push({ type: CELL_IMAGE_TYPE, props: { url: img.url, caption: img.caption || "" } });
+    });
+    state.editor.insertInlineContent(content);
     try { state.editor.focus(); } catch {}
     markDirty();
     return true;
   } catch (e) { console.warn("insert cell image failed", e); return false; }
+}
+
+// Pull image URLs out of a clipboard/drag DataTransfer. BlockNote copies an
+// image block as blocknote/html + text/html + markdown, so the external HTML
+// (an <img> in a <figure>) and the markdown syntax both carry the URL.
+function extractClipboardImages(dt) {
+  const out = [];
+  const seen = new Set();
+  const push = (url, caption="") => {
+    const u = String(url || "").trim();
+    if (!u || seen.has(u) || /^javascript:/i.test(u)) return;
+    seen.add(u);
+    out.push({ url: u, caption: String(caption || "").trim() });
+  };
+  const get = (type) => { try { return dt.getData(type) || ""; } catch { return ""; } };
+
+  const html = get("text/html") || get("blocknote/html");
+  if (html) {
+    try {
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      doc.querySelectorAll("img[src]").forEach((img) => {
+        const fig = img.closest("figure");
+        const caption = img.getAttribute("alt") || (fig && fig.querySelector("figcaption")?.textContent) || "";
+        push(img.getAttribute("src"), caption);
+      });
+    } catch {}
+  }
+
+  const text = get("text/markdown") || get("text/plain");
+  if (text) {
+    const re = /!\[([^\]]*)\]\(\s*<?([^)\s>]+)>?(?:\s+["'][^"']*["'])?\s*\)/g;
+    let m;
+    while ((m = re.exec(text))) push(m[2], m[1]);
+    const bare = text.trim();
+    if (!out.length && /^(https?:\/\/|blob:|data:image\/)[^\s]+$/i.test(bare)) push(bare);
+  }
+
+  get("text/uri-list").split(/\r?\n/).forEach((line) => {
+    const u = line.trim();
+    if (u && !u.startsWith("#")) push(u);
+  });
+  return out;
+}
+
+// ProseMirror stores an in-editor drag as `view.dragging.slice` instead of
+// copying it into dataTransfer, so a plain image drag needs this fallback.
+function imagesFromEditorDrag() {
+  try {
+    const view = state.editor?._tiptapEditor?.view;
+    const slice = view?.dragging?.slice;
+    if (!slice) return [];
+    const out = [];
+    const seen = new Set();
+    const walk = (node) => {
+      if (!node) return;
+      const attrs = node.attrs || {};
+      const name = node.type && node.type.name;
+      if ((name === "image" || name === CELL_IMAGE_TYPE) && attrs.url && !seen.has(attrs.url)) {
+        seen.add(attrs.url);
+        out.push({ url: attrs.url, caption: attrs.caption || "" });
+      }
+      if (node.childCount) {
+        for (let i = 0; i < node.childCount; i++) walk(node.child(i));
+      }
+    };
+    slice.content.forEach(walk);
+    return out;
+  } catch { return []; }
+}
+
+// Image-only clipboard payloads are safe to turn into inline cell images;
+// mixed text+image copies stay with BlockNote's normal paste path so no text
+// is silently dropped.
+function clipboardIsImageOnly(dt) {
+  let text = "";
+  try { text = dt.getData("text/plain") || ""; } catch {}
+  if (!text.trim()) return true;
+  const stripped = text
+    .replace(/!\[[^\]]*\]\(\s*<?[^)\s>]+>?(?:\s+["'][^"']*["'])?\s*\)/g, "")
+    .replace(/\s+/g, "");
+  if (!stripped) return true;
+  return /^(https?:\/\/|blob:|data:image\/)[^\s]+$/i.test(text.trim());
 }
 
 function insertMediaWithUrl(kind, url, extra={}) {
@@ -3619,9 +3715,10 @@ function wireEditorInteractions() {
   root.addEventListener("touchend", _cancelTouch, { passive: true });
   root.addEventListener("touchcancel", _cancelTouch, { passive: true });
 
-  // Pasted image files inside a table cell become inline images. Without this
-  // BlockNote's uploadFile path would drop a block-level image after the
-  // table, which is not what "paste into a cell" means.
+  // Pasting into a table cell: image files upload inline, and copied/dragged
+  // image blocks (BlockNote puts their URL in text/html + markdown) become
+  // inline cell images. Without this the block image cannot fit in a cell and
+  // the paste silently does nothing.
   if (!root.dataset.cellPasteBound) {
     root.dataset.cellPasteBound = "1";
     root.addEventListener("paste", (e) => {
@@ -3632,13 +3729,45 @@ function wireEditorInteractions() {
         const item = Array.from(dt.items || []).find(
           (it) => it.kind === "file" && /^image\//i.test(it.type || "")
         );
-        if (!item) return;
-        const file = item.getAsFile();
-        if (!file) return;
+        if (item) {
+          const file = item.getAsFile();
+          if (!file) return;
+          e.preventDefault();
+          e.stopPropagation();
+          uploadCellImageFile(file);
+          return;
+        }
+        const images = extractClipboardImages(dt);
+        if (!images.length || !clipboardIsImageOnly(dt)) return;
         e.preventDefault();
         e.stopPropagation();
-        uploadCellImageFile(file);
+        insertCellImages(images);
       } catch (err) { console.warn("cell image paste failed", err); }
+    }, true);
+
+    // Dragging an image block (or an image from another page/browser) onto a
+    // cell drops it inline at the pointer instead of trying to restructure the
+    // table. Native file drops are handled by the same route.
+    root.addEventListener("drop", (e) => {
+      try {
+        if (!state.editor) return;
+        const dt = e.dataTransfer;
+        if (!dt) return;
+        const hit = e.target && e.target.closest ? e.target.closest("td, th") : null;
+        const cell = hit || (document.elementFromPoint(e.clientX, e.clientY) || {}).closest?.("td, th");
+        if (!cell) return;
+        const file = Array.from(dt.files || []).find((f) => /^image\//i.test(f.type || ""));
+        const images = extractClipboardImages(dt);
+        if (!images.length) images.push(...imagesFromEditorDrag());
+        if (!file && (!images.length || !clipboardIsImageOnly(dt))) return;
+        e.preventDefault();
+        e.stopPropagation();
+        // Only insert after the caret actually landed in the cell; otherwise
+        // insertInlineContent would replace the dragged block at its origin.
+        if (!focusCellAtPoint(e.clientX, e.clientY, { force: true }) || !caretInsideTableCell()) return;
+        if (file) uploadCellImageFile(file);
+        else insertCellImages(images);
+      } catch (err) { console.warn("cell image drop failed", err); }
     }, true);
   }
 
