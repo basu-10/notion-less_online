@@ -727,6 +727,18 @@ html[data-theme="dark"] .table-handle-btn.is-add { color: #eab800; }
 .table-swatches .hl-swatch { width: 26px; height: 26px; }
 .table-align-btn { flex: 1 1 30%; justify-content: center; }
 
+/* ---------- Inline images inside table cells ---------- */
+.bn-editor .nl-cell-image {
+  display: inline-block; max-width: 100%; vertical-align: middle;
+}
+.bn-editor .nl-cell-image img {
+  display: block; max-width: 100%; height: auto;
+  border-radius: 6px; margin: 2px 0;
+}
+.bn-editor .nl-cell-image.ProseMirror-selectednode img {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+
 /* ---------- Text-color swatches + selected language ---------- */
 .tx-a { font-size: 15px; font-weight: 700; font-style: normal; display: block; line-height: 1; }
 .block-menu-item.selected-lang { font-weight: 600; }

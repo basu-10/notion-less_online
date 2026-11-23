@@ -1,5 +1,6 @@
 
 import { BlockNoteEditor, SideMenuExtension, TableHandlesExtension } from "https://esm.sh/@blocknote/core@0.51.3?bundle";
+import { CELL_IMAGE_TYPE, getCellImageSchema } from "./cell-image.js?v=20261123.1";
 
 const ROOT = "root";
 
@@ -1630,6 +1631,7 @@ async function mountEditor(blocks) {
   state.editor = BlockNoteEditor.create({
     initialContent: initialBlocks,
     blockHandle: true,
+    schema: getCellImageSchema(),
     tables: { headers: true, cellBackgroundColor: true, cellTextColor: true },
     uploadFile: async (file) => {
       const { url } = await window.api.uploadFile(file);
@@ -1831,6 +1833,17 @@ function openTableMenu(kind, x, y) {
     });
     menu.appendChild(b);
   });
+  if (caretInsideTableCell()) {
+    const imgBtn = document.createElement("button");
+    imgBtn.className = "block-menu-item";
+    imgBtn.innerHTML = `<span class="block-menu-icon">🖼</span>Insert image into this cell`;
+    imgBtn.addEventListener("click", () => {
+      closeTableMenu();
+      hideTableHandles();
+      setTimeout(() => { try { openMediaChooser("image"); } catch (e) { console.warn(e); } }, 0);
+    });
+    menu.appendChild(imgBtn);
+  }
   // Paint + alignment, applied straight onto the tableContent cells.
   const blockId = s.block.id;
   const swHead = document.createElement("div");
@@ -1890,6 +1903,108 @@ function tableBlockById(id) {
     const b = state.editor.getBlock(id);
     return b && b.type === "table" ? b : null;
   } catch { return null; }
+}
+
+// True when the ProseMirror caret/selection lives inside a table cell. Cells
+// are not BlockNote blocks (getTextCursorPosition only reports the table), so
+// this walks the PM selection's parent nodes instead. Used to route image
+// insertion (and cell-only formatting) into inline content.
+function caretInsideTableCell() {
+  try {
+    const sel = state.editor?._tiptapEditor?.state?.selection;
+    if (!sel) return false;
+    const $from = sel.$from;
+    for (let d = $from.depth; d >= 0; d--) {
+      const name = $from.node(d).type.name;
+      if (name === "tableCell" || name === "tableHeader") return true;
+    }
+    return false;
+  } catch { return false; }
+}
+
+function selectionInsideTableCell() {
+  try {
+    const root = $("#editor");
+    const sel = window.getSelection();
+    if (!root || !sel || sel.rangeCount === 0) return false;
+    const node = sel.anchorNode;
+    const el = node && (node.nodeType === 1 ? node : node.parentElement);
+    return !!(el && el.closest && el.closest("td, th") && root.contains(el));
+  } catch { return false; }
+}
+
+// Text of the textblock under the caret. Inside a table cell this is the
+// cell paragraph (getTextCursorPosition only reports the enclosing table),
+// which is what the slash menu needs to filter and clean up after itself.
+function currentCellText() {
+  try {
+    const $from = state.editor?._tiptapEditor?.state?.selection?.$from;
+    return $from?.parent?.textContent || "";
+  } catch { return ""; }
+}
+
+// Remove the "/filter" trigger the slash menu left in the current cell.
+// BlockNote blocks can be rewritten with updateBlock, but cell paragraphs are
+// nested content, so delete the typed characters straight through the PM view.
+function stripCellSlashTrigger() {
+  try {
+    const view = state.editor?._tiptapEditor?.view;
+    if (!view) return;
+    const $from = view.state.selection.$from;
+    const before = $from.parent.textBetween(0, $from.parentOffset, "\n", "\n");
+    const m = /(?:^|\s)\/[A-Za-z0-9_-]*$/.exec(before || "");
+    if (!m) return;
+    const trigger = m[0];
+    const keepLead = trigger.startsWith(" ") || trigger.startsWith("\n");
+    const delLen = trigger.length - (keepLead ? 1 : 0);
+    if (delLen <= 0) return;
+    const to = $from.pos;
+    view.dispatch(view.state.tr.delete(to - delLen, to));
+  } catch {}
+}
+
+// Right-click / long-press inside a table cell does not move the ProseMirror
+// caret there on its own, so cell menu actions would hit the previous cell.
+// Move the caret to the pressed point (only when nothing is selected) so the
+// "insert image into this cell" action targets what the user pointed at.
+function focusCellAtPoint(x, y) {
+  try {
+    if (!state.editor || hasEditorTextSelection()) return false;
+    const hitEl = document.elementFromPoint(x, y);
+    const cell = hitEl && hitEl.closest ? hitEl.closest("td, th") : null;
+    if (!cell) return false;
+    const view = state.editor._tiptapEditor?.view;
+    if (!view || !view.state) return false;
+    let pos = null;
+    try {
+      const hit = view.posAtCoords({ left: x, top: y });
+      if (hit && typeof hit.pos === "number") pos = hit.pos;
+    } catch {}
+    if (pos == null) {
+      const p = cell.querySelector("p");
+      if (p) { try { pos = view.posAtDOM(p, 0); } catch {} }
+    }
+    if (pos == null) return false;
+    const TextSel = view.state.selection.constructor;
+    try {
+      const next = TextSel.create(view.state.doc, pos);
+      view.dispatch(view.state.tr.setSelection(next));
+      view.focus();
+      return true;
+    } catch {
+      const range = document.caretRangeFromPoint
+        ? document.caretRangeFromPoint(x, y)
+        : null;
+      if (range) {
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        view.focus();
+        return true;
+      }
+    }
+  } catch {}
+  return false;
 }
 
 function tableDims(block) {
@@ -2666,7 +2781,14 @@ function updateDocMeta() {
 
 function filteredCommands() {
   const f = state.slashFilter.toLowerCase();
-  return BLOCKS.filter(b => !f || (b.label + " " + b.desc).toLowerCase().includes(f));
+  // A table cell can only take inline media/paste; block converts would
+  // rewrite the enclosing table, so keep them out of the cell menu.
+  const inCell = caretInsideTableCell();
+  const cellSafe = new Set(["image", "video", "audio", "file", "paste"]);
+  return BLOCKS.filter(b => {
+    if (inCell && !cellSafe.has(b.type)) return false;
+    return !f || (b.label + " " + b.desc).toLowerCase().includes(f);
+  });
 }
 
 function isMobileLayout() {
@@ -2698,7 +2820,8 @@ function maybeSyncSlashFromText() {
     try {
       const block = getCurrentBlock();
       if (!block) return;
-      const text = currentBlockText(block);
+      const inCell = caretInsideTableCell();
+      const text = inCell ? currentCellText() : currentBlockText(block);
       const filter = slashTriggerFromText(text);
       const menuOpen = $("#slashMenu").classList.contains("open");
       if (filter != null) {
@@ -2765,7 +2888,13 @@ function positionSlashMenu() {
 function renderSlashMenu() {
   const menu = $("#slashMenu");
   const cmds = filteredCommands();
-  menu.innerHTML = "<div class='slash-header'>Basic blocks</div>";
+  menu.innerHTML = "";
+  if (!cmds.length || (cmds[0].group || "basic") === "basic") {
+    const h = document.createElement("div");
+    h.className = "slash-header";
+    h.textContent = "Basic blocks";
+    menu.appendChild(h);
+  }
   if (!cmds.length) {
     const empty = document.createElement("div");
     empty.className = "slash-header";
@@ -2844,14 +2973,19 @@ function closeSlashMenu({ keepText=false }={}) {
   // wipe the block. (The old code cleared the whole block content.)
   if (!keepText) {
     try {
-      const block = getCurrentBlock();
-      if (block) {
-        const txt = currentBlockText(block);
-        const m = /(?:^|\s)\/[A-Za-z0-9_-]*$/.exec(txt || "");
-        if (m) {
-          const stripped = (txt || "").slice(0, (txt || "").length - m[0].length + (m[0].startsWith(" ") || m[0].startsWith("\n") ? 1 : 0));
-          state.editor.updateBlock(block, { content: stripped });
-          try { state.editor.setTextCursorPosition(block.id, "end"); } catch {}
+      if (caretInsideTableCell()) {
+        // Cells are nested PM content, not blocks — delete the trigger there.
+        stripCellSlashTrigger();
+      } else {
+        const block = getCurrentBlock();
+        if (block) {
+          const txt = currentBlockText(block);
+          const m = /(?:^|\s)\/[A-Za-z0-9_-]*$/.exec(txt || "");
+          if (m) {
+            const stripped = (txt || "").slice(0, (txt || "").length - m[0].length + (m[0].startsWith(" ") || m[0].startsWith("\n") ? 1 : 0));
+            state.editor.updateBlock(block, { content: stripped });
+            try { state.editor.setTextCursorPosition(block.id, "end"); } catch {}
+          }
         }
       }
     } catch {}
@@ -2895,6 +3029,17 @@ function openSlashFromButton() {
     try { state.editor.focus(); } catch {}
     const block = getCurrentBlock();
     if (!block) { state.slashFilter = ""; state.slashIndex = 0; renderSlashMenu(); return; }
+    if (caretInsideTableCell()) {
+      // Never rewrite the table block itself; put the trigger in the cell.
+      const cellText = currentCellText();
+      try {
+        state.editor.insertInlineContent([cellText && !/\s$/.test(cellText) ? " /" : "/"]);
+      } catch {}
+      state.slashFilter = "";
+      state.slashIndex = 0;
+      setTimeout(renderSlashMenu, 0);
+      return;
+    }
     const text = currentBlockText(block);
     // If the block doesn't already carry a trigger, arm one so IME text
     // sync and choose/close stripping stay consistent.
@@ -2911,6 +3056,12 @@ function openSlashFromButton() {
 }
 
 async function chooseSlash(command) {
+  // Slash commands that convert/insert blocks would rewrite the enclosing
+  // table when fired from a cell. Only inline-safe media/paste commands run.
+  if (caretInsideTableCell() && !["image", "video", "audio", "file", "paste"].includes(command.type)) {
+    closeSlashMenu();
+    return;
+  }
   if (command.type === "paste") {
     // Strip the "/filter" trigger first so the pasted content lands clean,
     // then run the same clipboard flow as the formatting toolbar's paste.
@@ -3011,10 +3162,25 @@ const MEDIA_KINDS = {
   file:  { label: "file", accept: ".pdf,.txt,.md,.csv", exts: [".pdf", ".txt", ".md", ".csv"], hint: "Upload a small document (max 10 MB) or link one by URL." },
 };
 
+function insertCellImage(url, caption="") {
+  try {
+    if (!state.editor || !url || typeof state.editor.insertInlineContent !== "function") return false;
+    state.editor.insertInlineContent([{ type: CELL_IMAGE_TYPE, props: { url, caption } }]);
+    try { state.editor.focus(); } catch {}
+    markDirty();
+    return true;
+  } catch (e) { console.warn("insert cell image failed", e); return false; }
+}
+
 function insertMediaWithUrl(kind, url, extra={}) {
   try {
     if (!state.editor || !url) return false;
     const props = { url, ...extra };
+    // A caret inside a table cell gets an inline image instead of a block
+    // image dropped after the table — the only way a cell can hold one.
+    if (kind === "image" && caretInsideTableCell()) {
+      if (insertCellImage(url, extra.caption || "")) return true;
+    }
     if (kind === "file" && !props.name) {
       try { props.name = decodeURIComponent(url.split("?")[0].split("/").pop() || "file"); }
       catch { props.name = "file"; }
@@ -3099,6 +3265,29 @@ async function uploadMediaFile(kind, file) {
 
 async function uploadImageFile(file) {
   return uploadMediaFile(mediaKindOf(file, "image"), file);
+}
+
+// Dedicated inline path for pasted images while the caret is in a table cell.
+async function uploadCellImageFile(file) {
+  if (!file) return false;
+  const t = (file.type || "").toLowerCase();
+  if (t && !t.startsWith("image/")) return false;
+  if (file.size && file.size > MEDIA_MAX_BYTES) {
+    alertDialog({ title: "File too large", message: "Images must be 10 MB or smaller." });
+    return false;
+  }
+  setSaveState("Uploading image...", false);
+  try {
+    const { url } = await window.api.uploadFile(file);
+    const ok = insertCellImage(url);
+    setSaveState(ok ? "Image added" : "Image upload failed", false);
+    return ok;
+  } catch (e) {
+    console.warn("cell image upload failed", e);
+    alertDialog({ title: "Upload failed", message: (e && e.message) || "Could not upload. Please try again." });
+    setSaveState("Upload failed", false);
+    return false;
+  }
 }
 
 async function openMediaChooser(kind="image") {
@@ -3348,6 +3537,7 @@ let _longPressFiredAt = 0;
 let _longPressX = 0;
 let _longPressY = 0;
 let _suppressNextEditorClick = false;
+let _cellFormatTimer = null;
 
 function cancelLongPressTimer() {
   if (_longPressTimer) { clearTimeout(_longPressTimer); _longPressTimer = null; }
@@ -3386,6 +3576,7 @@ function wireEditorInteractions() {
       // opened the menu: don't open it twice.
       if (Date.now() - _longPressFiredAt < 900) return;
       const blockId = resolveBlockIdFromEventTarget(e.target);
+      try { focusCellAtPoint(e.clientX, e.clientY); } catch {}
       openBlockGestureAt(blockId, e.clientX, e.clientY);
     } catch {}
   });
@@ -3410,6 +3601,7 @@ function wireEditorInteractions() {
           _suppressNextEditorClick = true;
           setTimeout(() => { _suppressNextEditorClick = false; }, 600);
           try { if (navigator.vibrate) navigator.vibrate(12); } catch {}
+          try { focusCellAtPoint(_longPressX, _longPressY); } catch {}
           openBlockGestureAt(blockId, _longPressX, _longPressY);
         } catch {}
       }, 550);
@@ -3426,6 +3618,29 @@ function wireEditorInteractions() {
   const _cancelTouch = () => { cancelLongPressTimer(); };
   root.addEventListener("touchend", _cancelTouch, { passive: true });
   root.addEventListener("touchcancel", _cancelTouch, { passive: true });
+
+  // Pasted image files inside a table cell become inline images. Without this
+  // BlockNote's uploadFile path would drop a block-level image after the
+  // table, which is not what "paste into a cell" means.
+  if (!root.dataset.cellPasteBound) {
+    root.dataset.cellPasteBound = "1";
+    root.addEventListener("paste", (e) => {
+      try {
+        if (!caretInsideTableCell()) return;
+        const dt = e.clipboardData;
+        if (!dt) return;
+        const item = Array.from(dt.items || []).find(
+          (it) => it.kind === "file" && /^image\//i.test(it.type || "")
+        );
+        if (!item) return;
+        const file = item.getAsFile();
+        if (!file) return;
+        e.preventDefault();
+        e.stopPropagation();
+        uploadCellImageFile(file);
+      } catch (err) { console.warn("cell image paste failed", err); }
+    }, true);
+  }
 
   document.addEventListener("mouseup", (e) => {
     if (e.button !== 0) return;
@@ -3485,9 +3700,10 @@ function appendBlockMenuHeader(menu, text) {
 }
 
 // ---------- Per-block menu pieces (shared by the type-specific menus) ----------
-function addMediaInsertGroup(menu, blockId) {
+function addMediaInsertGroup(menu, blockId, { skipImage=false }={}) {
   appendBlockMenuHeader(menu, "Media");
   [["🖼", "Insert image below", "image"], ["▶", "Insert video below", "video"], ["♪", "Insert audio below", "audio"], ["📎", "Insert file below", "file"]].forEach(([icon, label, mkind]) => {
+    if (skipImage && mkind === "image") return;
     const btn = document.createElement("button");
     btn.className = "block-menu-item";
     btn.innerHTML = `<span class="block-menu-icon">${icon}</span>${label}`;
@@ -3655,10 +3871,22 @@ function showTableMenu(menu, blockId, x, y) {
         });
         menu.appendChild(b);
       });
+      // Cell images only make sense when the caret is inside a cell — that is
+      // also the position insertInlineContent replaces.
+      if (caretInsideTableCell()) {
+        const imgBtn = document.createElement("button");
+        imgBtn.className = "block-menu-item";
+        imgBtn.innerHTML = `<span class="block-menu-icon">🖼</span>Insert image into this cell`;
+        imgBtn.addEventListener("click", () => {
+          menu.classList.remove("open");
+          try { openMediaChooser("image"); } catch (e) { console.warn(e); }
+        });
+        menu.appendChild(imgBtn);
+      }
     }
   } catch {}
   menu.appendChild(createBlockMenuDivider());
-  addMediaInsertGroup(menu, blockId);
+  addMediaInsertGroup(menu, blockId, { skipImage: caretInsideTableCell() });
   menu.appendChild(createBlockMenuDivider());
   addMoveGroup(menu, blockId);
   menu.appendChild(createBlockMenuDivider());
@@ -4483,7 +4711,8 @@ function onEditorKeydown(e) {
   }
 
   const block = getCurrentBlock();
-  const text = currentBlockText(block);
+  const inCell = caretInsideTableCell();
+  const text = inCell ? currentCellText() : currentBlockText(block);
   const menuOpen = $("#slashMenu").classList.contains("open");
 
   if (menuOpen) {
@@ -4516,7 +4745,9 @@ function onEditorKeydown(e) {
   if (e.key === "/") {
     const isStart = text.trim() === "" || text.trim() === "/";
     if (isStart) {
-      e.preventDefault();
+      // In a cell the slash has to land in the cell text so the menu has a
+      // trigger to filter and clean up; blocks keep swallowing it as before.
+      if (!inCell) e.preventDefault();
       state.slashFilter = "";
       state.slashIndex = 0;
       setTimeout(renderSlashMenu, 0);
@@ -4535,7 +4766,7 @@ function onEditorKeydown(e) {
   if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
     const sel = window.getSelection();
     if (sel && !sel.isCollapsed) return;
-    const atEnd = block && text.length > 0 &&
+    const atEnd = !inCell && block && text.length > 0 &&
       (sel?.anchorOffset === text.length || sel?.anchorNode?.textContent?.length === sel?.anchorOffset);
     if (atEnd) {
       setTimeout(() => {
@@ -4551,8 +4782,11 @@ function onEditorKeydown(e) {
 function onEditorKeyup() {
   if (!$("#slashMenu").classList.contains("open")) return;
   const block = getCurrentBlock();
-  const text = currentBlockText(block);
-  const next = text || "";
+  const text = caretInsideTableCell() ? currentCellText() : currentBlockText(block);
+  // In a cell the "/" lives in the text, so derive the filter from the
+  // trigger instead of using the raw text (which would search for "/image").
+  const trigger = slashTriggerFromText(text);
+  const next = trigger != null ? trigger : (text || "");
   if (next !== state.slashFilter) {
     state.slashFilter = next;
     state.slashIndex = 0;
@@ -5970,6 +6204,22 @@ try {
     });
   }
 } catch {}
+
+// Selecting cell text with Shift+Arrow or the native touch handles never
+// fires the mouseup path above, so the floating format bar stayed hidden.
+// Surface it for any non-empty selection that lives inside a table cell.
+// Registered once at module scope (not per editor mount).
+document.addEventListener("selectionchange", () => {
+  clearTimeout(_cellFormatTimer);
+  _cellFormatTimer = setTimeout(() => {
+    try {
+      if (!state.editor) return;
+      if (!selectionInsideTableCell()) return;
+      if (!hasEditorTextSelection()) return;
+      showFormatToolbar();
+    } catch {}
+  }, 200);
+});
 
 // Custom pull-to-refresh on the internal .workspace scroller (body scroll is
 // locked, so the native gesture can never fire). Pull past the threshold at
