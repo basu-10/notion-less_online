@@ -29,7 +29,7 @@ android/
         ├── AndroidManifest.xml
         ├── java/com/notionless/app/MainActivity.kt
         ├── java/com/notionless/app/NotionLessApp.kt
-        └── res/{layout,values,drawable,mipmap-anydpi-v26}/
+        └── res/{layout,values,drawable,mipmap-anydpi-v26,mipmap-*dpi}/
 ```
 
 ## Build
